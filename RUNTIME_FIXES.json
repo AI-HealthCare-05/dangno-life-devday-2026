@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "8f91e6217ed93360b38717cb05e816877571a4a95728284c0f8b1c0a2047b9ac",
+  "patch_sha256": "623d6470e807d6f0f1d6cbf23797099ff44ec8552be0c0e081eb9ee5b6bae212",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -276,7 +276,7 @@
     {
       "path": "src/ml/inference/xai_background.py",
       "before": null,
-      "after": "be7781dbdc77232baf2a028289a619e474320ab5c090d0eb7ebeb3206f90054d"
+      "after": "ec3b750815ee70de6686e0a2716b159e36f574d1a2c69cfd6ed6497515b611ec"
     },
     {
       "path": "src/ml/preprocessing/xai_reference.py",
