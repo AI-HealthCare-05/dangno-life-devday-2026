@@ -30,6 +30,7 @@ from src.rag.generation import (
     OpenAIAnswerGenerationProvider,
     get_generation_provider,
 )
+from src.rag.qdrant import qdrant_search
 from src.rag.retrieval import hybrid_search, top_chunks
 from src.rag.verification import cited_document_ids, verify_sentences
 
@@ -168,6 +169,49 @@ class _FakeHttpResponse:
 
     def json(self) -> dict[str, object]:
         return self._payload
+
+
+class _FakeQdrantAsyncClient:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+
+    async def __aenter__(self) -> _FakeQdrantAsyncClient:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        del exc_info
+
+    async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]):
+        assert url.endswith("/collections/health_education/points/query")
+        assert json["filter"] == {"must": [{"key": "approved", "match": {"value": True}}]}
+        del headers
+        return _FakeHttpResponse(
+            {
+                "result": {
+                    "points": [
+                        {
+                            "score": 0.91,
+                            "payload": {
+                                "chunk_id": "doc-a#0",
+                                "document_id": "doc-a",
+                                "chunk_index": 0,
+                                "text": "승인된 근거 문장",
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_qdrant_search_filters_approved_documents_and_maps_payload(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(httpx, "AsyncClient", _FakeQdrantAsyncClient)
+
+    results = await qdrant_search("질문", embedding_provider=DevelopmentEmbeddingProvider())
+
+    assert results[0].chunk == _chunk("doc-a", 0, "승인된 근거 문장")
+    assert results[0].combined_score == pytest.approx(0.91)
 
 
 @pytest.mark.asyncio

@@ -12,7 +12,7 @@ def _service_block(compose: str, name: str) -> str:
 
 def test_production_compose_keeps_data_and_application_services_private() -> None:
     compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
-    for service in ("redis", "mysql", "fastapi", "ai-worker"):
+    for service in ("redis", "qdrant", "mysql", "fastapi", "ai-worker"):
         assert "ports:" not in _service_block(compose, service)
         assert "restart: unless-stopped" in _service_block(compose, service)
     assert '"80:80"' in _service_block(compose, "nginx")
@@ -64,5 +64,5 @@ def test_release_build_includes_frontend_nginx_image() -> None:
     production_compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
 
     assert "COPY ./src/frontend /usr/share/nginx/html/static" in dockerfile
-    assert 'web-$APP_VERSION' in build_script
+    assert "web-$APP_VERSION" in build_script
     assert ":web-${APP_VERSION" in production_compose

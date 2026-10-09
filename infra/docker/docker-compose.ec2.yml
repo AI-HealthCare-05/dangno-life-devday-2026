@@ -21,6 +21,14 @@ services:
       retries: 5
       start_period: 5s
 
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - healthcare
+
   mysql:
     image: mysql:8.0
     restart: unless-stopped
@@ -64,6 +72,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      qdrant:
+        condition: service_started
     healthcheck:
       test: ["CMD", "uv", "run", "--no-sync", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready', timeout=3)"]
       interval: 10s
@@ -119,6 +129,7 @@ volumes:
   redis_data:
   model_cache:
   food_vision_cache:
+  qdrant_data:
 
 networks:
   healthcare:
