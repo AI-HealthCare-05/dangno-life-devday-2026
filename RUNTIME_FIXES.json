@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "623d6470e807d6f0f1d6cbf23797099ff44ec8552be0c0e081eb9ee5b6bae212",
+  "patch_sha256": "e0d378b53b7d610162bcd3448137a3986346ac8f7e39bd84700e174ff76f445c",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -266,7 +266,7 @@
     {
       "path": "app/services/xai_presentation.py",
       "before": null,
-      "after": "3510715bd275e4e463f552266b9a27dc52ea8b9b53fda45552f0e566883c4634"
+      "after": "c6442944a2d3fa3d74d50be7b4eeac875c5b18bcdace8f7ae02eeacf1032feda"
     },
     {
       "path": "app/services/mobile_downloads.py",
@@ -311,7 +311,7 @@
     {
       "path": "tests/test_xai_presentation.py",
       "before": null,
-      "after": "424d7d67a9da8dffa8be66d8d3d9b77a5872df215813cc3452bc410d561ab69d"
+      "after": "2a883e4ca206e8cbbe6b3eef249401f6467121b3552fd8a83616e8ddb19b5446"
     },
     {
       "path": "tests/test_mobile_downloads.py",
