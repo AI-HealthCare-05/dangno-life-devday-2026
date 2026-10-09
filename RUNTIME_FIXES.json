@@ -1,190 +1,332 @@
 {
-  "patch_sha256": "ce72424317500344fa93686fd79d2684991dc7b0d46ae3621209c54393fbd2c2",
+  "patch_sha256": "8f91e6217ed93360b38717cb05e816877571a4a95728284c0f8b1c0a2047b9ac",
   "files": [
     {
       "path": "src/frontend/app.js",
       "before": "0fce7c16af6c55bc54de0351d517cc04120dc896755006029b8d649796331f84",
-      "after": "cfa7e59161cd74417ebd6ba9068dc1e0caaeb23863c2fb29ea2ae2cb82e0bd44"
+      "after": "8ae01cf2eb33c565007cc2f6f09448efe5fe279a95c9c4338bce892785e3d405",
+      "previous": "cfa7e59161cd74417ebd6ba9068dc1e0caaeb23863c2fb29ea2ae2cb82e0bd44"
     },
     {
       "path": "src/frontend/index.html",
       "before": "2a62179d639c18efe69f15974ea7b28b40d369fd5811158cff441870b09cad34",
-      "after": "7ed7c267093bc2a274cfb622572808d888a105cbd2e6405da920089bc630ff53"
+      "after": "be814f6bbb8c7087fada18be9443c94e4a734068fc173ef898c5c74b9e24a9cc",
+      "previous": "7ed7c267093bc2a274cfb622572808d888a105cbd2e6405da920089bc630ff53"
     },
     {
       "path": "app/apis/v1/auth_routers.py",
       "before": "524cf2294beeb16272cd98d13b8beafe6e8a6c092de41fa86adfb39c07a036b4",
-      "after": "02451fa99914bab499b5c1a8dad99f199e1d3f322074addbedbebf30ab950490"
+      "after": "02451fa99914bab499b5c1a8dad99f199e1d3f322074addbedbebf30ab950490",
+      "previous": "02451fa99914bab499b5c1a8dad99f199e1d3f322074addbedbebf30ab950490"
     },
     {
       "path": "tests/frontend/challenge_selection_entry.test.cjs",
       "before": "2e0d5eb19b66d3ec57e798462b8d8e80d0b073a771393d45acdcbac586e4976b",
-      "after": "a54a114fd585cfc2ea1f8c9de76ae6d6c31a182f1d40be901b5b01afb3c6385f"
+      "after": "a54a114fd585cfc2ea1f8c9de76ae6d6c31a182f1d40be901b5b01afb3c6385f",
+      "previous": "a54a114fd585cfc2ea1f8c9de76ae6d6c31a182f1d40be901b5b01afb3c6385f"
     },
     {
       "path": "tests/frontend/daily_reward_recovery.test.cjs",
       "before": null,
-      "after": "bbc4c142399eb9f83f697cc842df7bc99b6b30ced418a49f517c66b33de66b50"
+      "after": "bbc4c142399eb9f83f697cc842df7bc99b6b30ced418a49f517c66b33de66b50",
+      "previous": "bbc4c142399eb9f83f697cc842df7bc99b6b30ced418a49f517c66b33de66b50"
     },
     {
       "path": "tests/test_auth_empty_responses.py",
       "before": null,
-      "after": "345c5fcba30baf02e6968c9d9e8261e609a081765bd6537fc67b9414ae18b98c"
+      "after": "345c5fcba30baf02e6968c9d9e8261e609a081765bd6537fc67b9414ae18b98c",
+      "previous": "345c5fcba30baf02e6968c9d9e8261e609a081765bd6537fc67b9414ae18b98c"
     },
     {
       "path": ".env.example",
       "before": "634ad45af2523eb53c8d923f03f918213d3dd46004a59de7b4acb852e7e0b38e",
-      "after": "b8762fdf98425a2545cebb29e784bc40443a19912d921464ab9bcb049bc54ce7"
+      "after": "b8762fdf98425a2545cebb29e784bc40443a19912d921464ab9bcb049bc54ce7",
+      "previous": "b8762fdf98425a2545cebb29e784bc40443a19912d921464ab9bcb049bc54ce7"
     },
     {
       "path": "README.md",
-      "before": "e46b1cadb6ef761dba6064821063c3cb637a620526d0880cbff87fe9204c5e15",
-      "after": "f1a74f06a4752e5ee401f1d2e8aae9bc05c913eea8c530903dd61a989e11425c"
+      "before": "398149146e3b60015e2f7ad8caaa694f5d91fa9de18744c26bedeeca494711b4",
+      "after": "f1a74f06a4752e5ee401f1d2e8aae9bc05c913eea8c530903dd61a989e11425c",
+      "previous": "f1a74f06a4752e5ee401f1d2e8aae9bc05c913eea8c530903dd61a989e11425c"
     },
     {
       "path": "app/apis/v1/challenge_v2_routers.py",
       "before": "868063b7d300f839d40b8c04008591b608b9ee66e41916b462824beb895010c2",
-      "after": "1bf2da566e870359d52e55bd9d5ad14ed3028d749aa6004da4299447bbedd8c5"
+      "after": "1bf2da566e870359d52e55bd9d5ad14ed3028d749aa6004da4299447bbedd8c5",
+      "previous": "1bf2da566e870359d52e55bd9d5ad14ed3028d749aa6004da4299447bbedd8c5"
     },
     {
       "path": "app/apis/v1/rag_routers.py",
       "before": "3146c2cc6a746083799c258986afab82c37988033b8ff391a465396db2e35e58",
-      "after": "34cfdef602c8fc516c3389155a6c18557ca4a309cd2c925c836f83e9616da673"
+      "after": "34cfdef602c8fc516c3389155a6c18557ca4a309cd2c925c836f83e9616da673",
+      "previous": "34cfdef602c8fc516c3389155a6c18557ca4a309cd2c925c836f83e9616da673"
     },
     {
       "path": "app/core/config.py",
       "before": "af466fdaddd2d68a939143895583902839a5e3bb04013d4e4711eb89ed6f0da2",
-      "after": "df000b64ec339ab7fb24c97adc1d5f20161f858e4bc6e33224200910f5508f8f"
+      "after": "74bf6b32e0b9a491dc0637a7e8149c4a69790e1fc6f9dd8b0129c8b8994400b4",
+      "previous": "df000b64ec339ab7fb24c97adc1d5f20161f858e4bc6e33224200910f5508f8f"
     },
     {
       "path": "app/dtos/wellness.py",
       "before": "2fd59dcd075866448c3173c85d466d5eea7707c7e5f4367ce1a9945173441e7a",
-      "after": "5a786c395acb42b7bd8bf59eea78eaa41dee66dace479dcf9c34d4f64e246026"
+      "after": "5a786c395acb42b7bd8bf59eea78eaa41dee66dace479dcf9c34d4f64e246026",
+      "previous": "5a786c395acb42b7bd8bf59eea78eaa41dee66dace479dcf9c34d4f64e246026"
     },
     {
       "path": "app/health.py",
       "before": null,
-      "after": "1be8bb9736b87bc52f739199d2f1921f8bffc64bd1e560baa7219706f73510fb"
+      "after": "1be8bb9736b87bc52f739199d2f1921f8bffc64bd1e560baa7219706f73510fb",
+      "previous": "1be8bb9736b87bc52f739199d2f1921f8bffc64bd1e560baa7219706f73510fb"
     },
     {
       "path": "app/lifecycle.py",
       "before": null,
-      "after": "0fb5473f38222833c13660f60ac0b1296be9ef5ddc87dd7f122e05ef7c91348f"
+      "after": "0fb5473f38222833c13660f60ac0b1296be9ef5ddc87dd7f122e05ef7c91348f",
+      "previous": "0fb5473f38222833c13660f60ac0b1296be9ef5ddc87dd7f122e05ef7c91348f"
     },
     {
       "path": "app/main.py",
       "before": "1379aa4161714f89620711e6f866c512b33929022bf70c9173100efc75cf0c15",
-      "after": "2cc2cf09d0eed824ebd913d4187cf3954fa091a4216feb5aabbb35f46f751827"
+      "after": "b3ba487898e5af4734a88781890da3965580cfa73a821227c6b8482c4eb261fe",
+      "previous": "2cc2cf09d0eed824ebd913d4187cf3954fa091a4216feb5aabbb35f46f751827"
     },
     {
       "path": "docker-compose.yml",
       "before": null,
-      "after": "3797491e138b16afa60977f41884973c015b511e3bbbf64262aa338f4616308b"
+      "after": "3797491e138b16afa60977f41884973c015b511e3bbbf64262aa338f4616308b",
+      "previous": "3797491e138b16afa60977f41884973c015b511e3bbbf64262aa338f4616308b"
     },
     {
       "path": "envs/example.local.env",
       "before": null,
-      "after": "403a927a4934044cacb2889e56785b50500800f05fdd0f8df2ef8a1d8bf20016"
+      "after": "403a927a4934044cacb2889e56785b50500800f05fdd0f8df2ef8a1d8bf20016",
+      "previous": "403a927a4934044cacb2889e56785b50500800f05fdd0f8df2ef8a1d8bf20016"
     },
     {
       "path": "envs/example.prod.env",
       "before": null,
-      "after": "034845669c4a3b2e449d329b00b6702fb25259ba791ff168118bd5b9f677144d"
+      "after": "034845669c4a3b2e449d329b00b6702fb25259ba791ff168118bd5b9f677144d",
+      "previous": "034845669c4a3b2e449d329b00b6702fb25259ba791ff168118bd5b9f677144d"
     },
     {
       "path": "infra/docker/docker-compose.ec2.yml",
       "before": null,
-      "after": "0c413cc22e878087fb156d7bc24c19f97bb246bed0732b73384ddbce0cd1c20b"
+      "after": "0c413cc22e878087fb156d7bc24c19f97bb246bed0732b73384ddbce0cd1c20b",
+      "previous": "0c413cc22e878087fb156d7bc24c19f97bb246bed0732b73384ddbce0cd1c20b"
     },
     {
       "path": "infra/docker/docker-compose.prod.yml",
       "before": null,
-      "after": "3a56eb9037fed08fbf8ca984aa01aff9ef878468bcd4beb5e9f4604d2762235e"
+      "after": "3a56eb9037fed08fbf8ca984aa01aff9ef878468bcd4beb5e9f4604d2762235e",
+      "previous": "3a56eb9037fed08fbf8ca984aa01aff9ef878468bcd4beb5e9f4604d2762235e"
     },
     {
       "path": "infra/nginx/Dockerfile",
       "before": null,
-      "after": "2c9c453958c0cfdbf15509c1768bdc4ae8eea3dcada4a9522b28d02c1d8cb327"
+      "after": "2c9c453958c0cfdbf15509c1768bdc4ae8eea3dcada4a9522b28d02c1d8cb327",
+      "previous": "2c9c453958c0cfdbf15509c1768bdc4ae8eea3dcada4a9522b28d02c1d8cb327"
     },
     {
       "path": "infra/nginx/default.conf",
       "before": null,
-      "after": "1f42cbed8908350b5ed9ff311e35c0e0794f384c5b1de9ce82810fb55de5aaf9"
+      "after": "1f42cbed8908350b5ed9ff311e35c0e0794f384c5b1de9ce82810fb55de5aaf9",
+      "previous": "1f42cbed8908350b5ed9ff311e35c0e0794f384c5b1de9ce82810fb55de5aaf9"
     },
     {
       "path": "infra/nginx/ec2-http.conf.template",
       "before": null,
-      "after": "8125c146c9b4b11a16de334536c46aef05c3ce818a471c8dc57a36e7e0835b20"
+      "after": "8125c146c9b4b11a16de334536c46aef05c3ce818a471c8dc57a36e7e0835b20",
+      "previous": "8125c146c9b4b11a16de334536c46aef05c3ce818a471c8dc57a36e7e0835b20"
     },
     {
       "path": "infra/nginx/prod_http.conf",
       "before": null,
-      "after": "fef34b60a1160c8939f58635f591521b157e6aadadd2768d4a6cbcc4545965bd"
+      "after": "fef34b60a1160c8939f58635f591521b157e6aadadd2768d4a6cbcc4545965bd",
+      "previous": "fef34b60a1160c8939f58635f591521b157e6aadadd2768d4a6cbcc4545965bd"
     },
     {
       "path": "infra/nginx/prod_http.conf.template",
       "before": null,
-      "after": "24d0b834ffcc585463d1dce10f975a0968a8fe721ef2b2227fc857707373a75a"
+      "after": "24d0b834ffcc585463d1dce10f975a0968a8fe721ef2b2227fc857707373a75a",
+      "previous": "24d0b834ffcc585463d1dce10f975a0968a8fe721ef2b2227fc857707373a75a"
     },
     {
       "path": "infra/nginx/prod_https.conf",
       "before": null,
-      "after": "b59c77ffe9c1084cc974fcb6bd03677d48c2e4ae65c0b05ce4734cc5268577c3"
+      "after": "b59c77ffe9c1084cc974fcb6bd03677d48c2e4ae65c0b05ce4734cc5268577c3",
+      "previous": "b59c77ffe9c1084cc974fcb6bd03677d48c2e4ae65c0b05ce4734cc5268577c3"
     },
     {
       "path": "infra/nginx/prod_https.conf.template",
       "before": null,
-      "after": "e515f79f1fafa1abfe837fede0b0419b675ad5663aa4bd31393aacdd50a79c28"
+      "after": "e515f79f1fafa1abfe837fede0b0419b675ad5663aa4bd31393aacdd50a79c28",
+      "previous": "e515f79f1fafa1abfe837fede0b0419b675ad5663aa4bd31393aacdd50a79c28"
     },
     {
       "path": "scripts/build-release-images.sh",
       "before": null,
-      "after": "4a4b3e4ffd368de5459a79cc347cf00f29356cf9ab92aa6e5cde4d4f1d6ab288"
+      "after": "4a4b3e4ffd368de5459a79cc347cf00f29356cf9ab92aa6e5cde4d4f1d6ab288",
+      "previous": "4a4b3e4ffd368de5459a79cc347cf00f29356cf9ab92aa6e5cde4d4f1d6ab288"
     },
     {
       "path": "scripts/preflight-production.sh",
       "before": null,
-      "after": "6f9dc175c10530442824d83c372e0ff69ac401e2f6d4d3b38fc6b0078e090423"
+      "after": "6f9dc175c10530442824d83c372e0ff69ac401e2f6d4d3b38fc6b0078e090423",
+      "previous": "6f9dc175c10530442824d83c372e0ff69ac401e2f6d4d3b38fc6b0078e090423"
     },
     {
       "path": "scripts/prepare-ec2-release.sh",
       "before": null,
-      "after": "f737560ba9cbd281b4f1e413907b6789d745838a0351b5eb781799f69e67af1a"
+      "after": "f737560ba9cbd281b4f1e413907b6789d745838a0351b5eb781799f69e67af1a",
+      "previous": "f737560ba9cbd281b4f1e413907b6789d745838a0351b5eb781799f69e67af1a"
     },
     {
       "path": "src/rag/engine.py",
       "before": "50908cffef75548477b3539a7270aa4d8a2af6fe6f055f729d951c87f35bd7cc",
-      "after": "d4982b2d2fab097dc916575349b08607e73ca2a8581a80c6855a0e9f3f5a89f9"
+      "after": "d4982b2d2fab097dc916575349b08607e73ca2a8581a80c6855a0e9f3f5a89f9",
+      "previous": "d4982b2d2fab097dc916575349b08607e73ca2a8581a80c6855a0e9f3f5a89f9"
     },
     {
       "path": "src/rag/indexing.py",
       "before": null,
-      "after": "7e6e37afbcde9eebb89323d7049da3e72adf1ac80423b6d1e139b5b8509b9966"
+      "after": "7e6e37afbcde9eebb89323d7049da3e72adf1ac80423b6d1e139b5b8509b9966",
+      "previous": "7e6e37afbcde9eebb89323d7049da3e72adf1ac80423b6d1e139b5b8509b9966"
     },
     {
       "path": "src/rag/qdrant.py",
       "before": null,
-      "after": "734ec3b6b48971f0eadc1054c65b03db9bfab16ffeebbac726aba32b0985aea3"
+      "after": "734ec3b6b48971f0eadc1054c65b03db9bfab16ffeebbac726aba32b0985aea3",
+      "previous": "734ec3b6b48971f0eadc1054c65b03db9bfab16ffeebbac726aba32b0985aea3"
     },
     {
       "path": "tests/test_app_structure.py",
       "before": null,
-      "after": "f6cdcfbc0a160c3338bcaadf2a3f62262c3bf204a7eed08f94ecf49ee0569c59"
+      "after": "f6cdcfbc0a160c3338bcaadf2a3f62262c3bf204a7eed08f94ecf49ee0569c59",
+      "previous": "f6cdcfbc0a160c3338bcaadf2a3f62262c3bf204a7eed08f94ecf49ee0569c59"
     },
     {
       "path": "tests/test_production_deployment_assets.py",
       "before": "c75d50eae5ec8b79c0c61e8eca81677805dee2c3abc254c914b61d5aa4a92ec6",
-      "after": "947d411aa0da8e65a6ff38dd434cd17472ccc91078b467e2e2b9ec19a752aa53"
+      "after": "947d411aa0da8e65a6ff38dd434cd17472ccc91078b467e2e2b9ec19a752aa53",
+      "previous": "947d411aa0da8e65a6ff38dd434cd17472ccc91078b467e2e2b9ec19a752aa53"
     },
     {
       "path": "tests/test_rag_health_education.py",
       "before": "378de6627c66d5967792afdd54d7d6c0a5fe3015cc206c1c1e3ffa8b611c64c2",
-      "after": "45c7ac061347dfdb59c83a1c69a8b52824088e7837516aa92747c27fe2a0de90"
+      "after": "45c7ac061347dfdb59c83a1c69a8b52824088e7837516aa92747c27fe2a0de90",
+      "previous": "45c7ac061347dfdb59c83a1c69a8b52824088e7837516aa92747c27fe2a0de90"
     },
     {
       "path": "tests/test_rag_pipeline.py",
       "before": "65f9edd2bbef57dee11c10c90589c344eac7e3c6593964004cbe161e419bcaed",
-      "after": "7503aa4371f94de57a7cafc507b655422f8e813132aae0c6f7a529f9f8ceeec0"
+      "after": "7503aa4371f94de57a7cafc507b655422f8e813132aae0c6f7a529f9f8ceeec0",
+      "previous": "7503aa4371f94de57a7cafc507b655422f8e813132aae0c6f7a529f9f8ceeec0"
+    },
+    {
+      "path": "app/apis/v1/prediction_routers.py",
+      "before": "50ba50aa83610e49fd02d51f7a433c3a2b3342c80962d0cb36b949d8734f9ad8",
+      "after": "6f4a9e3100901dd2d587eed07700fcb65b9776aef25e67a9e68bc72f3e7cf981"
+    },
+    {
+      "path": "app/services/ai_jobs.py",
+      "before": "9969a61b2693e2e87a98e77354a3e39e43a7ee5592c93144fe60bda2914b7803",
+      "after": "e8ecd2a390e357a8a8290b593bf79db1ef4c700e227ed935b5664e73412a1912"
+    },
+    {
+      "path": "ai_worker/handlers.py",
+      "before": "fa901e4729ea2028f6e2be41eb6468b623ff0d8cafedaa4930bfafafa7019287",
+      "after": "f010e54f837d38c08aedec453e62d1bacb988a8d60a109ef37f86b089e5b56ac"
+    },
+    {
+      "path": "src/ml/inference/shap_explanations.py",
+      "before": "32238d18052695a3d4f189044a6aaf1ac515ed97a7706a478cd32e59fe863ffb",
+      "after": "099c08dec75f0ffcf75b8de260659dd3b889ba4a880f362edda10558e5fda116"
+    },
+    {
+      "path": "src/frontend/result-xai.css",
+      "before": "a158e679d54446b34b09944f40988a0adfc5e450f9692f062d34a6eb5515e34c",
+      "after": "4e0d97411fa556494c6e47add0fb6760c4c271cc8c403b162367e6760bad36c0"
+    },
+    {
+      "path": "requirements-demo.lock.txt",
+      "before": "5904fb75c10a577fd87e659583915bbdb315d9ab8b05db20d930f562a2195941",
+      "after": "b400b80e573082fc0e55dd9ef191446ac3980ff16db36c5cc1a18eab85b196f9"
+    },
+    {
+      "path": "tests/test_xai_public_contract.py",
+      "before": "f303f311ab96e81ba962f6f9334c9eb9e5d2ff3345008e188faa495bdfdaf132",
+      "after": "f07e654dfa217a6848ba25ac0ed4fdd2670b26b5b52b05d05b276db1b92062c9"
+    },
+    {
+      "path": "tests/ml/test_shap_explanations.py",
+      "before": "298e629e370411edfb3c6f651821a0dd9bc1a320aeda5a47c5420764bce415f5",
+      "after": "106cb3cbf6f6bb7098d06375c9074c0502e3e39b9b12632306554cb178f000da"
+    },
+    {
+      "path": "app/services/xai_presentation.py",
+      "before": null,
+      "after": "3510715bd275e4e463f552266b9a27dc52ea8b9b53fda45552f0e566883c4634"
+    },
+    {
+      "path": "app/services/mobile_downloads.py",
+      "before": null,
+      "after": "2e4b15fe6ffa1f78a05f053c5278a7961e51b25f9a50b0a38f4fbd62ff6791a9"
+    },
+    {
+      "path": "src/ml/inference/xai_background.py",
+      "before": null,
+      "after": "be7781dbdc77232baf2a028289a619e474320ab5c090d0eb7ebeb3206f90054d"
+    },
+    {
+      "path": "src/ml/preprocessing/xai_reference.py",
+      "before": null,
+      "after": "2c8d8f05348ee9c2851ae686f6551522c0bc4707f503a8b69f59194d255614d3"
+    },
+    {
+      "path": "models/registry/xai/today-train-reference-v2.json",
+      "before": null,
+      "after": "5b28c208b3e086142c115fc0b2fbf8ca421b44e60efb1dd2701e6d0ac69532b9"
+    },
+    {
+      "path": "src/frontend/mobile-download-entry.js",
+      "before": null,
+      "after": "b214de1e5846d65016270d8d0482b532d6159f9e4d1752281f9d880e7b436249"
+    },
+    {
+      "path": "src/frontend/mobile-downloads.html",
+      "before": null,
+      "after": "b73c0354e78b6bdf1f3c5a381bb90e5d450dbb07930f13ea5b20025c030afa39"
+    },
+    {
+      "path": "src/frontend/mobile-downloads.css",
+      "before": null,
+      "after": "63bc7028fdca050a63915aca5188a769f05d1f91009ee4ad5370b20b937b9cdd"
+    },
+    {
+      "path": "src/frontend/mobile-downloads.js",
+      "before": null,
+      "after": "84019e2ffdf47804abf57b0e18c7e35bc49a61bee1da1419e88f77e0f4c12e2b"
+    },
+    {
+      "path": "tests/test_xai_presentation.py",
+      "before": null,
+      "after": "424d7d67a9da8dffa8be66d8d3d9b77a5872df215813cc3452bc410d561ab69d"
+    },
+    {
+      "path": "tests/test_mobile_downloads.py",
+      "before": null,
+      "after": "ab9eb4854fb98c3d7bb47c17869d835ecd134cbfc7640ab856d24d7db516c84f"
+    },
+    {
+      "path": "tests/ml/test_xai_reference.py",
+      "before": null,
+      "after": "86d0f4407f9de76b09857425d09d4712bd9f0587efd6a1a4cf68681cafb3c7a2"
+    },
+    {
+      "path": "docs/WEB_XAI_MOBILE.md",
+      "before": null,
+      "after": "671f15ab6c520777b5e611a9a53d01960a246259cc2d9c62ec8dee2ed16a826c"
     }
   ]
 }

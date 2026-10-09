@@ -1,6 +1,149 @@
 --- a/src/frontend/app.js
 +++ b/src/frontend/app.js
-@@ -3860,6 +3860,9 @@
+@@ -3036,8 +3036,8 @@
+ 
+ function factorDirectionLabel(item = {}) {
+   const raw = String(item.direction || item.effect_direction || item.impact_direction || "").toLowerCase();
+-  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "주의 요인 · 당뇨 위험을 높인 방향";
+-  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "긍정 요인 · 당뇨 위험을 낮춘 방향";
++  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "점수를 높인 요인";
++  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "점수를 낮춘 요인";
+   return "";
+ }
+ 
+@@ -3057,14 +3057,14 @@
+ function renderFactorItems(items = []) {
+   return items.map((item) => {
+     const factorName = item.display_name || item.factor_name || item.name || "확인된 신호";
+-    const factorDescription = item.message || item.description || item.guidance || "검증된 설명만 표시합니다.";
++    const inputValue = item.input_value_label || "저장된 입력값 확인 불가";
+     const direction = factorDirectionLabel(item);
+-    const caution = direction.startsWith("주의 요인");
++    const caution = direction === "점수를 높인 요인";
+     const icon = caution ? "xai-arrow-up.svg" : "xai-arrow-down.svg";
+     const meta = direction
+       ? `<small class="xai-factor-meta"><span class="xai-factor-direction ${caution ? "is-caution" : "is-positive"}">${escapeHtml(direction)}</span></small>`
+       : "";
+-    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong>${meta}<p>${escapeHtml(factorDescription)}</p></div></li>`;
++    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong><p class="xai-input-value">입력: ${escapeHtml(inputValue)}</p>${meta}</div></li>`;
+   }).join("");
+ }
+ 
+@@ -3074,16 +3074,64 @@
+     || (typeof item.contribution === "number" && Number.isFinite(item.contribution)
+       && Math.abs(item.contribution) > 1e-10))
+     .sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0));
+-  const positive = sorted.filter(item => factorDirectionLabel(item).startsWith("긍정 요인"));
+-  const caution = sorted.filter(item => factorDirectionLabel(item).startsWith("주의 요인"));
++  const positive = sorted.filter(item => factorDirectionLabel(item) === "점수를 낮춘 요인");
++  const caution = sorted.filter(item => factorDirectionLabel(item) === "점수를 높인 요인");
+   return elevated ? [...caution.slice(0, 2), ...positive.slice(0, 1)]
+     : [...positive.slice(0, 2), ...caution.slice(0, 1)];
++}
++
++function formatModelNumber(value, signed = false) {
++  if (typeof value !== "number" || !Number.isFinite(value)) return "제공되지 않음";
++  return `${signed && value > 0 ? "+" : ""}${value.toFixed(6)}`;
++}
++
++function renderModelAnalysisDetails(prefix, prediction = {}) {
++  const details = $(`#${prefix}-model-details`), numbers = $(`#${prefix}-model-numbers`);
++  if (!details || !numbers) return;
++  const analysis = prediction?.model_analysis;
++  const ready = isPublicRiskDisplayAllowed(prediction || {}) && analysis?.status === "available"
++    && [analysis.model_score, analysis.decision_threshold, analysis.score_minus_threshold].every(value => typeof value === "number" && Number.isFinite(value));
++  details.hidden = !ready;
++  details.open = false;
++  numbers.innerHTML = ready ? `<dl class="model-number-grid">${[
++    ["모델 점수 (0~1)", formatModelNumber(analysis.model_score)],
++    ["선별 기준점", formatModelNumber(analysis.decision_threshold)],
++    ["기준점과의 차이", formatModelNumber(analysis.score_minus_threshold, true)],
++    ["분석 기준일", prediction.input_as_of_date || "제공되지 않음"],
++  ].map(([label,value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl><p>저장된 건강정보를 분석한 모델 점수입니다. 선별 기준점과 비교하며 확정 발병 확률이나 진단 결과가 아닙니다.</p>` : "";
++}
++
++function renderShapGraph(prefix, factors, approved) {
++  const element = $(`#${prefix}-shap-graph`);
++  if (!element) return;
++  const graph = factors?.shap_graph;
++  const items = Array.isArray(graph?.items) ? graph.items : [];
++  const valid = approved && factors?.display_allowed === true && graph?.complete === true && items.length > 0
++    && items.every(item => typeof item.contribution === "number" && Number.isFinite(item.contribution))
++    && [graph.reference_value, graph.explained_score, graph.contribution_sum].every(value => typeof value === "number" && Number.isFinite(value))
++    && Math.abs(items.reduce((sum,item) => sum + item.contribution, 0) - graph.contribution_sum) <= 1e-8
++    && Math.abs(graph.reference_value + graph.contribution_sum - graph.explained_score) <= 1e-8;
++  element.hidden = !valid;
++  if (!valid) { element.innerHTML = ""; return; }
++  const sorted = [...items].sort((a,b) => Math.abs(b.contribution) - Math.abs(a.contribution));
++  const maximum = Math.max(...sorted.map(item => Math.abs(item.contribution)));
++  const rows = sorted.map(item => {
++    const width = maximum > 0 ? Math.abs(item.contribution) / maximum * 50 : 0;
++    const positive = item.contribution > 0;
++    const direction = positive ? "점수를 높임" : item.contribution < 0 ? "점수를 낮춤" : "기여 없음";
++    return `<li class="shap-row"><div class="shap-row-heading"><span>${escapeHtml(item.display_name || item.feature)}</span><strong>${formatModelNumber(item.contribution, true)}</strong></div><div class="shap-bar-track" role="img" aria-label="${escapeHtml(`${item.display_name || item.feature}: ${direction}, ${formatModelNumber(item.contribution, true)}`)}"><span class="shap-bar ${positive ? "is-increase" : "is-decrease"}" style="left:${positive ? 50 : 50-width}%;width:${width}%"></span></div></li>`;
++  }).join("");
++  element.innerHTML = `<details class="shap-details"><summary>SHAP 분석 결과 자세히 보기</summary><div class="shap-details-body"><p>전체 ${items.length}개 요인의 기여도입니다. 왼쪽은 점수를 낮춘 요인, 오른쪽은 높인 요인입니다.</p><div class="shap-axis" aria-hidden="true"><span>−${formatModelNumber(maximum)}</span><span>0</span><span>+${formatModelNumber(maximum)}</span></div><ol class="shap-rows">${rows}</ol><dl class="shap-total"><div><dt>비교 기준 점수</dt><dd>${formatModelNumber(graph.reference_value)}</dd></div><div><dt>전체 SHAP 기여도 합</dt><dd>${formatModelNumber(graph.contribution_sum, true)}</dd></div><div><dt>설명된 모델 점수</dt><dd>${formatModelNumber(graph.explained_score)}</dd></div></dl><p>비교 기준 점수 + 전체 기여도 합 = 설명된 모델 점수입니다. 생활습관 변경의 효과나 발병 확률 변화가 아닙니다.</p></div></details>`;
+ }
+ 
+ function renderXaiExplanationLists(
+   factors,
+   { approved = false, currentFactors = null, currentApproved = false } = {},
+ ) {
++  renderModelAnalysisDetails("current", state.currentScreeningPrediction);
++  renderModelAnalysisDetails("future", state.prediction);
++  renderShapGraph("current", currentFactors, currentApproved);
++  renderShapGraph("future", factors, approved);
+   const currentList = $("#current-factor-list");
+   const currentSignal = state.currentScreeningPrediction?.screening_signal_detected;
+   const currentItems = selectXaiFactors(
+@@ -3091,7 +3139,17 @@
+   );
+   const futureList = $("#factor-list");
+   const currentReady = Boolean(currentApproved && currentFactors?.display_allowed === true && currentItems.length);
++  const currentNote = $("#current-factor-note");
++  if (currentNote) {
++    currentNote.hidden = !currentReady || currentItems.length >= 3;
++    currentNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
++  }
+   const currentTitle = $("#current-factor-title");
++  const currentBaseline = $("#current-factor-baseline");
++  if (currentBaseline) {
++    currentBaseline.hidden = !currentReady;
++    currentBaseline.textContent = `비교 기준: ${currentFactors?.baseline_label || "모델의 저장된 비교 기준"}. 건강습관 변경의 효과를 뜻하지 않습니다.`;
++  }
+   if (currentTitle) currentTitle.textContent = currentReady ? "현재 위험 신호 설명" : "현재 건강 신호 XAI 연결 대기";
+   if (currentList) {
+     currentList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", currentReady);
+@@ -3100,16 +3158,23 @@
+       : `<li><strong>현재 건강 신호 XAI 연결 대기</strong><p>${escapeHtml(currentFactors?.message || "검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.")}</p></li>`;
+   }
+   const futureCategory = normalizeRiskKey({ risk_category: state.prediction?.risk_category });
+-  const currentDirections = new Map(currentItems.map(item => [factorIdentity(item), factorDirectionLabel(item)]));
+-  const futureCandidates = (Array.isArray(factors?.items) ? factors.items : []).filter((item) => {
+-    const currentDirection = currentDirections.get(factorIdentity(item));
+-    return !currentDirection || currentDirection === factorDirectionLabel(item);
+-  });
++  // Each model has its own outcome and reference; opposite attributions are valid.
++  const futureCandidates = Array.isArray(factors?.items) ? factors.items : [];
+   const factorItems = selectXaiFactors(futureCandidates,
+     ["low", "moderate", "high"].includes(futureCategory) ? futureCategory !== "low" : null);
+   if (!futureList) return;
+   const futureReady = Boolean(approved && factors?.display_allowed === true && factorItems.length);
++  const futureNote = $("#future-factor-note");
++  if (futureNote) {
++    futureNote.hidden = !futureReady || factorItems.length >= 3;
++    futureNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
++  }
+   const futureTitle = $("#future-factor-title");
++  const futureBaseline = $("#future-factor-baseline");
++  if (futureBaseline) {
++    futureBaseline.hidden = !futureReady;
++    futureBaseline.textContent = `비교 기준: ${factors?.baseline_label || "모델의 저장된 비교 기준"}. 오늘이와 별도로 계산한 모델 설명입니다.`;
++  }
+   if (futureTitle) futureTitle.textContent = futureReady ? "미래 당뇨 위험 설명" : "미래 위험 XAI 연결 대기";
+   futureList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", futureReady);
+   futureList.innerHTML = approved && factors?.display_allowed === true && factorItems.length
+@@ -3860,6 +3925,9 @@
  }
  
  function renderTodayTaskStatus() {
@@ -10,7 +153,7 @@
    const title = $("#today-task-title");
    const description = $("#today-task-description");
    const action = $("#today-record-action");
-@@ -4115,7 +4118,7 @@
+@@ -4115,7 +4183,7 @@
  
  function allDailyChallengesCompleted() {
    const required = dailyChallengeTargetCount();
@@ -19,7 +162,7 @@
  }
  
  function closeChallengeRewardDialog() {
-@@ -4124,8 +4127,9 @@
+@@ -4124,8 +4192,9 @@
  }
  
  function openChallengeRewardDialog(reward = {}) {
@@ -31,7 +174,7 @@
    $("#challenge-reward-copy").textContent = reward.already_claimed
      ? "오늘 보상은 이미 받았어요. 숲에서 보유 당근을 확인할 수 있습니다."
      : "오늘의 실천 보상이 지급됐어요. 당근의 숲에서 확인해 보세요.";
-@@ -4142,15 +4146,26 @@
+@@ -4142,15 +4211,26 @@
  async function maybeOpenDailyReward() {
    if (!allDailyChallengesCompleted()) return;
    const today = challengeDay();
@@ -60,7 +203,7 @@
    }
  }
  
-@@ -4176,8 +4191,8 @@
+@@ -4176,8 +4256,8 @@
    renderDailyRecordList();
    updateDailyRecordSummary();
    if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
@@ -70,7 +213,7 @@
  }
  
  async function undoDailyRecord(target) {
-@@ -6956,7 +6971,12 @@
+@@ -6956,7 +7036,12 @@
    showPhotoRecordState("photo-state-success");
  }));
  $("#close-photo-success").addEventListener("click", async (event) => {
@@ -84,7 +227,7 @@
    const releaseBusy = setButtonBusy(event.currentTarget, "기록 저장 중…");
    try {
      const target = state.recordTarget;
-@@ -6964,6 +6984,11 @@
+@@ -6964,6 +7049,11 @@
      closeRecordModal();
      await completeDailyRecord(target, source);
    } catch (error) { showMessage(error.message); }
@@ -98,7 +241,60 @@
  $("#daily-log-form")?.addEventListener("submit", async (event) => {
 --- a/src/frontend/index.html
 +++ b/src/frontend/index.html
-@@ -817,6 +817,7 @@
+@@ -35,11 +35,12 @@
+   <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-restore-v1">
+   <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
+   <link rel="stylesheet" href="/static/education-carousel.css?v=20260915-health-quiz-card-art-v1">
+-  <link rel="stylesheet" href="/static/result-xai.css?v=20260919-xai-layout-v3">
++  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-web-xai-mobile-v1">
+   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
+   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
+   <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
+-  <script src="/static/app.js?v=20260921-modern-intro-navigation-v1" defer></script>
++  <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
++  <script src="/static/app.js?v=20261009-web-xai-mobile-v1" defer></script>
+ </head>
+ <body class="intro-mode">
+   <a class="skip-link" href="#main">본문으로 바로가기</a>
+@@ -60,6 +61,7 @@
+         <li><button type="button" data-top-workspace="report">리포트</button></li>
+         <li><button type="button" data-top-workspace="together">함께하기</button></li>
+         <li><button type="button" data-top-workspace="tools">건강도구</button></li>
++        <li><button type="button" data-mobile-download>모바일 버전 다운로드 <span>iOS | 안드로이드</span></button></li>
+       </ol>
+     </nav>
+     <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>
+@@ -593,10 +595,13 @@
+               </div>
+               <article class="xai-factor-card result-xai-card current-xai-slot" aria-labelledby="current-factor-title">
+                 <div class="result-xai-waiting">
+-                  <h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
++                  <p id="current-factor-baseline" class="xai-baseline" hidden></p><h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
+                   <ul class="factor-list" id="current-factor-list">
+                     <li><strong>설명 결과 연결 대기</strong><p>현재 건강 신호 XAI 계약이 오면 주요 영향 신호를 표시합니다.</p></li>
+                   </ul>
++                  <p id="current-factor-note" class="xai-selection-note" hidden></p>
++                  <div id="current-shap-graph" class="shap-graph" hidden></div>
++                  <details id="current-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="current-model-numbers"></div></details>
+                 </div>
+               </article>
+             </div>
+@@ -623,10 +628,13 @@
+               </div>
+               <article class="forecast-score-placeholder xai-factor-card result-xai-card current-xai-slot" id="forecast-score-placeholder" aria-labelledby="future-factor-title">
+                 <div class="result-xai-waiting">
+-                  <h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
++                  <p id="future-factor-baseline" class="xai-baseline" hidden></p><h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
+                   <ul class="factor-list" id="factor-list">
+                     <li><strong>설명 결과 연결 대기</strong><p>검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.</p></li>
+                   </ul>
++                  <p id="future-factor-note" class="xai-selection-note" hidden></p>
++                  <div id="future-shap-graph" class="shap-graph" hidden></div>
++                  <details id="future-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="future-model-numbers"></div></details>
+                 </div>
+               </article>
+             </div>
+@@ -817,6 +825,7 @@
          <section class="workspace-panel" id="workspace-panel-challenge" role="region" tabindex="-1" data-workspace-panel="challenge" aria-label="챌린지" hidden>
            <section class="daily-record-panel" aria-labelledby="daily-record-title">
              <h4 id="daily-record-title">오늘 기록할 항목</h4>
@@ -288,8 +484,6 @@
 +        request = SimpleNamespace(token="synthetic", new_password="new", new_password_confirmation="new")
 +        self.assert_empty_response(await confirm_password_reset(request, service))
 +        service.reset_password.assert_awaited_once()
-diff --git a/.env.example b/.env.example
-index f0f4643..81ef0de 100644
 --- a/.env.example
 +++ b/.env.example
 @@ -1,9 +1,122 @@
@@ -423,16 +617,42 @@ index f0f4643..81ef0de 100644
 +CLAUDE_OCR_MODEL=claude-haiku-4-5-20251001
 +CLAUDE_OCR_TIMEOUT_SECONDS=25
 +CLAUDE_OCR_MAX_BYTES=10485760
-diff --git a/README.md b/README.md
-index ddd5c06..b921afa 100644
 --- a/README.md
 +++ b/README.md
-@@ -21,6 +21,18 @@ sh start-project.sh
+@@ -1,18 +1,38 @@
+ # 당NO life — DevDay Seoul 2026
  
- 소스·동적 시각 자산은 브라우저 업로드 제한에 맞춰 분할 보관합니다. 체크섬을 확인하고 app/, src/, configs/, scripts/를 저장소 루트에 복원하며 Git 이력과 팀 작업 문서를 보존합니다. 복원 후 소스 파일은 팀원이 feature 브랜치/PR로 추적하여 반영합니다.
+-건강 입력으로 현재·미래 당뇨 위험을 선별하고, 일상 챌린지와 숲 화면으로 실천을 돕는 서비스입니다. 진단·처방 목적이 아닙니다.
++건강 입력 → 현재·미래 AI 위험 선별 → 맞춤 챌린지 → 건강 습관과 숲 화면.
  
+-## 실행
++- 오늘의 할 일: [데일리 뭐하징](DAILY.md)
++- 실행 안내: [SETUP.md](SETUP.md)
++- 기능 시작 상태: [PREWORK.md](PREWORK.md)
++- 당일 작업·검증: [DAY_OF_WORK.md](DAY_OF_WORK.md)
+ 
+-Python 가상환경을 활성화한 뒤 저장소 루트에서 실행합니다.
++## 작업 시작
+ 
+ ```sh
+-sh scripts/build-demo.sh
+-sh scripts/start-demo.sh
++git clone https://github.com/AI-HealthCare-05/dangno-life-devday-2026.git
++cd dangno-life-devday-2026
++python3 restore_workspace.py
++python3 -m venv .venv
++. .venv/bin/activate
++sh build-project.sh
++sh start-project.sh
+ ```
+ 
+-build는 의존성을 설치하고 모델을 별도 내려받아 SHA-256을 확인합니다. 모델/DB/API 키는 Git에 넣지 않습니다. Linux에서 LightGBM용 OpenMP가 필요합니다. AWS 서버 사양·외부 접속·HTTPS는 별도 확인 대상입니다.
++소스·동적 시각 자산은 브라우저 업로드 제한에 맞춰 분할 보관합니다. 체크섬을 확인하고 app/, src/, configs/, scripts/를 저장소 루트에 복원하며 Git 이력과 팀 작업 문서를 보존합니다. 복원 후 소스 파일은 팀원이 feature 브랜치/PR로 추적하여 반영합니다.
+ 
+-실행 모드는 데모·실 모델 예측이며 OCR/CV/RAG 외부 서비스 연결은 별도 작업입니다. ready 503을 전체 준비 완료로 표시하지 않습니다.
 +## RAG 벡터 검색
-+
+ 
+-사전 작업과 검증 한계는 PREWORK.md, 당일 변경은 DAY_OF_WORK.md, 파일 해시는 IMPORT_MANIFEST.json을 참고하세요. 현장 안내에 따라 작업을 시작하며 사전 기능과 당일 변경 기록을 구분합니다.
 +건강교육 RAG는 로컬·테스트에서 `HEALTH_EDUCATION_RETRIEVER=memory`를 기본으로 사용합니다.
 +운영에서 Qdrant HNSW 인덱스를 사용하려면 provider와 API 키를 설정한 뒤 승인 문서를 동기화합니다.
 +
@@ -443,14 +663,12 @@ index ddd5c06..b921afa 100644
 +동기화가 성공한 뒤 FastAPI의 `HEALTH_EDUCATION_RETRIEVER`를 `qdrant`로 전환합니다. 실패한 동기화는
 +기존 컬렉션의 검색 가능 상태를 유지하며, 검색 서비스 장애 시 API는 근거 없는 답변을 생성하지 않습니다.
 +
- 모델은 build에서 별도 다운로드·체크섬 검증합니다. 모델 바이너리·DB·API 키는 Git에 넣지 않습니다. Linux에서는 LightGBM용 libgomp1이 필요합니다.
- 
- 합성 입력의 실제 예측·챌린지 기록은 사전 검증했습니다. OCR/CV/RAG 외부 연결·숲 보상·모바일 전체 흐름·AWS 배포는 추가 검증 대상입니다. 결과는 진단·처방이 아닌 위험 선별·건강교육으로 표현합니다.
-diff --git a/app/apis/v1/challenge_v2_routers.py b/app/apis/v1/challenge_v2_routers.py
-index 50a6d7e..0dfcae3 100644
++모델은 build에서 별도 다운로드·체크섬 검증합니다. 모델 바이너리·DB·API 키는 Git에 넣지 않습니다. Linux에서는 LightGBM용 libgomp1이 필요합니다.
++
++합성 입력의 실제 예측·챌린지 기록은 사전 검증했습니다. OCR/CV/RAG 외부 연결·숲 보상·모바일 전체 흐름·AWS 배포는 추가 검증 대상입니다. 결과는 진단·처방이 아닌 위험 선별·건강교육으로 표현합니다.
 --- a/app/apis/v1/challenge_v2_routers.py
 +++ b/app/apis/v1/challenge_v2_routers.py
-@@ -10,7 +10,11 @@ from app.models.users import User
+@@ -10,7 +10,11 @@
  from app.services import challenge_v2 as service
  from app.services import challenge_v2_evidence as evidence
  
@@ -463,11 +681,9 @@ index 50a6d7e..0dfcae3 100644
  
  
  async def active_user(user: Annotated[User, Depends(get_request_user)]):
-diff --git a/app/apis/v1/rag_routers.py b/app/apis/v1/rag_routers.py
-index ff13c01..dafd5b0 100644
 --- a/app/apis/v1/rag_routers.py
 +++ b/app/apis/v1/rag_routers.py
-@@ -16,14 +16,14 @@ from fastapi import APIRouter, Depends
+@@ -16,14 +16,14 @@
  
  from app.apis.responses import envelope
  from app.dependencies.security import get_request_user
@@ -484,11 +700,18 @@ index ff13c01..dafd5b0 100644
  async def ask_health_education(request: RagQuestionRequest, user: Annotated[User, Depends(get_request_user)]):
      _ = user
      result = await answer_with_sources(request.question)
-diff --git a/app/core/config.py b/app/core/config.py
-index f74a062..591df46 100644
 --- a/app/core/config.py
 +++ b/app/core/config.py
-@@ -123,6 +123,10 @@ class Config(BaseSettings):
+@@ -34,6 +34,8 @@
+     DEMO_MODE: bool = False
+     DEMO_ARTIFACT_INFERENCE_ENABLED: bool = False
+     XAI_DISPLAY_ALLOWED: bool = False
++    MOBILE_ANDROID_DOWNLOAD_URL: str = ""
++    MOBILE_IOS_DOWNLOAD_URL: str = ""
+     CHALLENGE_V2_ENABLED: bool = False
+     CHALLENGE_V2_CONTENT_APPROVED: bool = False
+     CHALLENGE_V2_REVIEWER_IDS: list[int] = []
+@@ -123,6 +125,10 @@
      HEALTH_EDUCATION_RELEVANCE_THRESHOLD: float = 0.18
      HEALTH_EDUCATION_TOP_K: int = 6
      HEALTH_EDUCATION_MAX_CITATIONS: int = 3
@@ -499,8 +722,6 @@ index f74a062..591df46 100644
  
      # 위치 기반 근처 의료기관 조회. 진단·처방을 대신하지 않고, 위치 기반 안내만 제공합니다.
      MEDICAL_FACILITY_SEARCH_PROVIDER: str = "development"
-diff --git a/app/dtos/wellness.py b/app/dtos/wellness.py
-index bec7bba..4ef8690 100644
 --- a/app/dtos/wellness.py
 +++ b/app/dtos/wellness.py
 @@ -1,9 +1,9 @@
@@ -515,10 +736,12 @@ index bec7bba..4ef8690 100644
  
  
  class WearableConnectionRequest(BaseModel):
-@@ -44,6 +44,36 @@ class RagQuestionRequest(BaseModel):
+@@ -42,6 +42,36 @@
+ 
+ class RagQuestionRequest(BaseModel):
      question: str = Field(min_length=2, max_length=500)
- 
- 
++
++
 +class RagCitationResponse(BaseModel):
 +    document_id: str
 +    title: str
@@ -547,16 +770,180 @@ index bec7bba..4ef8690 100644
 +class RagQuestionResponse(BaseModel):
 +    data: RagQuestionDataResponse
 +    meta: ResponseMeta
-+
-+
- class QuizAnswerRequest(BaseModel):
-     answer: str = Field(min_length=1, max_length=100)
  
-diff --git a/app/main.py b/app/main.py
-index 361b828..00bf7f1 100644
+ 
+ class QuizAnswerRequest(BaseModel):
+--- /dev/null
++++ b/app/health.py
+@@ -0,0 +1,115 @@
++from __future__ import annotations
++
++from pathlib import Path
++
++from fastapi import APIRouter, Response, status
++from redis.exceptions import RedisError
++from tortoise import connections
++from tortoise.exceptions import DBConnectionError, OperationalError
++
++from app.core import config
++from app.core.redis import redis_client
++
++health_router = APIRouter(tags=["Health"])
++_DEPENDENCY_ERRORS = (RedisError, OperationalError, DBConnectionError)
++
++
++async def dependency_status() -> tuple[bool, bool]:
++    """Return database and Redis availability without leaking dependency errors."""
++    database_ok = True
++    redis_ok = True
++
++    if not config.DEMO_MODE:
++        try:
++            await redis_client.ping()
++        except _DEPENDENCY_ERRORS:
++            redis_ok = False
++
++    try:
++        await connections.get("default").execute_query("SELECT 1")
++    except _DEPENDENCY_ERRORS:
++        database_ok = False
++
++    return database_ok, redis_ok
++
++
++@health_router.get("/health")
++async def liveness() -> dict[str, str]:
++    return {"status": "ok"}
++
++
++@health_router.get("/api/health")
++@health_router.get("/api/v1/health")
++async def health(response: Response) -> dict[str, str]:
++    database_ok, redis_ok = await dependency_status()
++    healthy = database_ok and redis_ok
++    if not healthy:
++        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
++    return {
++        "status": "ok" if healthy else "degraded",
++        "database": "ok" if database_ok else "unavailable",
++        "redis": "embedded-demo" if config.DEMO_MODE else ("ok" if redis_ok else "unavailable"),
++    }
++
++
++@health_router.get("/api/v1/ready")
++async def ready(response: Response) -> dict[str, object]:
++    database_ok, redis_ok = await dependency_status()
++    if not (database_ok and redis_ok):
++        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
++        return {
++            "status": "not_ready",
++            "dependencies": {
++                "database": "ready" if database_ok else "unavailable",
++                "redis": "embedded-demo" if config.DEMO_MODE else ("ready" if redis_ok else "unavailable"),
++            },
++        }
++
++    from app.prediction.contracts import ACTIVE_MODEL, CURRENT_SCREENING_MODEL
++    from app.vision.food_vision import food_vision_is_configured
++
++    future_artifact_available = config.PREDICTION_PROVIDER != "artifact" or Path(config.MODEL_URI).is_file()
++    current_artifact_path = (
++        config.ML_SHARED8_MODEL_URI
++        if config.CURRENT_SCREENING_RUNTIME == "shared8-waist"
++        else config.CURRENT_SCREENING_MODEL_URI
++    )
++    current_artifact_available = bool(current_artifact_path) and Path(current_artifact_path).is_file()
++    food_vision_ready = config.FOOD_VISION_PROVIDER != "local_kfood" or food_vision_is_configured()
++    food_vision_vlm_fallback_ready = not config.OPENAI_VLM_FALLBACK_ENABLED or bool(config.OPENAI_API_KEY.strip())
++    operational_ready = (
++        (not ACTIVE_MODEL.operational_model_activated or future_artifact_available)
++        and (not CURRENT_SCREENING_MODEL.operational_model_activated or current_artifact_available)
++        and food_vision_ready
++        and food_vision_vlm_fallback_ready
++    )
++    if not operational_ready:
++        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
++
++    return {
++        "status": "ready" if operational_ready else "not_ready",
++        "dependencies": {
++            "database": "ready",
++            "redis": "embedded-demo" if config.DEMO_MODE else "ready",
++            "prediction_provider": config.PREDICTION_PROVIDER,
++            "future_artifact_path_available": future_artifact_available,
++            "current_artifact_path_available": current_artifact_available,
++            "food_vision_ready": food_vision_ready,
++            "food_vision_vlm_fallback_enabled": config.OPENAI_VLM_FALLBACK_ENABLED,
++            "food_vision_vlm_fallback_ready": food_vision_vlm_fallback_ready,
++            "demo_artifact_inference_enabled": config.DEMO_ARTIFACT_INFERENCE_ENABLED,
++            "worker_preload_required_for_release": not (config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED),
++        },
++        "active_model": {
++            "model_key": ACTIVE_MODEL.model_key,
++            "version": ACTIVE_MODEL.version,
++            "promotion_status": ACTIVE_MODEL.promotion_status,
++        },
++        "current_screening_model": {
++            "model_key": CURRENT_SCREENING_MODEL.model_key,
++            "version": CURRENT_SCREENING_MODEL.version,
++            "runtime": config.CURRENT_SCREENING_RUNTIME,
++            "promotion_status": CURRENT_SCREENING_MODEL.promotion_status,
++            "operational_model_activated": CURRENT_SCREENING_MODEL.operational_model_activated,
++        },
++    }
+--- /dev/null
++++ b/app/lifecycle.py
+@@ -0,0 +1,47 @@
++from __future__ import annotations
++
++import asyncio
++from collections.abc import AsyncIterator
++from contextlib import asynccontextmanager, suppress
++from pathlib import Path
++
++from fastapi import FastAPI
++
++from app.core import config
++from app.core.redis import close_redis, redis_client
++
++
++async def preload_embedded_demo_models() -> None:
++    """Load and verify both approved artifacts before accepting demo traffic."""
++    from app.prediction.providers import load_standard_model
++    from src.ml.inference.diabetes_current_screening import load_current_screening_model
++
++    await asyncio.gather(
++        asyncio.to_thread(load_standard_model),
++        asyncio.to_thread(
++            load_current_screening_model,
++            manifest_path=Path(config.CURRENT_SCREENING_MANIFEST_URI),
++            model_path=config.CURRENT_SCREENING_MODEL_URI,
++        ),
++    )
++
++
++@asynccontextmanager
++async def lifespan(_: FastAPI) -> AsyncIterator[None]:
++    """Own application startup resources and collect them during shutdown."""
++    if not config.DEMO_MODE:
++        await redis_client.ping()
++    if config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED:
++        await preload_embedded_demo_models()
++
++    from app.services.challenge_v2_retention import retention_loop
++
++    retention = asyncio.create_task(retention_loop())
++    try:
++        yield
++    finally:
++        retention.cancel()
++        with suppress(asyncio.CancelledError):
++            await retention
++        if not config.DEMO_MODE:
++            await close_redis()
 --- a/app/main.py
 +++ b/app/main.py
-@@ -1,57 +1,15 @@
+@@ -1,56 +1,16 @@
 -import asyncio
 -from contextlib import asynccontextmanager, suppress
  from pathlib import Path
@@ -569,13 +956,13 @@ index 361b828..00bf7f1 100644
 -from tortoise.exceptions import DBConnectionError, OperationalError
  
  from app.apis.v1 import v1_routers
--from app.core import config
+ from app.core import config
  from app.core.db.databases import initialize_tortoise
 -from app.core.redis import close_redis, redis_client
 +from app.health import health_router
 +from app.lifecycle import lifespan
  from app.middleware.challenge_upload_limit import ChallengeUploadLimit
- 
+-
 -_DEPENDENCY_ERRORS = (RedisError, OperationalError, DBConnectionError)
 -
 -
@@ -612,11 +999,11 @@ index 361b828..00bf7f1 100644
 -    if not config.DEMO_MODE:
 -        await close_redis()
 -
--
++from app.services.mobile_downloads import mobile_download_payload
+ 
  app = FastAPI(
      docs_url="/api/docs",
-     redoc_url="/api/redoc",
-@@ -62,6 +20,7 @@ initialize_tortoise(app)
+@@ -62,6 +22,7 @@
  app.add_middleware(ChallengeUploadLimit)
  
  app.include_router(v1_routers)
@@ -624,7 +1011,24 @@ index 361b828..00bf7f1 100644
  
  _SENSITIVE_REPORT_PATH_PREFIXES = ("/api/v1/reports", "/api/v1/weekly-reports")
  
-@@ -145,109 +104,3 @@ async def forest_service_worker() -> FileResponse:
+@@ -81,6 +42,16 @@
+ 
+ _APP_ENTRY_QUERY_KEYS = frozenset({"intro", "auth", "preview", "resume", "workspace", "invite_token"})
+ _RETRO_INTRO_URL = "/static/intro-retro.html?v=20260917-server-entry-v1"
++
++
++@app.get("/mobile-downloads", include_in_schema=False)
++async def mobile_download_page() -> FileResponse:
++    return FileResponse(FRONTEND_DIR / "mobile-downloads.html", headers={"Cache-Control": "no-store"})
++
++
++@app.get("/api/mobile-downloads", include_in_schema=False)
++async def mobile_download_links() -> dict:
++    return mobile_download_payload(config.MOBILE_IOS_DOWNLOAD_URL, config.MOBILE_ANDROID_DOWNLOAD_URL)
+ 
+ 
+ @app.get("/", include_in_schema=False)
+@@ -145,109 +116,3 @@
      response.headers["Cache-Control"] = "no-cache"
      response.headers["Service-Worker-Allowed"] = "/forest"
      return response
@@ -734,11 +1138,1176 @@ index 361b828..00bf7f1 100644
 -            "operational_model_activated": CURRENT_SCREENING_MODEL.operational_model_activated,
 -        },
 -    }
-diff --git a/src/rag/engine.py b/src/rag/engine.py
-index c9240ee..9fb8e21 100644
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,177 @@
++name: ah-05-02
++
++services:
++  redis:
++    image: redis:7-alpine
++    restart: unless-stopped
++    command: ["redis-server", "--appendonly", "yes"]
++    ports:
++      - "127.0.0.1:6380:6379"
++    networks:
++      - healthcare
++    volumes:
++      - redis_data:/data
++    healthcheck:
++      test: ["CMD", "redis-cli", "ping"]
++      interval: 10s
++      timeout: 5s
++      retries: 5
++      start_period: 5s
++
++  qdrant:
++    image: qdrant/qdrant:v1.15.5
++    restart: unless-stopped
++    volumes:
++      - qdrant_data:/qdrant/storage
++    networks:
++      - healthcare
++
++  mysql:
++    image: mysql:8.0
++    restart: unless-stopped
++    environment:
++      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
++      MYSQL_DATABASE: ${DB_NAME}
++      MYSQL_USER: ${DB_USER}
++      MYSQL_PASSWORD: ${DB_PASSWORD}
++      TZ: Asia/Seoul
++    ports:
++      - "127.0.0.1:${DB_EXPOSE_PORT:-3306}:${DB_PORT:-3306}"
++    command:
++      - --character-set-server=utf8mb4
++      - --collation-server=utf8mb4_unicode_ci
++      - --port=${DB_PORT:-3306}
++    volumes:
++      - mysql_data:/var/lib/mysql
++    networks:
++      - healthcare
++    healthcheck:
++      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
++      interval: 10s
++      timeout: 5s
++      retries: 10
++      start_period: 20s
++
++  fastapi:
++    build:
++      context: .
++      dockerfile: app/Dockerfile
++      args:
++        ML_RESEARCH_RUNTIME: "true"
++    image: ${DOCKER_USER:-local}/${DOCKER_REPOSITORY:-ah-05-02}:app-${APP_VERSION:-v0.1.0}
++    restart: unless-stopped
++    env_file:
++      - .env
++    environment:
++      DB_GENERATE_SCHEMAS: "true"
++      ML_RESEARCH_ENDPOINTS_ENABLED: "true"
++      ML_SHARED7_MODEL_URI: /app/models/artifacts/candidates/diabetes_current_screening/knhanes-shared7-sk180-v1/model.joblib
++      ML_SHARED8_MODEL_URI: /app/models/artifacts/candidates/diabetes_current_screening/knhanes-shared8-waist-sk180-v1/model.joblib
++      ML_FIRST_INTERVAL_MODEL_URI: /app/models/artifacts/candidates/diabetes_incidence/rf25-first-interval-survival-ensemble-v1/model.joblib
++      ML_RF25_MODEL_URI: /app/models/artifacts/candidates/diabetes_incidence/rf25-tuned-education4-v2/model.joblib
++      FOOD_VISION_PROVIDER: local_kfood
++      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
++      OPENAI_VLM_MODEL: ${OPENAI_VLM_MODEL:-gpt-4o-mini}
++      OPENAI_VLM_FALLBACK_ENABLED: ${OPENAI_VLM_FALLBACK_ENABLED:-false}
++      KFOOD_CLASSIFIER_PATH: ${KFOOD_CLASSIFIER_PATH:-/app/models/artifacts/food_vision/kfood/best.pt}
++      KFOOD_CLASSIFIER_META_PATH: ${KFOOD_CLASSIFIER_META_PATH:-/app/models/artifacts/food_vision/kfood/meta.json}
++      KFOOD_SEGMENTER_PATH: ${KFOOD_SEGMENTER_PATH:-/app/models/artifacts/food_vision/kfood/1.tflite}
++      KFOOD_SEGMENTATION_CONFIG_PATH: /app/configs/food_vision/seg_config.json
++      KFOOD_DISH_VEGETABLES_PATH: /app/configs/food_vision/dish_vegetables.json
++      KFOOD_DRIVE_FILE_ID: ${KFOOD_DRIVE_FILE_ID:-1KvCX9bU9GwZvcvZSl0eYHlZ-yg4UbAjQ}
++      KFOOD_BUNDLE_SHA256: ${KFOOD_BUNDLE_SHA256:-753d7c4d3a7d9f9e074565cda0233179243466129a48830fd299a07a9bf0b96c}
++      KFOOD_BUNDLE_DIR: ${KFOOD_BUNDLE_DIR:-/app/storage/food_vision/kfood}
++    command: ["sh", "app/start-fastapi.sh", "--reload"]
++    volumes:
++      - ./app:/app/app
++      - ./src/frontend:/app/src/frontend:ro
++      - ./models:/app/models:ro
++      - food_vision_cache:/app/storage/food_vision
++      - ./configs:/app/configs:ro
++      - ./src/ocr:/app/src/ocr:ro
++      - ./src/wearables:/app/src/wearables:ro
++      - ./src/quiz:/app/src/quiz:ro
++      - ./src/rag:/app/src/rag:ro
++    ports:
++      - "127.0.0.1:8001:8000"
++    healthcheck:
++      test:
++        - CMD
++        - uv
++        - run
++        - --no-sync
++        - python
++        - -c
++        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready', timeout=3)"
++      interval: 10s
++      timeout: 5s
++      retries: 10
++      start_period: 20s
++    networks:
++      - healthcare
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++      qdrant:
++        condition: service_started
++
++  ai-worker:
++    build:
++      context: .
++      dockerfile: ai_worker/Dockerfile
++    image: ${DOCKER_USER:-local}/${DOCKER_REPOSITORY:-ah-05-02}:ai-${AI_WORKER_VERSION:-v0.1.0}
++    restart: unless-stopped
++    env_file:
++      - .env
++    command: ["uv", "run", "--no-sync", "python", "-m", "ai_worker.main"]
++    mem_limit: 4g
++    deploy:
++      replicas: 3
++    volumes:
++      - ./models:/app/storage/models:ro
++      - ./models:/app/models:ro
++      - model_cache:/app/storage/cache
++    healthcheck:
++      test: ["CMD", "test", "-f", "/tmp/ai-worker-ready"]
++      interval: 10s
++      timeout: 3s
++      retries: 10
++      start_period: 20s
++    networks:
++      - healthcare
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++      fastapi:
++        condition: service_healthy
++
++  nginx:
++    build:
++      context: .
++      dockerfile: infra/nginx/Dockerfile
++    image: ${DOCKER_USER:-local}/${DOCKER_REPOSITORY:-ah-05-02}:web-${APP_VERSION:-v0.1.0}
++    restart: unless-stopped
++    volumes:
++      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
++    ports:
++      - "80:80"
++    networks:
++      - healthcare
++    depends_on:
++      fastapi:
++        condition: service_healthy
++
++volumes:
++  mysql_data:
++  redis_data:
++  model_cache:
++  food_vision_cache:
++  qdrant_data:
++
++networks:
++  healthcare:
++    driver: bridge
+--- /dev/null
++++ b/envs/example.local.env
+@@ -0,0 +1,116 @@
++# docker
++DOCKER_USER=
++DOCKER_REPOSITORY=
++
++# fastapi
++APP_VERSION=
++SECRET_KEY=
++COOKIE_DOMAIN=
++ACCESS_TOKEN_EXPIRE_MINUTES=
++REFRESH_TOKEN_EXPIRE_MINUTES=
++
++# ai-worker
++AI_WORKER_VERSION=
++
++# db
++DB_HOST=
++DB_PORT=
++DB_EXPOSE_PORT=
++DB_USER=
++DB_PASSWORD=
++DB_ROOT_PASSWORD=
++DB_NAME=
++
++# database bootstrap (local only)
++DB_GENERATE_SCHEMAS=
++
++# redis stream
++REDIS_HOST=
++REDIS_PORT=
++REDIS_DB=
++REDIS_STREAM=
++REDIS_CONSUMER_GROUP=
++REDIS_JOB_TTL_SECONDS=
++REDIS_CLAIM_IDLE_MS=
++AI_JOB_MAX_ATTEMPTS=
++
++# health education RAG (Q&A / quiz evidence retrieval). Production should switch
++# HEALTH_EDUCATION_EMBEDDING_PROVIDER and HEALTH_EDUCATION_GENERATION_PROVIDER to
++# openai; left as development it runs on a hashing approximation, not real
++# semantic search.
++HEALTH_EDUCATION_EMBEDDING_PROVIDER=
++HEALTH_EDUCATION_EMBEDDING_MODEL=
++HEALTH_EDUCATION_GENERATION_PROVIDER=
++HEALTH_EDUCATION_TIMEOUT_SECONDS=
++HEALTH_EDUCATION_KEYWORD_WEIGHT=
++HEALTH_EDUCATION_EMBEDDING_WEIGHT=
++HEALTH_EDUCATION_RELEVANCE_THRESHOLD=
++HEALTH_EDUCATION_TOP_K=
++HEALTH_EDUCATION_MAX_CITATIONS=
++HEALTH_EDUCATION_RETRIEVER=memory
++QDRANT_URL=http://qdrant:6333
++QDRANT_COLLECTION=health_education
++QDRANT_API_KEY=
++
++# model storage (local path or s3://bucket/key)
++MODEL_URI=
++MODEL_MANIFEST_URI=
++CURRENT_SCREENING_MODEL_URI=
++CURRENT_SCREENING_RUNTIME=v061
++ML_SHARED8_MODEL_URI=
++ML_RF25_MODEL_URI=
++CURRENT_SCREENING_MANIFEST_URI=
++MODEL_CACHE_DIR=
++MODEL_PRELOAD_ENABLED=false
++MODEL_DELIVERY_GOOGLE_DRIVE_ENABLED=false
++MODEL_DELIVERY_GOOGLE_DRIVE_FOLDER_ID=1uvxqFfcX6VZ8g4I9Fjv_az8_vWkkOb18
++PREDICTION_OPERATIONAL_MODEL_ACTIVATED=false
++CURRENT_SCREENING_OPERATIONAL_MODEL_ACTIVATED=false
++AWS_REGION=
++AWS_S3_ENDPOINT_URL=
++AWS_ACCESS_KEY_ID=
++AWS_SECRET_ACCESS_KEY=
++
++# 식단 사진 인증 CV. 모델 번들은 시작 시 공개 Drive에서 내려받아 SHA-256을 검증합니다.
++FOOD_VISION_PROVIDER=local_kfood
++KFOOD_DRIVE_FILE_ID=1KvCX9bU9GwZvcvZSl0eYHlZ-yg4UbAjQ
++KFOOD_BUNDLE_SHA256=753d7c4d3a7d9f9e074565cda0233179243466129a48830fd299a07a9bf0b96c
++KFOOD_BUNDLE_DIR=/app/storage/food_vision/kfood
++KFOOD_CLASSIFIER_SHA256=4c4df6ba2b9d3daf77f7ffe107285df17a360342729177d15465ba9872d42726
++KFOOD_CLASSIFIER_META_SHA256=a193e1faf4e7c266e0ba4481451ded587fcd01cfc7d89c60d834bac63e14e0b3
++KFOOD_SEGMENTER_SHA256=edb7df52467afd02a502d7765ca7ac82e63ad86082c72e18135764f1b1817b52
++KFOOD_SEGMENTATION_CONFIG_PATH=/app/configs/food_vision/seg_config.json
++KFOOD_DISH_VEGETABLES_PATH=/app/configs/food_vision/dish_vegetables.json
++FOOD_COVERAGE_PASS_THRESHOLD=0.50
++VEGETABLE_RATIO_PASS_THRESHOLD=0.30
++OPENAI_API_KEY=
++OPENAI_VLM_MODEL=gpt-4o-mini
++OPENAI_VLM_FALLBACK_ENABLED=false
++
++# 위치 기반 근처 의료기관·응급의료기관 조회. EMERGENCY_FACILITY_SEARCH_PROVIDER가
++# 기본값 nemc로 동작하므로 NEMC_SERVICE_KEY가 비어 있으면 응급의료기관 조회가
++# 502로 실패한다.
++MEDICAL_FACILITY_SEARCH_PROVIDER=
++KAKAO_REST_API_KEY=
++KAKAO_JAVASCRIPT_KEY=
++MEDICAL_FACILITY_SEARCH_KEYWORDS=
++EMERGENCY_FACILITY_SEARCH_PROVIDER=
++NEMC_SERVICE_KEY=
++
++# 건강검진 OCR provider: clova 또는 claude. 원본 검진표는 외부 provider로 전송되므로
++# 업로드 전 사용자 동의가 필요하다.
++HEALTH_CHECKUP_OCR_PROVIDER=
++CLOVA_OCR_URL=
++CLOVA_OCR_SECRET=
++ANTHROPIC_API_KEY=
++
++# password reset email (development returns a test token when SMTP is unused)
++FRONTEND_BASE_URL=http://localhost:8001
++SMTP_HOST=
++SMTP_PORT=587
++SMTP_USERNAME=
++SMTP_PASSWORD=
++SMTP_FROM_EMAIL=
++SMTP_USE_TLS=true
++# 검증·승인된 SHAP 설명만 공개합니다. 로컬 검증 후에만 true로 변경하세요.
++XAI_DISPLAY_ALLOWED=false
+--- /dev/null
++++ b/envs/example.prod.env
+@@ -0,0 +1,136 @@
++# Copy to the EC2 release root as .env. Values below are names/examples only.
++# Do not commit the completed .env file or any model artifact.
++
++# Compose image release
++COMPOSE_PROJECT_NAME=ah05
++DOCKER_USER=your-dockerhub-user
++DOCKER_REPOSITORY=ah-05-02
++APP_VERSION=v0.0.0
++AI_WORKER_VERSION=v0.0.0
++
++# App security
++ENV=prod
++SECRET_KEY=replace-with-a-random-32-byte-or-longer-secret
++COOKIE_DOMAIN=your-domain.example
++DEMO_MODE=false
++DEMO_ARTIFACT_INFERENCE_ENABLED=false
++ACCESS_TOKEN_EXPIRE_MINUTES=60
++REFRESH_TOKEN_EXPIRE_MINUTES=20160
++
++# Private database network (no host database port is exposed)
++DB_HOST=mysql
++DB_PORT=3306
++DB_USER=app_user
++DB_PASSWORD=replace-with-a-long-unique-password
++DB_ROOT_PASSWORD=replace-with-a-different-long-unique-password
++DB_NAME=ai_health
++DB_GENERATE_SCHEMAS=false
++
++# Private Redis network (no host Redis port is exposed)
++REDIS_HOST=redis
++REDIS_PORT=6379
++REDIS_DB=0
++REDIS_STREAM=ai:jobs
++REDIS_CONSUMER_GROUP=ai-workers
++REDIS_JOB_TTL_SECONDS=86400
++REDIS_CLAIM_IDLE_MS=60000
++AI_JOB_MAX_ATTEMPTS=3
++
++# Approved model only. Choose exactly one source.
++# Local artifact: MODEL_URI=/app/storage/models/approved-model.joblib
++# Object storage: MODEL_URI=s3://bucket/path/approved-model.joblib
++MODEL_URI=
++MODEL_MANIFEST_URI=
++CURRENT_SCREENING_MODEL_URI=/app/models/artifacts/candidates/diabetes_current_screening/knhanes-today14-sk180-service-v3/model.joblib
++CURRENT_SCREENING_RUNTIME=today14
++ML_SHARED8_MODEL_URI=
++ML_RF25_MODEL_URI=/app/models/artifacts/candidates/diabetes_incidence/rf25-tuned-education4-v2/model.joblib
++CURRENT_SCREENING_MANIFEST_URI=/app/models/registry/diabetes_current_screening/candidates/knhanes-today14-sk180-service-v3.json
++MODEL_MANIFEST_URI=/app/models/registry/diabetes_incidence/candidates/rf25-tuned-education4-v2.json
++MODEL_PRELOAD_ENABLED=true
++PREDICTION_OPERATIONAL_MODEL_ACTIVATED=false
++CURRENT_SCREENING_OPERATIONAL_MODEL_ACTIVATED=true
++MODEL_CACHE_DIR=/app/storage/cache
++# One-time host provisioning source; model binaries stay outside Git/images.
++MODEL_DELIVERY_GOOGLE_DRIVE_FOLDER_ID=1uvxqFfcX6VZ8g4I9Fjv_az8_vWkkOb18
++PREDICTION_PROVIDER=development
++PREDICTION_MODEL_KEY=diabetes_incidence
++PREDICTION_MODEL_VERSION=
++PREDICTION_FEATURE_SCHEMA_VERSION=
++PREDICTION_THRESHOLD_VERSION=
++PREDICTION_MODEL_MIN_AGE=45
++PREDICTION_MODEL_POPULATION=baseline_undiagnosed_age_45_plus
++PREDICTION_TIMEOUT_SECONDS=30
++
++# Health education RAG (Q&A / quiz evidence retrieval). Keep both providers on
++# openai in production; leaving them on development serves a hashing
++# approximation instead of real semantic search.
++HEALTH_EDUCATION_EMBEDDING_PROVIDER=openai
++HEALTH_EDUCATION_EMBEDDING_MODEL=text-embedding-3-small
++HEALTH_EDUCATION_GENERATION_PROVIDER=openai
++HEALTH_EDUCATION_TIMEOUT_SECONDS=20
++HEALTH_EDUCATION_KEYWORD_WEIGHT=0.5
++HEALTH_EDUCATION_EMBEDDING_WEIGHT=0.5
++HEALTH_EDUCATION_RELEVANCE_THRESHOLD=0.18
++HEALTH_EDUCATION_TOP_K=6
++HEALTH_EDUCATION_MAX_CITATIONS=3
++HEALTH_EDUCATION_RETRIEVER=qdrant
++QDRANT_URL=http://qdrant:6333
++QDRANT_COLLECTION=health_education
++QDRANT_API_KEY=
++
++# Required only when MODEL_URI starts with s3://
++AWS_REGION=ap-northeast-2
++AWS_S3_ENDPOINT_URL=
++AWS_ACCESS_KEY_ID=
++AWS_SECRET_ACCESS_KEY=
++
++# 위치 기반 근처 의료기관·응급의료기관 조회. EMERGENCY_FACILITY_SEARCH_PROVIDER가
++# 기본값 nemc로 동작하므로 NEMC_SERVICE_KEY가 비어 있으면 응급의료기관 조회가
++# 502로 실패한다. 실제 키 값은 이 파일을 EC2에 배포할 때 채워 넣어야 한다.
++MEDICAL_FACILITY_SEARCH_PROVIDER=kakao
++KAKAO_REST_API_KEY=
++KAKAO_JAVASCRIPT_KEY=
++MEDICAL_FACILITY_SEARCH_KEYWORDS=당뇨
++EMERGENCY_FACILITY_SEARCH_PROVIDER=nemc
++NEMC_SERVICE_KEY=
++
++# 건강검진 OCR provider: clova 또는 claude. 원본 검진표는 외부 provider로 전송되므로
++# 업로드 전 사용자 동의가 필요하다.
++HEALTH_CHECKUP_OCR_PROVIDER=clova
++CLOVA_OCR_URL=
++CLOVA_OCR_SECRET=
++ANTHROPIC_API_KEY=
++
++# Public Google Drive K-food model bundle. Downloaded once at API startup,
++# checksum-verified and installed into the private cache volume.
++FOOD_VISION_PROVIDER=local_kfood
++KFOOD_DRIVE_FILE_ID=1KvCX9bU9GwZvcvZSl0eYHlZ-yg4UbAjQ
++KFOOD_BUNDLE_SHA256=753d7c4d3a7d9f9e074565cda0233179243466129a48830fd299a07a9bf0b96c
++KFOOD_BUNDLE_DIR=/app/storage/food_vision/kfood
++KFOOD_CLASSIFIER_SHA256=4c4df6ba2b9d3daf77f7ffe107285df17a360342729177d15465ba9872d42726
++KFOOD_CLASSIFIER_META_SHA256=a193e1faf4e7c266e0ba4481451ded587fcd01cfc7d89c60d834bac63e14e0b3
++KFOOD_SEGMENTER_SHA256=edb7df52467afd02a502d7765ca7ac82e63ad86082c72e18135764f1b1817b52
++KFOOD_SEGMENTATION_CONFIG_PATH=/app/configs/food_vision/seg_config.json
++KFOOD_DISH_VEGETABLES_PATH=/app/configs/food_vision/dish_vegetables.json
++FOOD_COVERAGE_PASS_THRESHOLD=0.50
++VEGETABLE_RATIO_PASS_THRESHOLD=0.30
++# 경계·취약 판정만 VLM으로 자동 보완합니다. 활성화 시 OPENAI_API_KEY가 없으면 readiness가 실패합니다.
++OPENAI_API_KEY=
++OPENAI_VLM_MODEL=gpt-4o-mini
++OPENAI_VLM_FALLBACK_ENABLED=true
++
++# Used by the HTTPS bootstrap/renewal procedure
++SERVER_NAME=your-domain.example
++CERTBOT_EMAIL=team@example.com
++
++# password reset email
++FRONTEND_BASE_URL=https://example.com
++SMTP_HOST=
++SMTP_PORT=587
++SMTP_USERNAME=
++SMTP_PASSWORD=
++SMTP_FROM_EMAIL=
++SMTP_USE_TLS=true
++# 모델 승인과 별도로 XAI 설명 승인이 완료된 경우에만 true로 설정합니다.
++XAI_DISPLAY_ALLOWED=false
+--- /dev/null
++++ b/infra/docker/docker-compose.ec2.yml
+@@ -0,0 +1,136 @@
++name: ah-05-02
++
++# EC2 release configuration.
++# Run with: docker compose --env-file .env -f infra/docker/docker-compose.ec2.yml up -d
++# The application images are built and pushed before this file is used.  Source code,
++# raw data, and model binaries are never copied into the repository as part of a release.
++
++services:
++  redis:
++    image: redis:7-alpine
++    restart: unless-stopped
++    command: ["redis-server", "--appendonly", "yes"]
++    volumes:
++      - redis_data:/data
++    networks:
++      - healthcare
++    healthcheck:
++      test: ["CMD", "redis-cli", "ping"]
++      interval: 10s
++      timeout: 5s
++      retries: 5
++      start_period: 5s
++
++  qdrant:
++    image: qdrant/qdrant:v1.15.5
++    restart: unless-stopped
++    volumes:
++      - qdrant_data:/qdrant/storage
++    networks:
++      - healthcare
++
++  mysql:
++    image: mysql:8.0
++    restart: unless-stopped
++    environment:
++      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
++      MYSQL_DATABASE: ${DB_NAME}
++      MYSQL_USER: ${DB_USER}
++      MYSQL_PASSWORD: ${DB_PASSWORD}
++      TZ: Asia/Seoul
++    command:
++      - --character-set-server=utf8mb4
++      - --collation-server=utf8mb4_unicode_ci
++      - --port=${DB_PORT:-3306}
++    volumes:
++      - mysql_data:/var/lib/mysql
++    networks:
++      - healthcare
++    healthcheck:
++      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
++      interval: 10s
++      timeout: 5s
++      retries: 10
++      start_period: 20s
++
++  fastapi:
++    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:app-${APP_VERSION}
++    restart: unless-stopped
++    env_file:
++      - ../../.env
++    environment:
++      DB_GENERATE_SCHEMAS: "true"
++    command: ["sh", "app/start-fastapi.sh", "--workers", "3"]
++    # Model files are provisioned separately on the EC2 host and are never committed.
++    volumes:
++      - ../../models:/app/models:ro
++      - food_vision_cache:/app/storage/food_vision
++    networks:
++      - healthcare
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++      qdrant:
++        condition: service_started
++    healthcheck:
++      test: ["CMD", "uv", "run", "--no-sync", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready', timeout=3)"]
++      interval: 10s
++      timeout: 5s
++      retries: 10
++      start_period: 30s
++
++  ai-worker:
++    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:ai-${AI_WORKER_VERSION}
++    restart: unless-stopped
++    env_file:
++      - ../../.env
++    command: ["uv", "run", "--no-sync", "python", "-m", "ai_worker.main"]
++    mem_limit: 4g
++    volumes:
++      - ../../models:/app/models:ro
++      - model_cache:/app/storage/cache
++    networks:
++      - healthcare
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++      fastapi:
++        condition: service_healthy
++    healthcheck:
++      test: ["CMD", "test", "-f", "/tmp/ai-worker-ready"]
++      interval: 10s
++      timeout: 3s
++      retries: 10
++      start_period: 30s
++
++  nginx:
++    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:web-${APP_VERSION}
++    restart: unless-stopped
++    environment:
++      SERVER_NAME: ${SERVER_NAME}
++      # Keep Nginx variables such as $host untouched when the template is rendered.
++      NGINX_ENVSUBST_FILTER: SERVER_NAME
++    volumes:
++      - ../nginx/ec2-http.conf.template:/etc/nginx/templates/default.conf.template:ro
++    ports:
++      - "80:80"
++    networks:
++      - healthcare
++    depends_on:
++      fastapi:
++        condition: service_healthy
++
++volumes:
++  mysql_data:
++  redis_data:
++  model_cache:
++  food_vision_cache:
++  qdrant_data:
++
++networks:
++  healthcare:
++    driver: bridge
+--- /dev/null
++++ b/infra/docker/docker-compose.prod.yml
+@@ -0,0 +1,153 @@
++name: ${COMPOSE_PROJECT_NAME:-ah05}
++
++# Production only. Run with an EC2-local .env file; never commit that file.
++# Only nginx is published to the host. MySQL, Redis, FastAPI, and the worker
++# communicate on the private Compose network.
++services:
++  redis:
++    image: redis:7-alpine
++    restart: unless-stopped
++    command: ["redis-server", "--appendonly", "yes"]
++    volumes:
++      - redis_data:/data
++    networks: [healthcare]
++    healthcheck:
++      test: ["CMD", "redis-cli", "ping"]
++      interval: 10s
++      timeout: 5s
++      retries: 5
++      start_period: 5s
++
++  qdrant:
++    image: qdrant/qdrant:v1.15.5
++    restart: unless-stopped
++    volumes:
++      - qdrant_data:/qdrant/storage
++    networks: [healthcare]
++
++  mysql:
++    image: mysql:8.0
++    restart: unless-stopped
++    environment:
++      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
++      MYSQL_DATABASE: ${DB_NAME:?DB_NAME is required}
++      MYSQL_USER: ${DB_USER:?DB_USER is required}
++      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
++      TZ: Asia/Seoul
++    command:
++      - --character-set-server=utf8mb4
++      - --collation-server=utf8mb4_unicode_ci
++      - --port=${DB_PORT:-3306}
++    volumes:
++      - mysql_data:/var/lib/mysql
++    networks: [healthcare]
++    healthcheck:
++      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
++      interval: 10s
++      timeout: 5s
++      retries: 10
++      start_period: 30s
++
++  fastapi:
++    image: ${DOCKER_USER:?DOCKER_USER is required}/${DOCKER_REPOSITORY:?DOCKER_REPOSITORY is required}:app-${APP_VERSION:?APP_VERSION is required}
++    restart: unless-stopped
++    env_file:
++      - ${ENV_FILE:-../../.env}
++    environment:
++      ENV: prod
++      DEMO_MODE: "false"
++      DB_HOST: mysql
++      REDIS_HOST: redis
++      DB_GENERATE_SCHEMAS: "false"
++    volumes:
++      - media_volume:/app/media
++      - food_vision_cache:/app/storage/food_vision
++    networks: [healthcare]
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++      qdrant:
++        condition: service_started
++    healthcheck:
++      test: ["CMD", "uv", "run", "--no-sync", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready', timeout=3)"]
++      interval: 15s
++      timeout: 5s
++      retries: 10
++      start_period: 45s
++
++  ai-worker:
++    image: ${DOCKER_USER:?DOCKER_USER is required}/${DOCKER_REPOSITORY:?DOCKER_REPOSITORY is required}:ai-${AI_WORKER_VERSION:?AI_WORKER_VERSION is required}
++    restart: unless-stopped
++    env_file:
++      - ${ENV_FILE:-../../.env}
++    environment:
++      DB_HOST: mysql
++      REDIS_HOST: redis
++      MODEL_CACHE_DIR: /app/storage/cache
++    # MODEL_SOURCE_DIR is an EC2-local directory. It must not be a Git-tracked
++    # source directory because it can contain a joblib model artifact.
++    volumes:
++      - ${MODEL_SOURCE_DIR:-./models}:/app/models:ro
++      - model_cache:/app/storage/cache
++    mem_limit: 4g
++    networks: [healthcare]
++    depends_on:
++      mysql:
++        condition: service_healthy
++      redis:
++        condition: service_healthy
++    healthcheck:
++      test: ["CMD", "test", "-f", "/tmp/ai-worker-ready"]
++      interval: 15s
++      timeout: 3s
++      retries: 10
++      start_period: 45s
++
++  nginx:
++    image: ${DOCKER_USER:?DOCKER_USER is required}/${DOCKER_REPOSITORY:?DOCKER_REPOSITORY is required}:web-${APP_VERSION:?APP_VERSION is required}
++    restart: unless-stopped
++    volumes:
++      - ../nginx/runtime/default.conf:/etc/nginx/conf.d/default.conf:ro
++      - media_volume:/vol/web/media:ro
++      - certbot_conf:/etc/letsencrypt:ro
++      - certbot_www:/var/www/certbot:ro
++    ports:
++      - "80:80"
++      - "443:443"
++    networks: [healthcare]
++    depends_on:
++      fastapi:
++        condition: service_healthy
++    healthcheck:
++      test: ["CMD-SHELL", "nginx -t"]
++      interval: 30s
++      timeout: 5s
++      retries: 3
++
++  certbot:
++    image: certbot/certbot:latest
++    restart: unless-stopped
++    profiles: ["tls"]
++    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
++    volumes:
++      - certbot_conf:/etc/letsencrypt
++      - certbot_www:/var/www/certbot
++    networks: [healthcare]
++    depends_on:
++      - nginx
++
++volumes:
++  mysql_data:
++  redis_data:
++  model_cache:
++  food_vision_cache:
++  media_volume:
++  certbot_conf:
++  certbot_www:
++  qdrant_data:
++
++networks:
++  healthcare:
++    driver: bridge
+--- /dev/null
++++ b/infra/nginx/Dockerfile
+@@ -0,0 +1,3 @@
++FROM nginx:1.29-alpine
++
++COPY ./src/frontend /usr/share/nginx/html/static
+--- /dev/null
++++ b/infra/nginx/default.conf
+@@ -0,0 +1,43 @@
++upstream fastapi_backend {
++    server fastapi:8000;
++}
++
++server {
++    listen 80;
++    server_name localhost _;
++    # Allow an 8 MiB photo plus multipart form overhead. FastAPI enforces the
++    # exact application-level file limit.
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    location /api/ {
++        proxy_pass http://fastapi_backend;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_buffering off;
++        proxy_cache off;
++        proxy_read_timeout 3600s;
++        proxy_send_timeout 3600s;
++        proxy_set_header Connection "";
++    }
++
++    location / {
++        proxy_pass http://fastapi_backend;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++    }
++}
+--- /dev/null
++++ b/infra/nginx/ec2-http.conf.template
+@@ -0,0 +1,47 @@
++upstream fastapi_backend {
++    server fastapi:8000;
++}
++
++server {
++    listen 80;
++    server_name ${SERVER_NAME};
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    # Kept for an optional domain + Certbot migration.
++    location /.well-known/acme-challenge/ {
++        root /var/www/certbot;
++    }
++
++    location /api/ {
++        proxy_pass http://fastapi_backend;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_buffering off;
++        proxy_cache off;
++        proxy_read_timeout 3600s;
++        proxy_send_timeout 3600s;
++        proxy_set_header Connection "";
++    }
++
++    # The FastAPI application serves the approved frontend at the root path.
++    location / {
++        proxy_pass http://fastapi_backend;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++    }
++}
+--- /dev/null
++++ b/infra/nginx/prod_http.conf
+@@ -0,0 +1,39 @@
++upstream fastapi {
++    server fastapi:8000;
++}
++
++server {
++    server_name 도메인 혹은 EC2_IP;
++
++    listen 80;
++    # Allow an 8 MiB photo plus multipart form overhead.
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    # 추후 certbot ssl 인증서 갱신 시 필요
++    location /.well-known/acme-challenge/ {
++       root /var/www/certbot;
++    }
++
++    location /api/ {
++        proxy_pass http://fastapi;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++
++        proxy_buffering off;
++    }
++
++    location / {
++        return 404;
++    }
++}
+--- /dev/null
++++ b/infra/nginx/prod_http.conf.template
+@@ -0,0 +1,38 @@
++upstream fastapi_upstream {
++    server fastapi:8000;
++    keepalive 16;
++}
++
++server {
++    listen 80;
++    server_name __SERVER_NAME__;
++
++    server_tokens off;
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    location /.well-known/acme-challenge/ {
++        root /var/www/certbot;
++    }
++
++    location / {
++        proxy_pass http://fastapi_upstream;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_connect_timeout 5s;
++        proxy_read_timeout 60s;
++        proxy_send_timeout 60s;
++        proxy_buffering off;
++    }
++}
+--- /dev/null
++++ b/infra/nginx/prod_https.conf
+@@ -0,0 +1,61 @@
++upstream fastapi {
++    server fastapi:8000;
++}
++
++# http
++server {
++    listen 80;
++    server_name 도메인;
++    client_max_body_size 10m;
++
++    # 추후 certbot ssl 인증서 갱신 시 필요
++    location /.well-known/acme-challenge/ {
++       root /var/www/certbot;
++    }
++
++    location /api/ {
++        return 301 https://$host$request_uri;
++    }
++
++    location / {
++        return 404;
++    }
++}
++
++# https
++server {
++    server_name 도메인;
++
++    listen 443 ssl;
++    # Allow an 8 MiB photo plus multipart form overhead.
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    ssl_certificate /etc/letsencrypt/live/도메인/fullchain.pem;
++    ssl_certificate_key /etc/letsencrypt/live/도메인/privkey.pem;
++
++    include /etc/letsencrypt/options-ssl-nginx.conf;
++    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    location /api/ {
++        proxy_pass http://fastapi;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++
++        proxy_buffering off;
++    }
++
++    location / {
++        return 404;
++    }
++}
+--- /dev/null
++++ b/infra/nginx/prod_https.conf.template
+@@ -0,0 +1,60 @@
++upstream fastapi_upstream {
++    server fastapi:8000;
++    keepalive 16;
++}
++
++server {
++    listen 80;
++    server_name __SERVER_NAME__;
++    server_tokens off;
++    client_max_body_size 10m;
++
++    location /.well-known/acme-challenge/ {
++        root /var/www/certbot;
++    }
++
++    location / {
++        return 301 https://$host$request_uri;
++    }
++}
++
++server {
++    listen 443 ssl http2;
++    server_name __SERVER_NAME__;
++    server_tokens off;
++    client_max_body_size 10m;
++    gzip on;
++    gzip_vary on;
++    gzip_types text/css application/javascript application/json image/svg+xml;
++
++    ssl_certificate /etc/letsencrypt/live/__SERVER_NAME__/fullchain.pem;
++    ssl_certificate_key /etc/letsencrypt/live/__SERVER_NAME__/privkey.pem;
++    ssl_protocols TLSv1.2 TLSv1.3;
++    ssl_session_timeout 1d;
++    ssl_session_cache shared:SSL:10m;
++
++    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
++    add_header X-Content-Type-Options "nosniff" always;
++    add_header X-Frame-Options "DENY" always;
++    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
++    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
++
++    location /static/assets/ {
++        alias /usr/share/nginx/html/static/assets/;
++        expires 30d;
++        access_log off;
++    }
++
++    location / {
++        proxy_pass http://fastapi_upstream;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_connect_timeout 5s;
++        proxy_read_timeout 60s;
++        proxy_send_timeout 60s;
++        proxy_buffering off;
++    }
++}
+--- /dev/null
++++ b/scripts/build-release-images.sh
+@@ -0,0 +1,23 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++if [[ $# -ne 2 ]]; then
++  echo "Usage: $0 <app-version> <ai-worker-version>" >&2
++  exit 2
++fi
++
++ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++APP_VERSION="$1"
++AI_WORKER_VERSION="$2"
++: "${DOCKER_USER:?Set DOCKER_USER after completing docker login.}"
++: "${DOCKER_REPOSITORY:?Set DOCKER_REPOSITORY after completing docker login.}"
++
++cd "$ROOT_DIR"
++docker build --platform linux/amd64 -f app/Dockerfile -t "$DOCKER_USER/$DOCKER_REPOSITORY:app-$APP_VERSION" .
++docker build --platform linux/amd64 -f ai_worker/Dockerfile -t "$DOCKER_USER/$DOCKER_REPOSITORY:ai-$AI_WORKER_VERSION" .
++docker build --platform linux/amd64 -f infra/nginx/Dockerfile -t "$DOCKER_USER/$DOCKER_REPOSITORY:web-$APP_VERSION" .
++docker push "$DOCKER_USER/$DOCKER_REPOSITORY:app-$APP_VERSION"
++docker push "$DOCKER_USER/$DOCKER_REPOSITORY:ai-$AI_WORKER_VERSION"
++docker push "$DOCKER_USER/$DOCKER_REPOSITORY:web-$APP_VERSION"
++
++echo "Images pushed. Set APP_VERSION=$APP_VERSION and AI_WORKER_VERSION=$AI_WORKER_VERSION in the EC2 .env."
+--- /dev/null
++++ b/scripts/preflight-production.sh
+@@ -0,0 +1,54 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++ENV_FILE="${1:-$ROOT_DIR/.env}"
++COMPOSE_FILE="$ROOT_DIR/infra/docker/docker-compose.prod.yml"
++
++if [[ ! -f "$ENV_FILE" ]]; then
++  echo "ERROR: production environment file not found: $ENV_FILE" >&2
++  exit 1
++fi
++
++required=(
++  COMPOSE_PROJECT_NAME DOCKER_USER DOCKER_REPOSITORY APP_VERSION AI_WORKER_VERSION
++  SECRET_KEY COOKIE_DOMAIN DB_PORT DB_USER DB_PASSWORD DB_ROOT_PASSWORD DB_NAME
++  REDIS_DB REDIS_STREAM REDIS_CONSUMER_GROUP REDIS_JOB_TTL_SECONDS
++  MODEL_URI PREDICTION_MODEL_VERSION PREDICTION_FEATURE_SCHEMA_VERSION
++  PREDICTION_THRESHOLD_VERSION SERVER_NAME CERTBOT_EMAIL
++)
++
++read_env_value() {
++  local key="$1"
++  awk -F= -v key="$key" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$ENV_FILE"
++}
++
++for key in "${required[@]}"; do
++  value="$(read_env_value "$key")"
++  if [[ -z "$value" ]]; then
++    echo "ERROR: $key must be set in $ENV_FILE" >&2
++    exit 1
++  fi
++  if [[ "$value" == *"replace-with"* || "$value" == "your-domain.example" || "$value" == "team@example.com" ]]; then
++    echo "ERROR: $key still contains an example value" >&2
++    exit 1
++  fi
++done
++
++if [[ "$(read_env_value ENV)" != "prod" || "$(read_env_value DEMO_MODE)" != "false" ]]; then
++  echo "ERROR: ENV=prod and DEMO_MODE=false are required for production." >&2
++  exit 1
++fi
++
++if [[ "$(read_env_value DB_GENERATE_SCHEMAS)" != "false" ]]; then
++  echo "ERROR: DB_GENERATE_SCHEMAS=false is required; use committed migrations." >&2
++  exit 1
++fi
++
++if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
++  echo "ERROR: Docker Engine and Docker Compose v2 are required." >&2
++  exit 1
++fi
++
++docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
++echo "Production preflight passed: Compose syntax, required values, and production guardrails verified."
+--- /dev/null
++++ b/scripts/prepare-ec2-release.sh
+@@ -0,0 +1,36 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++MODE="${1:-}"
++ENV_FILE="${2:-$ROOT_DIR/.env}"
++COMPOSE_FILE="$ROOT_DIR/infra/docker/docker-compose.prod.yml"
++
++if [[ "$MODE" != "http" && "$MODE" != "https" ]]; then
++  echo "Usage: $0 <http|https> [path-to-.env]" >&2
++  exit 2
++fi
++
++server_name="$(awk -F= '$1 == "SERVER_NAME" {sub(/^[^=]*=/, ""); print; exit}' "$ENV_FILE")"
++if [[ ! "$server_name" =~ ^[A-Za-z0-9.-]+$ ]]; then
++  echo "ERROR: SERVER_NAME must be a domain name or EC2 public DNS name." >&2
++  exit 1
++fi
++
++"$ROOT_DIR/scripts/preflight-production.sh" "$ENV_FILE"
++
++template="$ROOT_DIR/infra/nginx/prod_${MODE}.conf.template"
++runtime_dir="$ROOT_DIR/infra/nginx/runtime"
++mkdir -p "$runtime_dir"
++sed "s/__SERVER_NAME__/${server_name}/g" "$template" >"$runtime_dir/default.conf"
++
++if [[ "$MODE" == "https" ]]; then
++  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm --no-deps --entrypoint sh certbot \
++    -c "test -f /etc/letsencrypt/live/${server_name}/fullchain.pem"
++fi
++
++docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
++docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans
++docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
++
++echo "Release services started in ${MODE} mode. Run the smoke tests in docs/EC2_PRODUCTION_DEPLOYMENT_CHECKLIST.md before announcing availability."
 --- a/src/rag/engine.py
 +++ b/src/rag/engine.py
-@@ -5,8 +5,9 @@ from dataclasses import dataclass
+@@ -5,8 +5,9 @@
  
  from app.core import config
  from src.rag.chunking import Chunk, split_into_chunks
@@ -749,7 +2318,7 @@ index c9240ee..9fb8e21 100644
  from src.rag.retrieval import hybrid_search, top_chunks
  from src.rag.verification import cited_document_ids, verify_sentences
  
-@@ -305,25 +306,43 @@ def _citation(document: KnowledgeDocument) -> dict[str, object]:
+@@ -305,25 +306,43 @@
      }
  
  
@@ -802,7 +2371,7 @@ index c9240ee..9fb8e21 100644
      top_score = scored[0].combined_score if scored else 0.0
      if top_score < config.HEALTH_EDUCATION_RELEVANCE_THRESHOLD:
          return _insufficient_evidence()
-@@ -341,7 +360,7 @@ async def _hybrid_answer(question: str) -> dict[str, object]:
+@@ -341,7 +360,7 @@
              "answer": "지금은 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
              "answer_status": "insufficient_evidence",
              "citations": [],
@@ -811,7 +2380,7 @@ index c9240ee..9fb8e21 100644
          }
  
      verified_sentences = verify_sentences(generated, chunks_by_id)
-@@ -356,7 +375,7 @@ async def _hybrid_answer(question: str) -> dict[str, object]:
+@@ -356,7 +375,7 @@
          "answer": " ".join(verified_sentences),
          "answer_status": "grounded",
          "citations": citations,
@@ -820,11 +2389,218 @@ index c9240ee..9fb8e21 100644
      }
  
  
-diff --git a/tests/test_production_deployment_assets.py b/tests/test_production_deployment_assets.py
-index cda26bb..d52e11d 100644
+--- /dev/null
++++ b/src/rag/indexing.py
+@@ -0,0 +1,29 @@
++from __future__ import annotations
++
++import argparse
++import asyncio
++
++from src.rag.embeddings import get_embedding_provider
++from src.rag.engine import ALL_CHUNKS, DOCUMENTS_BY_ID
++from src.rag.qdrant import sync_qdrant_index
++
++
++async def _sync() -> None:
++    count = await sync_qdrant_index(
++        chunks=ALL_CHUNKS,
++        documents_by_id=DOCUMENTS_BY_ID,
++        embedding_provider=get_embedding_provider(),
++    )
++    print(f"Indexed {count} approved RAG chunks.")
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description="Manage the approved health-education vector index.")
++    parser.add_argument("command", choices=("sync",))
++    args = parser.parse_args()
++    if args.command == "sync":
++        asyncio.run(_sync())
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ b/src/rag/qdrant.py
+@@ -0,0 +1,119 @@
++from __future__ import annotations
++
++import uuid
++from typing import Any
++
++import httpx
++
++from app.core import config
++from src.rag.chunking import Chunk
++from src.rag.embeddings import EmbeddingProvider
++from src.rag.retrieval import ScoredChunk
++
++
++class QdrantError(RuntimeError):
++    """Raised when the external vector index cannot serve a valid response."""
++
++
++def _headers() -> dict[str, str]:
++    headers = {"Content-Type": "application/json"}
++    if config.QDRANT_API_KEY:
++        headers["api-key"] = config.QDRANT_API_KEY
++    return headers
++
++
++def _collection_url() -> str:
++    base = config.QDRANT_URL.rstrip("/")
++    return f"{base}/collections/{config.QDRANT_COLLECTION}"
++
++
++async def qdrant_search(
++    question: str,
++    *,
++    embedding_provider: EmbeddingProvider,
++) -> tuple[ScoredChunk, ...]:
++    [query_vector] = await embedding_provider.embed([question.strip().casefold()])
++    payload = {
++        "query": query_vector,
++        "limit": config.HEALTH_EDUCATION_TOP_K,
++        "with_payload": True,
++        "filter": {"must": [{"key": "approved", "match": {"value": True}}]},
++    }
++    try:
++        async with httpx.AsyncClient(timeout=config.HEALTH_EDUCATION_TIMEOUT_SECONDS) as client:
++            response = await client.post(f"{_collection_url()}/points/query", headers=_headers(), json=payload)
++            response.raise_for_status()
++            points = response.json()["result"]["points"]
++    except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
++        raise QdrantError("Qdrant 검색 결과를 가져오지 못했습니다.") from exc
++
++    results: list[ScoredChunk] = []
++    try:
++        for point in points:
++            source = point["payload"]
++            chunk = Chunk(
++                chunk_id=str(source["chunk_id"]),
++                document_id=str(source["document_id"]),
++                index=int(source["chunk_index"]),
++                text=str(source["text"]),
++            )
++            score = max(0.0, min(float(point["score"]), 1.0))
++            results.append(ScoredChunk(chunk=chunk, keyword_score=0.0, embedding_score=score, combined_score=score))
++    except (KeyError, TypeError, ValueError) as exc:
++        raise QdrantError("Qdrant payload가 RAG 청크 계약과 일치하지 않습니다.") from exc
++    return tuple(results)
++
++
++async def sync_qdrant_index(
++    *,
++    chunks: tuple[Chunk, ...],
++    documents_by_id: dict[str, Any],
++    embedding_provider: EmbeddingProvider,
++) -> int:
++    """Replace approved document points with deterministic IDs."""
++    vectors = await embedding_provider.embed([chunk.text for chunk in chunks])
++    if not vectors or not vectors[0]:
++        raise QdrantError("색인을 생성할 임베딩 벡터가 없습니다.")
++
++    collection = _collection_url()
++    try:
++        async with httpx.AsyncClient(timeout=config.HEALTH_EDUCATION_TIMEOUT_SECONDS) as client:
++            create = await client.put(
++                collection,
++                headers=_headers(),
++                json={
++                    "vectors": {"size": len(vectors[0]), "distance": "Cosine"},
++                    "hnsw_config": {"m": 16, "ef_construct": 100},
++                },
++            )
++            if create.status_code not in (200, 201, 409):
++                create.raise_for_status()
++
++            points = []
++            for chunk, vector in zip(chunks, vectors, strict=True):
++                document = documents_by_id[chunk.document_id]
++                points.append(
++                    {
++                        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, chunk.chunk_id)),
++                        "vector": vector,
++                        "payload": {
++                            "chunk_id": chunk.chunk_id,
++                            "document_id": chunk.document_id,
++                            "chunk_index": chunk.index,
++                            "text": chunk.text,
++                            "approved": True,
++                            "checked_at": document.checked_at,
++                            "source_url": document.url,
++                        },
++                    }
++                )
++            upsert = await client.put(
++                f"{collection}/points",
++                headers=_headers(),
++                params={"wait": "true"},
++                json={"points": points},
++            )
++            upsert.raise_for_status()
++    except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
++        raise QdrantError("Qdrant 인덱스 동기화에 실패했습니다.") from exc
++    return len(points)
+--- /dev/null
++++ b/tests/test_app_structure.py
+@@ -0,0 +1,52 @@
++from __future__ import annotations
++
++import asyncio
++
++import pytest
++from fastapi import FastAPI
++
++from app.core import config
++from app.lifecycle import lifespan
++from app.main import app
++from app.services import challenge_v2_retention
++
++
++def test_health_routes_remain_registered_after_module_split() -> None:
++    paths = set(app.openapi()["paths"])
++
++    assert {"/health", "/api/health", "/api/v1/health", "/api/v1/ready"} <= paths
++
++
++def test_challenge_v2_routes_are_marked_deprecated_in_openapi() -> None:
++    schema = app.openapi()
++    challenge_v2_operations = [
++        operation
++        for path, methods in schema["paths"].items()
++        if path.startswith("/api/v1/challenge-v2/")
++        for operation in methods.values()
++    ]
++
++    assert challenge_v2_operations
++    assert all(operation["deprecated"] is True for operation in challenge_v2_operations)
++
++
++@pytest.mark.asyncio
++async def test_lifespan_cancels_and_collects_retention_task(monkeypatch: pytest.MonkeyPatch) -> None:
++    started = asyncio.Event()
++    cancelled = asyncio.Event()
++
++    async def fake_retention_loop() -> None:
++        started.set()
++        try:
++            await asyncio.Future()
++        finally:
++            cancelled.set()
++
++    monkeypatch.setattr(config, "DEMO_MODE", True)
++    monkeypatch.setattr(config, "DEMO_ARTIFACT_INFERENCE_ENABLED", False)
++    monkeypatch.setattr(challenge_v2_retention, "retention_loop", fake_retention_loop)
++
++    async with lifespan(FastAPI()):
++        await asyncio.wait_for(started.wait(), timeout=1)
++
++    assert cancelled.is_set()
 --- a/tests/test_production_deployment_assets.py
 +++ b/tests/test_production_deployment_assets.py
-@@ -12,7 +12,7 @@ def _service_block(compose: str, name: str) -> str:
+@@ -12,7 +12,7 @@
  
  def test_production_compose_keeps_data_and_application_services_private() -> None:
      compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
@@ -833,7 +2609,7 @@ index cda26bb..d52e11d 100644
          assert "ports:" not in _service_block(compose, service)
          assert "restart: unless-stopped" in _service_block(compose, service)
      assert '"80:80"' in _service_block(compose, "nginx")
-@@ -39,3 +39,30 @@ def test_all_nginx_entrypoints_allow_photo_upload_multipart_overhead() -> None:
+@@ -39,3 +39,30 @@
      for config_path in configs:
          config = (ROOT / config_path).read_text(encoding="utf-8")
          assert "client_max_body_size 10m;" in config, config_path
@@ -864,11 +2640,9 @@ index cda26bb..d52e11d 100644
 +    assert "COPY ./src/frontend /usr/share/nginx/html/static" in dockerfile
 +    assert "web-$APP_VERSION" in build_script
 +    assert ":web-${APP_VERSION" in production_compose
-diff --git a/tests/test_rag_health_education.py b/tests/test_rag_health_education.py
-index 064e609..9426e26 100644
 --- a/tests/test_rag_health_education.py
 +++ b/tests/test_rag_health_education.py
-@@ -9,6 +9,7 @@ from __future__ import annotations
+@@ -9,6 +9,7 @@
  
  import pytest
  
@@ -876,7 +2650,7 @@ index 064e609..9426e26 100644
  from src.rag.engine import answer_with_sources
  
  
-@@ -52,3 +53,17 @@ async def test_rag_diet_and_complication_questions_are_grounded_in_new_documents
+@@ -52,3 +53,17 @@
      complications = await answer_with_sources("당뇨병 합병증으로 어떤 검진을 받아야 하나요?")
      assert complications["answer_status"] == "grounded"
      assert any(item["document_id"] == "kdca-diabetes-complications" for item in complications["citations"])
@@ -894,11 +2668,9 @@ index 064e609..9426e26 100644
 +        "medical_notice",
 +    }
 +    assert set(schema["required"]) == {"data", "meta"}
-diff --git a/tests/test_rag_pipeline.py b/tests/test_rag_pipeline.py
-index ac1c84b..e7dd62c 100644
 --- a/tests/test_rag_pipeline.py
 +++ b/tests/test_rag_pipeline.py
-@@ -30,6 +30,7 @@ from src.rag.generation import (
+@@ -30,6 +30,7 @@
      OpenAIAnswerGenerationProvider,
      get_generation_provider,
  )
@@ -906,10 +2678,12 @@ index ac1c84b..e7dd62c 100644
  from src.rag.retrieval import hybrid_search, top_chunks
  from src.rag.verification import cited_document_ids, verify_sentences
  
-@@ -125,6 +126,20 @@ def test_openai_embedding_provider_requires_api_key(monkeypatch: pytest.MonkeyPa
+@@ -123,6 +124,20 @@
+     monkeypatch.setattr(config, "OPENAI_API_KEY", "")
+     with pytest.raises(EmbeddingError):
          OpenAIEmbeddingProvider()
- 
- 
++
++
 +@pytest.mark.asyncio
 +async def test_engine_fails_closed_when_embedding_provider_is_unavailable(monkeypatch: pytest.MonkeyPatch):
 +    async def unavailable_search(*args: object, **kwargs: object):
@@ -922,15 +2696,15 @@ index ac1c84b..e7dd62c 100644
 +    assert result["answer_status"] == "insufficient_evidence"
 +    assert result["citations"] == []
 +    assert "잠시 후" in result["answer"]
-+
-+
+ 
+ 
  class _FakeEmbeddingsAsyncClient:
-     def __init__(self, *args: object, **kwargs: object) -> None:
-         del args, kwargs
-@@ -156,6 +171,49 @@ class _FakeHttpResponse:
+@@ -154,6 +169,49 @@
+ 
+     def json(self) -> dict[str, object]:
          return self._payload
- 
- 
++
++
 +class _FakeQdrantAsyncClient:
 +    def __init__(self, *args: object, **kwargs: object) -> None:
 +        del args, kwargs
@@ -972,8 +2746,1056 @@ index ac1c84b..e7dd62c 100644
 +
 +    assert results[0].chunk == _chunk("doc-a", 0, "승인된 근거 문장")
 +    assert results[0].combined_score == pytest.approx(0.91)
+ 
+ 
+ @pytest.mark.asyncio
+--- a/app/apis/v1/prediction_routers.py
++++ b/app/apis/v1/prediction_routers.py
+@@ -17,6 +17,7 @@
+ from app.prediction.errors import ModelNotReadyError, classify_ml_input_error
+ from app.repositories.health_repository import HealthRepository
+ from app.services.ai_jobs import create_prediction_job, get_prediction_job
++from app.services.xai_presentation import input_label, model_analysis_payload, shap_graph_payload
+ 
+ prediction_router = APIRouter(tags=["Prediction"])
+ 
+@@ -216,6 +217,7 @@
+         ),
+         "age_risk_forecast": item.age_risk_forecast if public_result_available or local_preview_available else None,
+         "raw_probability_exposed": False,
++        "model_analysis": model_analysis_payload(item, approved=public_result_available),
+     }
+ 
+ 
+@@ -378,6 +380,10 @@
+             }
+         )
+     contributions = {factor["feature"]: factor["contribution"] for factor in explanation["items"]}
++    repository = HealthRepository()
++    checkup = await repository.get_checkup(item.health_checkup_id, user.id)
++    screening_id = (job.request_payload or {}).get("current_screening_input_id")
++    screening = await repository.get_current_screening_input(screening_id, user.id) if screening_id else None
+     return envelope(
+         {
+             "prediction_id": item.id,
+@@ -391,15 +397,26 @@
+             "reference_value": explanation["reference_value"],
+             "selection_policy": explanation["selection_policy"],
+             "selection_status": explanation["selection_status"],
++            "baseline_label": explanation.get("baseline_label")
++            or (
++                "학습 자료에 기록된 트리 분포 기준"
++                if explanation["method"] == "treeshap_tree_path_dependent_v1"
++                else "입력 정보가 비어 있는 상태 기준 (이전 계산 방식)"
++                if explanation["method"] == "exact_grouped_shap_missing_reference_v1"
++                else "모델의 저장된 비교 기준"
++            ),
++            "reference_version": explanation.get("reference_version"),
++            "shap_graph": shap_graph_payload(explanation),
+             "items": [
+                 {
+                     "factor_name": factor.factor_name,
+                     "display_name": factor.display_name,
+                     "direction": factor.impact_direction,
++                    "input_value_label": input_label(factor.factor_name, checkup, screening),
+                     "contribution": contributions.get(factor.factor_name),
+                     "absolute_contribution": factor.importance_score,
+                     "modifiable": factor.is_modifiable,
+-                    "message": factor.message,
++                    "message": "비교 기준에 따른 모델의 계산 결과이며, 건강습관 변경의 효과를 뜻하지 않습니다.",
+                     "display_order": factor.display_order,
+                 }
+                 for factor in factors
+@@ -409,3 +426,4 @@
+             "display_allowed": True,
+         }
+     )
++
+--- a/app/services/ai_jobs.py
++++ b/app/services/ai_jobs.py
+@@ -390,13 +390,15 @@
+ 
+ def _release_demo_explanation(explanation: dict[str, Any], *, operational: bool) -> dict[str, Any]:
+     """Apply the independent public-XAI gate without altering SHAP values."""
++    from src.ml.inference.shap_explanations import has_displayable_selection
++
+     released = dict(explanation)
+     allowed = (
+         operational
+         and config.XAI_DISPLAY_ALLOWED
+         and released.get("shap_claimed") is True
+         and released.get("additivity_verified") is True
+-        and released.get("selection_status") == "complete"
++        and has_displayable_selection(released)
+     )
+     released["status"] = "approved" if allowed else released.get("status", "unavailable")
+     released["display_allowed"] = allowed
+@@ -609,16 +611,18 @@
+         return _release_demo_explanation({}, operational=operational)
+     import pandas as pd
+ 
+-    from src.ml.inference.shap_explanations import explain_today, safe_explanation
++    from src.ml.inference.shap_explanations import safe_explanation
++    from src.ml.inference.xai_background import explain_today_with_reference
+ 
+     try:
+         frame = pd.DataFrame([contracted_input], columns=loaded.manifest["features"])
+         explanation = await asyncio.to_thread(
+             safe_explanation,
+-            explain_today,
++            explain_today_with_reference,
+             frame,
+             lambda candidates: predict_artifact(loaded.artifact, candidates),
+             model_version=model_version,
++            model_digest=loaded.manifest["artifact_sha256"],
+             elevated=elevated,
+         )
+     except Exception:
+@@ -656,3 +660,4 @@
+             ]
+         )
+     return job
++
+--- a/ai_worker/handlers.py
++++ b/ai_worker/handlers.py
+@@ -15,13 +15,15 @@
+ 
+ def _release_explanation(explanation: dict[str, Any], *, operational: bool) -> dict[str, Any]:
+     """Apply the independent XAI release gate without changing SHAP values."""
++    from src.ml.inference.shap_explanations import has_displayable_selection
++
+     released = dict(explanation)
+     allowed = (
+         operational
+         and config.XAI_DISPLAY_ALLOWED
+         and released.get("shap_claimed") is True
+         and released.get("additivity_verified") is True
+-        and released.get("selection_status") == "complete"
++        and has_displayable_selection(released)
+     )
+     released["status"] = "approved" if allowed else released.get("status", "unavailable")
+     released["display_allowed"] = allowed
+@@ -380,16 +382,18 @@
+             and loaded.manifest.get("artifact_sha256") == CURRENT_SCREENING_MODEL.model_artifact_digest
+         )
+         signal = bool(output["screening_signal_detected"])
+-        from src.ml.inference.shap_explanations import explain_today, safe_explanation
++        from src.ml.inference.shap_explanations import safe_explanation
++        from src.ml.inference.xai_background import explain_today_with_reference
+         from src.ml.modeling.knhanes_current_screening import predict_artifact
+ 
+         frame = pd.DataFrame([contracted_input], columns=loaded.manifest["features"])
+         explanation = await asyncio.to_thread(
+             safe_explanation,
+-            explain_today,
++            explain_today_with_reference,
+             frame,
+             lambda candidates: predict_artifact(loaded.artifact, candidates),
+             model_version=output["model_version"],
++            model_digest=loaded.manifest["artifact_sha256"],
+             elevated=signal,
+         )
+         explanation = _release_explanation(explanation, operational=operational)
+@@ -419,3 +423,4 @@
+         }
+ 
+     raise ValueError(f"지원하지 않는 task_type입니다: {task_type}")
++
+--- a/src/ml/inference/shap_explanations.py
++++ b/src/ml/inference/shap_explanations.py
+@@ -6,6 +6,24 @@
+ import pandas as pd
+ 
+ from src.ml.inference.model_explanations import DISPLAY_NAMES, MODIFIABLE
++
++
++def has_displayable_selection(explanation):
++    """A missing opposite sign is valid; empty or invalid attributions are not."""
++    items = explanation.get("items")
++    if explanation.get("selection_status") not in {"complete", "insufficient_directional_factors"}:
++        return False
++    if not isinstance(items, list) or not 1 <= len(items) <= 3:
++        return False
++    for item in items:
++        if not isinstance(item, dict):
++            return False
++        value = item.get("contribution")
++        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value):
++            return False
++        if abs(value) <= 1e-10 or item.get("direction") != ("increase" if value > 0 else "decrease"):
++            return False
++    return True
+ 
+ 
+ def select_factors(items, *, elevated):
+@@ -48,7 +66,7 @@
+                 "contribution": float(value),
+                 "absolute_contribution": abs(float(value)),
+                 "modifiable": feature in MODIFIABLE,
+-                "message": "입력 정보가 기준값 대비 당뇨 위험을 "
++                "message": "입력 정보가 비교 기준 대비 모델 점수를 "
+                 + ("높이는" if value > 0 else "낮추는" if value < 0 else "바꾸지 않는")
+                 + " 방향으로 반영되었습니다.",
+             }
+@@ -81,16 +99,7 @@
+     }
+ 
+ 
+-def explain_today(frame, score_batch, *, model_version, elevated):
+-    """Exact grouped Shapley values over ALL coalitions of missing input groups.
+-
+-    The reference is the frozen pipeline's all-missing input, not a population
+-    average. Height/weight/BMI form one player to preserve their dependency.
+-    Every coalition passes through waist estimation, preprocessing, both models,
+-    both Platt calibrators and the final weighted sum without refitting anything.
+-    """
+-    if len(frame) != 1 or len(frame.columns) > 14:
+-        raise ValueError("Today requires one row with at most fourteen features")
++def _today_groups(frame):
+     dependent_groups = {
+         "body_measurements": ("height_cm", "weight_kg", "waist_cm", "bmi"),
+         "blood_pressure": ("systolic_bp", "diastolic_bp"),
+@@ -102,10 +111,57 @@
+         present = [feature for feature in features if feature in frame]
+         if present:
+             groups[group_name] = present
++    return groups
++
++
++def _validate_today_reference(frame, background):
++    if list(background.columns) != list(frame.columns) or not 1 <= len(background) <= 256:
++        raise ValueError("Invalid Train reference shape")
++    if np.isinf(background.to_numpy(dtype=float)).any() or background.isna().all(axis=1).any():
++        raise ValueError("Invalid Train reference values")
++
++
++def _today_reference_scores(frame, score_batch, background, groups, names):
++    n = len(names)
++    # Each masked group is replaced by the same real reference person's group.
++    # Chunk coalitions to bound memory; keep the complete frozen model intact.
++    averages = []
++    reference_values = background.to_numpy(dtype=float)
++    input_values = frame.to_numpy(dtype=float)[0]
++    positions = {name: [frame.columns.get_loc(c) for c in columns] for name, columns in groups.items()}
++    for start in range(0, 1 << n, 32):
++        batches = []
++        for mask in range(start, min(start + 32, 1 << n)):
++            candidates = reference_values.copy()
++            for j, name in enumerate(names):
++                if mask & (1 << j):
++                    candidates[:, positions[name]] = input_values[positions[name]]
++            batches.append(candidates)
++        batch_frame = pd.DataFrame(np.concatenate(batches, axis=0), columns=frame.columns)
++        batch_scores = np.asarray(score_batch(batch_frame), dtype=float)
++        if batch_scores.shape != (len(batches) * len(background),):
++            raise ValueError("Invalid reference coalition scores")
++        averages.extend(batch_scores.reshape(len(batches), len(background)).mean(axis=1))
++    return np.asarray(averages, dtype=float)
++
++
++def explain_today(frame, score_batch, *, model_version, elevated, background=None):
++    """Exact grouped Shapley values over all input-group coalitions.
++
++    Production uses a fixed Train-only empirical reference. Omitting background
++    retains the legacy all-missing reference for research comparisons only.
++    Related measurements form one player. Every coalition passes through the
++    complete frozen pipeline without refitting preprocessing or models.
++    """
++    if len(frame) != 1 or len(frame.columns) > 14:
++        raise ValueError("Today requires one row with at most fourteen features")
++    groups = _today_groups(frame)
+     names = list(groups)
+     n = len(names)
+     if n > 10:
+         raise ValueError("Today grouped SHAP requires at most ten independent input groups")
++    if background is not None:
++        _validate_today_reference(frame, background)
+     rows = []
+     for mask in range(1 << n):
+         rows.append(
+@@ -116,7 +172,10 @@
+                 for c in frame
+             }
+         )
+-    scores = np.asarray(score_batch(pd.DataFrame(rows, columns=frame.columns)), dtype=float)
++    if background is None:
++        scores = np.asarray(score_batch(pd.DataFrame(rows, columns=frame.columns)), dtype=float)
++    else:
++        scores = _today_reference_scores(frame, score_batch, background, groups, names)
+     if scores.shape != (1 << n,) or not np.isfinite(scores).all():
+         raise ValueError("Invalid coalition scores")
+     values = {}
+@@ -126,15 +185,23 @@
+             for mask in range(1 << n)
+             if not mask & (1 << j)
+         )
+-    return _result(
++    result = _result(
+         values,
+         reference=scores[0],
+         score=scores[-1],
+-        method="exact_grouped_shap_missing_reference_v1",
+-        baseline="all input groups missing; frozen Train-fitted preprocessing; not population average",
++        method="exact_grouped_shap_train_reference_v2"
++        if background is not None
++        else "exact_grouped_shap_missing_reference_v1",
++        baseline="mean model output over the fixed Train-only representative reference; grouped replacements"
++        if background is not None
++        else "all input groups missing; frozen Train-fitted preprocessing; not population average",
+         model_version=model_version,
+         elevated=elevated,
+     )
++    if background is not None:
++        result["explanation_version"] = "grouped-train-reference-shap-v2"
++        result["background_size"] = len(background)
++    return result
+ 
+ 
+ def explain_tomorrow(frame, pipeline, *, model_version, elevated):
+@@ -182,3 +249,4 @@
+             "model_version": kwargs.get("model_version"),
+             "message": "주요 요인 설명을 제공할 수 없습니다.",
+         }
++
+--- a/src/frontend/result-xai.css
++++ b/src/frontend/result-xai.css
+@@ -1,4 +1,13 @@
+ /* Shared Today/Tomorrow explanation typography; never change display gates. */
++.result-room-screen .result-xai-card .xai-baseline {
++  margin: 12px 0 0; color: #4b5563; font-size: 1rem; line-height: 1.6;
++  word-break: keep-all; overflow-wrap: anywhere;
++}
++.result-room-screen .result-xai-card .factor-list .xai-input-value { font-weight: 650; }
++.result-room-screen .result-xai-card .xai-selection-note {
++  margin: 12px 0 0; font-size: 1rem; line-height: 1.6;
++  color: #4b5563; word-break: keep-all; overflow-wrap: anywhere;
++}
+ .result-room-screen .result-xai-card.current-xai-slot {
+   min-width: 0;
+   padding: 24px;
+@@ -206,3 +215,49 @@
+     justify-self: start;
+   }
+ }
++
++
++/* Approved numerical model output belongs below each result picture. */
++.result-room-screen .result-visual-column { min-width: 0; width: 100%; display: grid; align-content: start; align-self: start; }
++.result-room-screen .result-visual-column .current-risk-signal-body { height: auto !important; }
++.result-room-screen .model-analysis-details {
++  margin: 16px 0 0; padding: 12px 16px; min-width: 0; border: 1px solid #bdcfc5;
++  border-radius: 14px; background: #fffdf8; color: #182c38; text-align: left;
++}
++.result-room-screen :is(.model-analysis-details,.shap-details) summary {
++  min-height: 44px; padding: 8px 0; cursor: pointer; font-size: 1rem;
++  font-weight: 700; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere;
++}
++.result-room-screen .model-number-grid,
++.result-room-screen .shap-total { margin: 16px 0; font-size: 1rem; }
++.result-room-screen .model-number-grid > div,
++.result-room-screen .shap-total > div {
++  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;
++  padding: 10px 0; border-bottom: 1px solid #e1e7df;
++}
++.result-room-screen :is(.model-number-grid,.shap-total) dt { font-weight: 600; }
++.result-room-screen :is(.model-number-grid,.shap-total) dd {
++  margin: 0; text-align: right; font-variant-numeric: tabular-nums;
++}
++.result-room-screen :is(.model-analysis-details,.shap-graph) :is(p,dt,dd) {
++  font-size: 1rem; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere;
++}
++.result-room-screen .shap-graph { margin-top: 24px; padding-top: 24px; border-top: 2px solid #cbd9cf; min-width: 0; }
++.result-room-screen .shap-details { padding: 12px 16px; border: 1px solid #bdcfc5; border-radius: 14px; background: #fffdf8; color: #182c38; }
++.result-room-screen .shap-details-body { min-width: 0; }
++.result-room-screen .shap-graph p { margin: 10px 0; color: #46566a; }
++.result-room-screen .shap-axis { display: grid; grid-template-columns: 1fr auto 1fr; margin: 18px 0 8px; font-size: .85rem; font-variant-numeric: tabular-nums; }
++.result-room-screen .shap-axis span:last-child { text-align: right; }
++.result-room-screen .shap-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
++.result-room-screen .shap-row { padding: 0; margin: 0; min-width: 0; }
++.result-room-screen .shap-row-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 1rem; }
++.result-room-screen .shap-row-heading span { word-break: keep-all; overflow-wrap: anywhere; }
++.result-room-screen .shap-row-heading strong { font-size: .95rem; font-variant-numeric: tabular-nums; }
++.result-room-screen .shap-bar-track { position: relative; height: 14px; background: #edf1eb; margin-top: 7px; border-radius: 4px; }
++.result-room-screen .shap-bar-track::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #738375; }
++.result-room-screen .shap-bar { position: absolute; top: 0; height: 100%; border-radius: 3px; }
++.result-room-screen .shap-bar.is-increase { background: #ba493c; }
++.result-room-screen .shap-bar.is-decrease { background: #17806b; }
++.result-room-screen .model-analysis-details[hidden],
++.result-room-screen .shap-graph[hidden] { display: none !important; }
++
+--- a/requirements-demo.lock.txt
++++ b/requirements-demo.lock.txt
+@@ -60,3 +60,6 @@
+ typing_extensions==4.16.0
+ tzdata==2026.5
+ uvicorn==0.54.0
++
++# TreeSHAP explanations for the approved future-risk model
++shap==0.52.0
+--- a/tests/test_xai_public_contract.py
++++ b/tests/test_xai_public_contract.py
+@@ -21,7 +21,9 @@
+         "additive_to_score": True,
+         "reference_value": 0.02,
+         "selection_policy": "elevated-2-caution-1-positive-otherwise-2-positive-1-caution-v1",
+-        "items": [{"feature": "bmi", "contribution": 0.01}],
++        "items": [{"feature": "bmi", "direction": "increase", "contribution": 0.01}],
++        "all_items": [{"feature": "bmi", "display_name": "BMI", "contribution": 0.01}],
++        "score": 0.03,
+     }
+     value.update(overrides)
+     return value
+@@ -36,11 +38,37 @@
+     assert handlers._release_explanation(_explanation(), operational=False)["display_allowed"] is False
+ 
+ 
++@pytest.mark.parametrize("embedded", [False, True])
++def test_verified_short_selection_is_displayed_without_inventing_factors(monkeypatch, embedded):
++    from app.services import ai_jobs
++
++    module = ai_jobs if embedded else handlers
++    release = module._release_demo_explanation if embedded else module._release_explanation
++    monkeypatch.setattr(module.config, "XAI_DISPLAY_ALLOWED", True)
++    explanation = _explanation(selection_status="insufficient_directional_factors")
++    released = release(explanation, operational=True)
++    assert released["status"] == "approved" and released["display_allowed"] is True
++    assert released["items"] == explanation["items"]
++    assert released["selection_status"] == "insufficient_directional_factors"
++    for overrides in [
++        dict(items=[]),
++        dict(additivity_verified=False),
++        dict(shap_claimed=False),
++        dict(items=[dict(direction="increase", contribution=float("nan"))]),
++        dict(items=[dict(direction="decrease", contribution=0.1)]),
++    ]:
++        assert release(_explanation(**overrides), operational=True)["display_allowed"] is False
++    assert release(explanation, operational=False)["display_allowed"] is False
++    monkeypatch.setattr(module.config, "XAI_DISPLAY_ALLOWED", False)
++    assert release(explanation, operational=True)["display_allowed"] is False
 +
 +
  @pytest.mark.asyncio
- async def test_openai_embedding_provider_reorders_by_index(monkeypatch: pytest.MonkeyPatch):
-     monkeypatch.setattr(config, "OPENAI_API_KEY", "test-key")
+ async def test_public_risk_factor_endpoint_returns_persisted_approved_contract(monkeypatch):
+     prediction = SimpleNamespace(
+         id=91,
+         job_id="job-91",
++        health_checkup_id=3,
+         display_allowed=True,
+         operational_model_activated=True,
+         explanation_status="approved",
+@@ -57,17 +85,26 @@
+     monkeypatch.setattr(prediction_routers.HealthRepository, "get_prediction", AsyncMock(return_value=prediction))
+     monkeypatch.setattr(prediction_routers.HealthRepository, "risk_factors", AsyncMock(return_value=[factor]))
+     monkeypatch.setattr(
++        prediction_routers.HealthRepository, "get_checkup", AsyncMock(return_value=SimpleNamespace(bmi=24.5))
++    )
++    monkeypatch.setattr(
+         prediction_routers.PredictionJob,
+         "get_or_none",
+         AsyncMock(
+-            return_value=SimpleNamespace(result={"explanation": _explanation(status="approved", display_allowed=True)})
++            return_value=SimpleNamespace(
++                request_payload={}, result={"explanation": _explanation(status="approved", display_allowed=True)}
++            )
+         ),
+     )
+     response = await prediction_routers.read_risk_factors(91, SimpleNamespace(id=7))
+     data = response["data"]
+     assert data["status"] == "approved"
+     assert data["shap_claimed"] is True and data["display_allowed"] is True
++    assert data["shap_graph"]["complete"] is True
++    assert data["shap_graph"]["items"][0]["contribution"] == 0.01
+     assert data["items"][0]["contribution"] == 0.01
++    assert data["items"][0]["input_value_label"] == "24.5"
++    assert data["baseline_label"] == "학습 자료에 기록된 트리 분포 기준"
+ 
+ 
+ @pytest.mark.asyncio
+@@ -84,3 +121,4 @@
+     data = response["data"]
+     assert data["items"] == []
+     assert data["shap_claimed"] is False and data["display_allowed"] is False
++
+--- a/tests/ml/test_shap_explanations.py
++++ b/tests/ml/test_shap_explanations.py
+@@ -108,3 +108,4 @@
+     assert result["status"] == "unavailable"
+     assert result["items"] == [] and result["shap_claimed"] is False
+     assert "private" not in str(result)
++
+--- /dev/null
++++ b/app/services/xai_presentation.py
+@@ -0,0 +1,138 @@
++"""Display saved inputs without inferring health advice from SHAP signs."""
++
++import math
++
++ALCOHOL = {
++    1: "최근 1년간 전혀 마시지 않음",
++    2: "월 1회 미만",
++    3: "월 1회 정도",
++    4: "월 2~4회",
++    5: "주 2~3회",
++    6: "주 4회 이상",
++    8: "평생 음주 경험 없음",
++}
++MISSING = "입력하지 않음"
++
++
++def _number(value, unit=""):
++    return MISSING if value is None else f"{float(value):g}{unit}"
++
++
++def _boolean_label(value, yes, no):
++    return MISSING if value is None else yes if value else no
++
++
++def _grouped_input_label(feature, checkup, screening):
++    if feature == "blood_pressure":
++        return f"수축기 {_number(checkup.systolic_bp, ' mmHg')} · 이완기 {_number(checkup.diastolic_bp, ' mmHg')}"
++    if feature == "body_measurements":
++        return f"키 {_number(checkup.height_cm, ' cm')} · 체중 {_number(checkup.weight_kg, ' kg')} · BMI {_number(checkup.bmi)} · 허리둘레 {_number(checkup.waist_cm, ' cm')}"
++    diabetes = _boolean_label(getattr(screening, "diabetes_family_history", None), "있음", "없음")
++    hypertension = _boolean_label(getattr(screening, "hypertension_family_history", None), "있음", "없음")
++    return f"당뇨 {diabetes} · 고혈압 {hypertension}"
++
++
++def input_label(feature, checkup, screening=None):
++    if checkup is None:
++        return "저장된 입력값 확인 불가"
++    value = getattr(checkup, feature, None)
++    if feature == "alcohol_frequency":
++        return ALCOHOL.get(getattr(screening, feature, None), MISSING)
++    if feature in {"blood_pressure", "body_measurements", "family_history"}:
++        return _grouped_input_label(feature, checkup, screening)
++    units = {"age": "세", "height_cm": " cm", "waist_cm": " cm", "weight_kg": " kg", "bmi": ""}
++    if feature in units:
++        return _number(value, units[feature])
++    if feature.endswith("_diagnosis"):
++        return _boolean_label(value, "진단받음", "진단받지 않음")
++    if feature in {"current_smoker", "current_drinker", "regular_exercise"}:
++        return _boolean_label(value, "예", "아니요")
++    return _categorical_input_label(feature, value, checkup, screening)
++
++
++def _categorical_input_label(feature, value, checkup, screening):
++    choices = {
++        "sex": {"male": "남성", "female": "여성"},
++        "smoking_status": {"never": "비흡연", "former": "과거 흡연", "current": "현재 흡연"},
++        "education_level": {
++            "code_1": "초등학교 이하",
++            "code_2": "중학교",
++            "code_3": "고등학교",
++            "code_4": "대학교 이상",
++        },
++    }
++    if feature == "education":
++        return choices["education_level"].get(checkup.education_level, MISSING)
++    if feature in choices:
++        return choices[feature].get(value, MISSING)
++    if feature == "region":
++        region = getattr(screening, feature, None)
++        return MISSING if region is None else f"지역 코드 {region}"
++    return MISSING if value is None else str(value)
++
++
++def _finite_number(value):
++    return type(value) in (int, float) and math.isfinite(value)
++
++
++def _unit_score(value):
++    return _finite_number(value) and 0 <= value <= 1
++
++
++def model_analysis_payload(prediction, *, approved):
++    """Expose an explicitly requested model score only for a public result."""
++    score, threshold = getattr(prediction, "internal_score", None), getattr(prediction, "decision_threshold", None)
++    if not approved or not _unit_score(score) or not _unit_score(threshold):
++        return None
++    return {
++        "status": "available",
++        "model_score": score,
++        "decision_threshold": threshold,
++        "score_minus_threshold": score - threshold,
++        "score_range": [0, 1],
++        "disclaimer": "모델의 선별 점수이며 확정 발병 확률이나 진단 결과가 아닙니다.",
++    }
++
++
++def shap_graph_payload(explanation):
++    """Return the complete additive graph only when every stored term verifies."""
++    items = explanation.get("all_items")
++    reference, score = explanation.get("reference_value"), explanation.get("score")
++    if (
++        explanation.get("display_allowed") is not True
++        or explanation.get("additivity_verified") is not True
++        or explanation.get("shap_claimed") is not True
++        or not isinstance(items, list)
++        or not 1 <= len(items) <= 128
++        or not _finite_number(reference)
++        or not _finite_number(score)
++    ):
++        return None
++    features = set()
++    for item in items:
++        if (
++            not isinstance(item, dict)
++            or not isinstance(item.get("feature"), str)
++            or not item["feature"]
++            or item["feature"] in features
++            or not _finite_number(item.get("contribution"))
++        ):
++            return None
++        features.add(item["feature"])
++    total = math.fsum(item["contribution"] for item in items)
++    if not math.isclose(reference + total, score, abs_tol=1e-8, rel_tol=0):
++        return None
++    return {
++        "complete": True,
++        "reference_value": reference,
++        "explained_score": score,
++        "contribution_sum": total,
++        "items": [
++            {
++                "feature": item["feature"],
++                "display_name": item.get("display_name") or item["feature"],
++                "contribution": item["contribution"],
++            }
++            for item in items
++        ],
++    }
+--- /dev/null
++++ b/app/services/mobile_downloads.py
+@@ -0,0 +1,17 @@
++"""Publish only explicitly configured HTTPS app distribution links."""
++
++from urllib.parse import urlsplit
++
++
++def _safe_download_url(value: str) -> str | None:
++    try:
++        url = urlsplit(value.strip())
++        if url.scheme == "https" and url.hostname and not url.username and not url.password:
++            return value.strip()
++    except ValueError:
++        pass
++    return None
++
++
++def mobile_download_payload(ios: str, android: str) -> dict:
++    return {"ios": {"url": _safe_download_url(ios)}, "android": {"url": _safe_download_url(android)}}
+--- /dev/null
++++ b/src/ml/inference/xai_background.py
+@@ -0,0 +1,45 @@
++"""Load a checksum-bound, Train-only reference without exposing training rows."""
++
++import hashlib
++import json
++from functools import lru_cache
++from pathlib import Path
++
++import pandas as pd
++
++ROOT = Path(__file__).resolve().parents[3]
++DEFAULT_MANIFEST = ROOT / "models/registry/xai/today-train-reference-v2.json"
++
++
++@lru_cache(maxsize=4)
++def load_today_background(model_version, model_digest, manifest_path=DEFAULT_MANIFEST):
++    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
++    if (
++        manifest["model_version"] != model_version
++        or manifest["model_artifact_sha256"] != model_digest
++        or manifest.get("train_only") is not True
++        or set(manifest["train_years"]) & set(manifest["excluded_years"])
++    ):
++        raise ValueError("Reference/model/split contract mismatch")
++    artifact = (ROOT / manifest["artifact_local_path"]).resolve()
++    if not artifact.is_relative_to(ROOT / "models/artifacts"):
++        raise ValueError("Reference must remain in the private artifact directory")
++    if hashlib.sha256(artifact.read_bytes()).hexdigest() != manifest["artifact_sha256"]:
++        raise ValueError("Reference checksum mismatch")
++    frame = pd.read_csv(artifact)
++    if list(frame.columns) != manifest["features"] or len(frame) != manifest["sample_size"]:
++        raise ValueError("Reference shape mismatch")
++    return frame, manifest
++
++
++def explain_today_with_reference(frame, score_batch, *, model_version, model_digest, elevated):
++    from src.ml.inference.shap_explanations import explain_today
++
++    background, manifest = load_today_background(model_version, model_digest)
++    result = explain_today(frame, score_batch, model_version=model_version, elevated=elevated, background=background)
++    result.update(
++        reference_version=manifest["reference_version"],
++        reference_sha256=manifest["artifact_sha256"],
++        baseline_label=manifest["baseline_label"],
++    )
++    return result
+--- /dev/null
++++ b/src/ml/preprocessing/xai_reference.py
+@@ -0,0 +1,29 @@
++"""Select a reproducible, private Train-only explanation reference."""
++
++import numpy as np
++import pandas as pd
++
++
++def select_reference(data, *, features, train_years, sample_size=128, seed=20261001):
++    train = data.loc[
++        data["split"].eq("train")
++        & data["survey_year"].isin(train_years)
++        & data["eligible_diabetes_undiagnosed"].eq(True)
++        & data["cohort_19_plus"].eq(True)
++        & data["target_diabetes_clinical"].notna()
++        & data["survey_weight"].gt(0)
++    ].copy()
++    if len(train) < sample_size:
++        raise ValueError("Insufficient eligible Train reference rows")
++    strata = list(train.groupby(["survey_year", "sex"], sort=True))
++    mass = np.array([part.survey_weight.sum() for _, part in strata], dtype=float)
++    allocation = sample_size * mass / mass.sum()
++    counts = np.floor(allocation).astype(int)
++    for i in np.argsort(-(allocation - counts), kind="stable")[: sample_size - counts.sum()]:
++        counts[i] += 1
++    selected = [
++        part.sample(n=int(counts[i]), weights="survey_weight", random_state=seed + i)
++        for i, (_, part) in enumerate(strata)
++        if counts[i]
++    ]
++    return pd.concat(selected).loc[:, features].reset_index(drop=True), len(train)
+--- /dev/null
++++ b/models/registry/xai/today-train-reference-v2.json
+@@ -0,0 +1,45 @@
++{
++  "schema_version": 1,
++  "reference_version": "today-train-reference-v2",
++  "train_only": true,
++  "model_version": "knhanes-today14-sk180-service-v3",
++  "model_artifact_sha256": "2189257587690adfcdf74702f69b516c0a8559cef6059ebd90d003e008c079b1",
++  "source_normalized_sha256": "70c2e4a0d71e883a4181589bfb3042413f6f6e13104756b88d24e103e195ddfa",
++  "train_years": [
++    2016,
++    2017,
++    2018,
++    2019,
++    2020
++  ],
++  "excluded_years": [
++    2021,
++    2022,
++    2023,
++    2024
++  ],
++  "eligible_train_count": 26005,
++  "sampling": "survey-weighted year/sex stratified; without replacement",
++  "seed": 20261001,
++  "sample_size": 128,
++  "features": [
++    "age",
++    "height_cm",
++    "weight_kg",
++    "waist_cm",
++    "bmi",
++    "systolic_bp",
++    "diastolic_bp",
++    "sex",
++    "current_smoker",
++    "education",
++    "region",
++    "diabetes_family_history",
++    "hypertension_family_history",
++    "alcohol_frequency"
++  ],
++  "artifact_local_path": "models/artifacts/xai/today-train-reference-v2/background.csv",
++  "artifact_sha256": "7f76fbebe5b26c426796de81088def9a420f104920c1b7fed750553f552c97d9",
++  "baseline_label": "학습 자료의 대표 표본 기준 (2016–2020년)",
++  "git_policy": "reference rows stay outside Git"
++}
+--- /dev/null
++++ b/src/frontend/mobile-download-entry.js
+@@ -0,0 +1,3 @@
++document.querySelectorAll('[data-mobile-download]').forEach(button => {
++  button.addEventListener('click', () => window.location.assign('/mobile-downloads'));
++});
+--- /dev/null
++++ b/src/frontend/mobile-downloads.html
+@@ -0,0 +1,35 @@
++<!doctype html>
++<html lang="ko">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
++  <title>모바일 버전 다운로드 | 간당간당</title>
++  <meta name="theme-color" content="#f5eddb">
++  <link rel="stylesheet" href="/static/mobile-downloads.css?v=20261009-v1">
++  <script src="/static/mobile-downloads.js?v=20261009-v1" defer></script>
++</head>
++<body>
++  <header><a class="brand" href="/?workspace=home">간당간당<span>건강한 습관의 시작</span></a><a class="back" href="/?workspace=home">홈으로 돌아가기 ↗</a></header>
++  <main>
++    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>간당간당을<br>휴대폰에서도 만나세요.</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
++    <section class="download-card" aria-labelledby="download-title">
++      <div class="tab-list" role="tablist" aria-label="휴대폰 운영체제">
++        <button id="tab-ios" role="tab" aria-selected="true" aria-controls="panel-ios" tabindex="0">iOS <span>iPhone · iPad</span></button>
++        <button id="tab-android" role="tab" aria-selected="false" aria-controls="panel-android" tabindex="-1">안드로이드 <span>Android</span></button>
++      </div>
++      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios">
++        <span class="platform-symbol" aria-hidden="true">iOS</span><h2 id="download-title">iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
++        <a class="download-link" id="download-ios" hidden>iOS 앱 받기 ↗</a><p id="status-ios" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
++        <details open><summary>iOS 앱 설치 안내</summary><ol><li><strong>iOS 앱 받기</strong>를 누르면 공식 설치 화면으로 이동해요.</li><li>TestFlight 또는 App Store에서 <strong>설치</strong>를 선택해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">iOS 앱은 서명된 배포 링크가 준비된 뒤 설치할 수 있어요.</p></details>
++      </div>
++      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android" hidden>
++        <span class="platform-symbol" aria-hidden="true">A</span><h2>안드로이드에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
++        <a class="download-link" id="download-android" hidden>안드로이드 앱 받기 ↗</a><p id="status-android" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
++        <details open><summary>안드로이드 앱 설치 안내</summary><ol><li><strong>안드로이드 앱 받기</strong>를 눌러 APK 파일을 내려받아 주세요.</li><li>다운로드한 파일을 열고 Android의 설치 안내를 확인해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">Android 7 이상에서 사용하는 체험 앱입니다. 설치 허용 여부는 휴대폰에서 직접 선택해 주세요.</p></details>
++      </div>
++    </section>
++    <p class="footer-note">이미 가입한 계정으로 웹과 모바일에서 같은 서비스를 이용할 수 있어요.</p>
++  </main>
++  <footer>간당간당 · 진단·처방이 아닌 위험 선별과 건강교육</footer>
++</body>
++</html>
+--- /dev/null
++++ b/src/frontend/mobile-downloads.css
+@@ -0,0 +1,2 @@
++:root{color-scheme:light;--ink:#203d32;--muted:#617266;--paper:#f5eddb;--green:#326850}
++*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--paper);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif}button,a,summary{-webkit-tap-highlight-color:transparent}a{color:inherit}header{max-width:1080px;margin:auto;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{font-size:27px;font-weight:850;text-decoration:none;letter-spacing:-1px}.brand span{display:block;margin-top:5px;font-size:12px;font-weight:500;letter-spacing:0}.back{font-size:14px;text-decoration:none;font-weight:650}main{max-width:920px;margin:35px auto 70px;padding:0 28px}.intro{text-align:center;margin-bottom:32px}.eyebrow{display:inline-block;padding:8px 16px;border:1px solid #ccd7bd;border-radius:30px;font-size:13px;background:#e9eedc}.intro h1{font-size:clamp(30px,5vw,46px);line-height:1.3;letter-spacing:-1.5px;margin:20px 0 16px;word-break:keep-all}.intro p,.platform-panel>p{color:var(--muted);line-height:1.7;word-break:keep-all}.download-card{max-width:640px;margin:auto;border:1px solid #d8dbc8;border-radius:24px;background:#fffdf6;box-shadow:0 12px 40px #203d3208;overflow:hidden}.tab-list{display:grid;grid-template-columns:1fr 1fr;padding:10px;background:#e7ecd9;gap:8px}.tab-list button{min-height:66px;border:0;border-radius:16px;background:transparent;color:var(--muted);font:inherit;font-size:18px;font-weight:750;cursor:pointer}.tab-list button span{display:block;font-size:12px;margin-top:5px;font-weight:500}.tab-list button[aria-selected=true]{background:#fffdf6;color:var(--ink);box-shadow:0 2px 7px #203d3210}.platform-panel{padding:30px 36px}.platform-panel[hidden],[hidden]{display:none!important}.platform-symbol{display:grid;place-items:center;width:58px;height:58px;border-radius:18px;color:#fffdf6;background:var(--green);font-weight:750;font-size:21px}h2{font-size:25px;letter-spacing:-.6px;margin:20px 0 10px;word-break:keep-all}.download-link{display:block;margin:24px 0 14px;padding:16px 24px;text-align:center;text-decoration:none;border-radius:12px;background:var(--green);color:white;font-weight:750}.release-status{padding:14px 18px;border-radius:12px;background:#eef1e3;font-size:14px;color:var(--ink)!important}.platform-panel details{margin-top:26px;border-top:1px solid #e0e4d5;padding-top:20px}summary{font-weight:750;cursor:pointer;min-height:40px;line-height:1.6}ol{padding-left:23px;line-height:1.9;color:#4e6255}li{padding-left:4px;margin:10px 0;word-break:keep-all}.note{font-size:12px;color:var(--muted);line-height:1.6}.footer-note{text-align:center;font-size:13px;line-height:1.8;margin-top:24px;color:var(--muted)}footer{text-align:center;padding:20px;color:var(--muted);font-size:12px}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #dd8e38;outline-offset:4px}@media(max-width:520px){header{padding:20px;align-items:start}.brand{font-size:23px}.back{font-size:12px;padding-top:7px}main{margin-top:22px;padding:0 16px}.platform-panel{padding:26px 22px}.tab-list button{font-size:17px}h2{font-size:22px}}
+--- /dev/null
++++ b/src/frontend/mobile-downloads.js
+@@ -0,0 +1,44 @@
++const platforms = ['ios', 'android'];
++function selectPlatform(platform) {
++  platforms.forEach(os => {
++    const selected = os === platform;
++    const tab = document.getElementById(`tab-${os}`);
++    tab.setAttribute('aria-selected', String(selected));
++    tab.tabIndex = selected ? 0 : -1;
++    document.getElementById(`panel-${os}`).hidden = !selected;
++  });
++}
++platforms.forEach(os => {
++  const tab = document.getElementById(`tab-${os}`);
++  tab.addEventListener('click', () => selectPlatform(os));
++  tab.addEventListener('keydown', event => {
++    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++    event.preventDefault();
++    const next = event.key === 'Home' ? 'ios' : event.key === 'End' ? 'android' : os === 'ios' ? 'android' : 'ios';
++    selectPlatform(next);
++    document.getElementById(`tab-${next}`).focus();
++  });
++});
++const requested = new URLSearchParams(location.search).get('os');
++const detected = /Android/i.test(navigator.userAgent) ? 'android' : 'ios';
++selectPlatform(platforms.includes(requested) ? requested : detected);
++fetch('/api/mobile-downloads', {credentials:'omit', cache:'no-store'})
++  .then(response => { if (!response.ok) throw new Error('unavailable'); return response.json(); })
++  .then(data => platforms.forEach(os => {
++    const url = data[os]?.url;
++    const anchor = document.getElementById(`download-${os}`);
++    const status = document.getElementById(`status-${os}`);
++    let valid = false;
++    try { const parsed = new URL(url); valid = parsed.protocol === 'https:' && !parsed.username && !parsed.password; } catch {}
++    if (valid) {
++      anchor.href = url;
++      anchor.rel = 'noopener noreferrer';
++      anchor.hidden = false;
++      status.textContent = '아래 설치 안내를 따라 모바일 앱을 이용해 보세요.';
++    } else {
++      status.textContent = '앱 다운로드를 준비하고 있어요. 설치 링크가 준비되면 이곳에서 받을 수 있어요.';
++    }
++  }))
++  .catch(() => platforms.forEach(os => {
++    document.getElementById(`status-${os}`).textContent = '다운로드 정보를 불러오지 못했어요. 잠시 후 다시 확인해 주세요.';
++  }));
+--- /dev/null
++++ b/tests/test_xai_presentation.py
+@@ -0,0 +1,56 @@
++from types import SimpleNamespace
++
++from app.services.xai_presentation import input_label
++
++
++def test_no_alcohol_and_unknown_inputs_remain_distinct():
++    checkup = SimpleNamespace(current_drinker=False, bmi=24.5, hypertension_diagnosis=False)
++    assert (
++        input_label("alcohol_frequency", checkup, SimpleNamespace(alcohol_frequency=1)) == "최근 1년간 전혀 마시지 않음"
++    )
++    assert input_label("alcohol_frequency", checkup, SimpleNamespace(alcohol_frequency=8)) == "평생 음주 경험 없음"
++    assert input_label("alcohol_frequency", checkup, None) == "입력하지 않음"
++    assert input_label("hypertension_diagnosis", checkup) == "진단받지 않음"
++    assert input_label("bmi", checkup) == "24.5"
++
++
++def test_model_numbers_require_approval_and_finite_valid_saved_values():
++    from app.services.xai_presentation import model_analysis_payload
++
++    value = SimpleNamespace(internal_score=0.125, decision_threshold=0.1)
++    assert model_analysis_payload(value, approved=False) is None
++    result = model_analysis_payload(value, approved=True)
++    assert result["model_score"] == 0.125
++    assert abs(result["score_minus_threshold"] - 0.025) < 1e-12
++    for bad in [None, True, float("nan"), float("inf"), -1, 2]:
++        value.internal_score = bad
++        assert model_analysis_payload(value, approved=True) is None
++
++
++def test_complete_shap_graph_rejects_missing_invalid_duplicate_or_nonadditive_terms():
++    from app.services.xai_presentation import shap_graph_payload
++
++    value = dict(
++        display_allowed=True,
++        additivity_verified=True,
++        shap_claimed=True,
++        reference_value=0.1,
++        score=0.115,
++        all_items=[
++            dict(feature="age", display_name="연령", contribution=0.02),
++            dict(feature="bmi", display_name="BMI", contribution=-0.005),
++            dict(feature="sex", display_name="성별", contribution=0.0),
++        ],
++    )
++    result = shap_graph_payload(value)
++    assert result["complete"] and len(result["items"]) == 3
++    assert abs(result["contribution_sum"] - 0.015) < 1e-12
++    for override in [
++        dict(display_allowed=False),
++        dict(additivity_verified=False),
++        dict(all_items=None),
++        dict(score=0.9),
++        dict(all_items=value["all_items"] + [value["all_items"][0]]),
++        dict(all_items=[dict(feature="age", contribution=float("nan"))]),
++    ]:
++        assert shap_graph_payload({**value, **override}) is None
+--- /dev/null
++++ b/tests/test_mobile_downloads.py
+@@ -0,0 +1,15 @@
++import pytest
++
++from app.services.mobile_downloads import mobile_download_payload
++
++
++@pytest.mark.parametrize("invalid", ["", "http://example.com/app.apk", "javascript:alert(1)", "https://user:pass@example.com/app", "https://"])
++def test_unreleased_or_unsafe_links_never_become_download_buttons(invalid):
++    assert mobile_download_payload(invalid, invalid) == {"ios": {"url": None}, "android": {"url": None}}
++
++
++def test_distribution_links_remain_os_specific():
++    assert mobile_download_payload("https://testflight.apple.com/join/example", "https://example.com/app.apk") == {
++        "ios": {"url": "https://testflight.apple.com/join/example"},
++        "android": {"url": "https://example.com/app.apk"},
++    }
+--- /dev/null
++++ b/tests/ml/test_xai_reference.py
+@@ -0,0 +1,95 @@
++import hashlib
++import json
++
++import pandas as pd
++import pytest
++
++from src.ml.inference import xai_background
++from src.ml.inference.shap_explanations import explain_today
++from src.ml.preprocessing.xai_reference import select_reference
++
++
++def test_reference_selection_never_uses_heldout_or_ineligible_rows():
++    rows = [
++        dict(
++            age=i,
++            sex=1 + i % 2,
++            split="train",
++            survey_year=2016,
++            eligible_diabetes_undiagnosed=True,
++            cohort_19_plus=True,
++            target_diabetes_clinical=0,
++            survey_weight=1,
++        )
++        for i in range(20)
++    ]
++    rows += [
++        {**rows[0], "age": 999, "split": "test", "survey_year": 2023},
++        {**rows[0], "age": 998, "split": "train", "survey_year": 2021},
++        {**rows[0], "age": 997, "eligible_diabetes_undiagnosed": False},
++    ]
++    data = pd.DataFrame(rows)
++    result, count = select_reference(data, features=["age", "sex"], train_years=[2016], sample_size=8)
++    assert count == 20 and len(result) == 8
++    assert list(result.columns) == ["age", "sex"]
++    assert result.age.max() < 20
++    assert result.equals(select_reference(data, features=["age", "sex"], train_years=[2016], sample_size=8)[0])
++
++
++def test_empirical_reference_exact_shap_is_additive_and_groups_body_inputs():
++    background = pd.DataFrame(
++        [
++            dict(age=0.0, sex=1.0, height_cm=160.0, weight_kg=60.0, bmi=23.0),
++            dict(age=2.0, sex=0.0, height_cm=180.0, weight_kg=80.0, bmi=25.0),
++        ]
++    )
++    frame = pd.DataFrame([dict(age=3.0, sex=1.0, height_cm=170.0, weight_kg=70.0, bmi=24.0)])
++
++    def score(rows):
++        assert rows[["height_cm", "weight_kg", "bmi"]].drop_duplicates().shape[0] <= 3
++        return (rows.age * 0.1 + rows.sex * 0.2 + rows.age * rows.sex * 0.05 + rows.bmi * 0.001).to_numpy()
++
++    result = explain_today(frame, score, model_version="synthetic", elevated=True, background=background)
++    assert result["method"] == "exact_grouped_shap_train_reference_v2"
++    assert result["reference_value"] == pytest.approx(score(background).mean())
++    assert result["reference_value"] + sum(i["contribution"] for i in result["all_items"]) == pytest.approx(
++        score(frame)[0]
++    )
++    contributions = {item["feature"]: item["contribution"] for item in result["all_items"]}
++    assert contributions == pytest.approx({"age": 0.2875, "sex": 0.1625, "body_measurements": 0.0})
++    assert result["additivity_verified"] is True and result["display_allowed"] is False
++    assert result == explain_today(frame, score, model_version="synthetic", elevated=True, background=background)
++
++
++def test_missing_reference_does_not_silently_fall_back_to_all_missing(monkeypatch, tmp_path):
++    with pytest.raises(FileNotFoundError):
++        xai_background.load_today_background("model", "digest", tmp_path / "missing.json")
++
++
++def test_reference_loader_checks_model_split_and_file_integrity(monkeypatch, tmp_path):
++    monkeypatch.setattr(xai_background, "ROOT", tmp_path)
++    artifact = tmp_path / "models/artifacts/reference.csv"
++    artifact.parent.mkdir(parents=True)
++    artifact.write_text("age\n50\n60\n", encoding="utf-8")
++    manifest = dict(
++        model_version="model",
++        model_artifact_sha256="digest",
++        train_only=True,
++        train_years=[2016],
++        excluded_years=[2023],
++        artifact_local_path="models/artifacts/reference.csv",
++        artifact_sha256=hashlib.sha256(artifact.read_bytes()).hexdigest(),
++        features=["age"],
++        sample_size=2,
++    )
++    path = tmp_path / "manifest.json"
++    path.write_text(json.dumps(manifest), encoding="utf-8")
++    xai_background.load_today_background.cache_clear()
++    assert len(xai_background.load_today_background("model", "digest", path)[0]) == 2
++    with pytest.raises(ValueError):
++        xai_background.load_today_background("different-model", "digest", path)
++    artifact.write_text("age\n70\n80\n", encoding="utf-8")
++    xai_background.load_today_background.cache_clear()
++    with pytest.raises(ValueError, match="checksum"):
++        xai_background.load_today_background("model", "digest", path)
++    xai_background.load_today_background.cache_clear()
+--- /dev/null
++++ b/docs/WEB_XAI_MOBILE.md
+@@ -0,0 +1,13 @@
++# 웹 XAI와 모바일 다운로드
++
++기존 앱 PR 107의 실제 SHAP 계산·합산 검증·입력값 표시 계약을 웹 결과에 적용한다. 현재·미래 모델의 상반된 기여를 임의 제거하지 않으며, 한쪽 부호만 있는 경우 확인된 요인만 표시한다. 점수를 발병 확률이나 생활습관 변경 효과로 표현하지 않는다.
++
++서버 `.env`에 `XAI_DISPLAY_ALLOWED=true`를 설정하고 다시 분석하면 미래 RF 모델의 TreeSHAP 설명이 생성된다. 웹 카드에서 실제 입력값, 모델 점수·기준점, 전체 SHAP 그래프를 확인할 수 있다. 예전 결과는 자동 재계산하지 않는다.
++
++현재 모델의 설명은 `models/registry/xai/today-train-reference-v2.json`에 맞는 비공개 `models/artifacts/xai/today-train-reference-v2/background.csv`가 필요하다. 준혁님이 보유한 파일의 SHA-256 `7f76fbebe5b26c426796de81088def9a420f104920c1b7fed750553f552c97d9`를 검증한 뒤 공유 artifacts 경로에 설치한다. 파일이 없거나 계약이 다르면 현재 모델의 예측은 유지하고 설명만 제공하지 않는다. 다른 배경 데이터로 대체하지 않는다. 참조 행은 Git·공개 정적파일·APK에 포함하지 않는다.
++
++건강도구 바로 옆의 ‘모바일 버전 다운로드’는 `/mobile-downloads`를 연다. 기기에 맞는 OS를 기본 선택하고 두 탭을 직접 전환할 수 있다. 각 화면에는 해당 OS의 설치 안내와 실제 배포 링크를 제공한다.
++
++서버 담당자는 서명·배포된 Android 다운로드 URL을 `MOBILE_ANDROID_DOWNLOAD_URL`, iOS TestFlight/App Store URL을 `MOBILE_IOS_DOWNLOAD_URL`에 넣는다. 비어 있으면 다운로드 준비 상태와 해당 OS의 앱 설치 안내를 표시하며 가짜 파일이나 버튼을 만들지 않는다. PR 107의 localhost용 APK는 현재 AWS 주소를 사용하도록 재빌드해야 한다. iOS는 서명된 배포가 필요하며 임의 IPA를 배포하지 않는다.
++
++Android 체험 앱은 `.github/workflows/android-app.yml`에서 PR 107의 고정 커밋과 AWS HTTPS 주소로 빌드하고 `android-devday` 사전 릴리스에 APK·체크섬을 게시한다. iOS 배포는 별도 서명된 링크가 필요하다.
