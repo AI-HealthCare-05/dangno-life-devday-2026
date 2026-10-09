@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "5a86f526ca0c3f5bc0f361f8284f888bc0aec619f648e9e14d798f31be7d1136",
+  "patch_sha256": "315e7e2667f3d4558436ec2aa57a50b83ab229e68ef7646302a9b81fb10ab8cb",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -10,7 +10,7 @@
     {
       "path": "src/frontend/index.html",
       "before": "2a62179d639c18efe69f15974ea7b28b40d369fd5811158cff441870b09cad34",
-      "after": "be814f6bbb8c7087fada18be9443c94e4a734068fc173ef898c5c74b9e24a9cc",
+      "after": "68cf94e77c6c52ead872119b832be63e8e544d2a1b26f1285819ac8f1df6ee43",
       "previous": "7ed7c267093bc2a274cfb622572808d888a105cbd2e6405da920089bc630ff53"
     },
     {
@@ -246,7 +246,7 @@
     {
       "path": "src/frontend/result-xai.css",
       "before": "a158e679d54446b34b09944f40988a0adfc5e450f9692f062d34a6eb5515e34c",
-      "after": "4a24cdacf4f41d265fa75449444c53664bd47a5d4112ff8b40f2c72d28046f03"
+      "after": "2e333c1283f48094b714806fbf3027606487b51e37e13ca8ffb4e7e00a334ae9"
     },
     {
       "path": "requirements-demo.lock.txt",
@@ -296,7 +296,7 @@
     {
       "path": "src/frontend/mobile-downloads.html",
       "before": null,
-      "after": "b73c0354e78b6bdf1f3c5a381bb90e5d450dbb07930f13ea5b20025c030afa39"
+      "after": "82793a462aff83a5f20a2ba9c0b6b34ac65c29b61c8a141aa4bce68a05e184ee"
     },
     {
       "path": "src/frontend/mobile-downloads.css",
@@ -306,7 +306,7 @@
     {
       "path": "src/frontend/mobile-downloads.js",
       "before": null,
-      "after": "84019e2ffdf47804abf57b0e18c7e35bc49a61bee1da1419e88f77e0f4c12e2b"
+      "after": "17a6d99c11c9306ea481940aa2e522a7950ec770a55dc7bdecbead64de3c8e56"
     },
     {
       "path": "tests/test_xai_presentation.py",

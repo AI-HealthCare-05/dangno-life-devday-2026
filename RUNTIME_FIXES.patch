@@ -260,7 +260,7 @@
          <li><button type="button" data-top-workspace="report">리포트</button></li>
          <li><button type="button" data-top-workspace="together">함께하기</button></li>
          <li><button type="button" data-top-workspace="tools">건강도구</button></li>
-+        <li><button type="button" data-mobile-download>모바일 버전 다운로드 <span>iOS | 안드로이드</span></button></li>
++        <li><button type="button" data-mobile-download>Download(모바일 버전)</button></li>
        </ol>
      </nav>
      <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>
@@ -3073,7 +3073,7 @@
  .result-room-screen .result-xai-card.current-xai-slot {
    min-width: 0;
    padding: 24px;
-@@ -206,3 +215,60 @@
+@@ -206,3 +215,59 @@
      justify-self: start;
    }
  }
@@ -3127,10 +3127,9 @@
 +.topbar:has(#workspace-top-nav:not([hidden])) { flex-wrap: wrap; }
 +#workspace-top-nav { flex: 1 0 auto; max-width: 100%; }
 +#workspace-top-nav [data-mobile-download] {
-+  display: flex; flex-direction: column; align-items: center;
++  display: inline-flex; align-items: center; white-space: nowrap;
 +  justify-content: center; gap: 2px; font-size: 14px; line-height: 1.25;
 +}
-+#workspace-top-nav [data-mobile-download] span { font-size: 12px; }
 +@media (max-width: 760px) {
 +  .topbar #workspace-top-nav { flex: 1 1 100%; }
 +}
@@ -3543,23 +3542,23 @@
 +  <title>모바일 버전 다운로드 | 간당간당</title>
 +  <meta name="theme-color" content="#f5eddb">
 +  <link rel="stylesheet" href="/static/mobile-downloads.css?v=20261009-v1">
-+  <script src="/static/mobile-downloads.js?v=20261009-v1" defer></script>
++  <script src="/static/mobile-downloads.js?v=20261009-v2" defer></script>
 +</head>
 +<body>
 +  <header><a class="brand" href="/?workspace=home">간당간당<span>건강한 습관의 시작</span></a><a class="back" href="/?workspace=home">홈으로 돌아가기 ↗</a></header>
 +  <main>
-+    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>간당간당을<br>휴대폰에서도 만나세요.</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
-+    <section class="download-card" aria-labelledby="download-title">
++    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>내 손안의 건강 챌린지</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
++    <section class="download-card" aria-label="모바일 앱 다운로드">
 +      <div class="tab-list" role="tablist" aria-label="휴대폰 운영체제">
-+        <button id="tab-ios" role="tab" aria-selected="true" aria-controls="panel-ios" tabindex="0">iOS <span>iPhone · iPad</span></button>
-+        <button id="tab-android" role="tab" aria-selected="false" aria-controls="panel-android" tabindex="-1">안드로이드 <span>Android</span></button>
++        <button id="tab-android" role="tab" aria-selected="true" aria-controls="panel-android" tabindex="0">안드로이드 <span>Android</span></button>
++        <button id="tab-ios" role="tab" aria-selected="false" aria-controls="panel-ios" tabindex="-1">iOS <span>iPhone · iPad</span></button>
 +      </div>
-+      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios">
-+        <span class="platform-symbol" aria-hidden="true">iOS</span><h2 id="download-title">iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
++      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios" hidden>
++        <span class="platform-symbol" aria-hidden="true">iOS</span><h2>iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
 +        <a class="download-link" id="download-ios" hidden>iOS 앱 받기 ↗</a><p id="status-ios" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
 +        <details open><summary>iOS 앱 설치 안내</summary><ol><li><strong>iOS 앱 받기</strong>를 누르면 공식 설치 화면으로 이동해요.</li><li>TestFlight 또는 App Store에서 <strong>설치</strong>를 선택해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">iOS 앱은 서명된 배포 링크가 준비된 뒤 설치할 수 있어요.</p></details>
 +      </div>
-+      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android" hidden>
++      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android">
 +        <span class="platform-symbol" aria-hidden="true">A</span><h2>안드로이드에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
 +        <a class="download-link" id="download-android" hidden>안드로이드 앱 받기 ↗</a><p id="status-android" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
 +        <details open><summary>안드로이드 앱 설치 안내</summary><ol><li><strong>안드로이드 앱 받기</strong>를 눌러 APK 파일을 내려받아 주세요.</li><li>다운로드한 파일을 열고 Android의 설치 안내를 확인해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">Android 7 이상에서 사용하는 체험 앱입니다. 설치 허용 여부는 휴대폰에서 직접 선택해 주세요.</p></details>
@@ -3578,7 +3577,7 @@
 --- /dev/null
 +++ b/src/frontend/mobile-downloads.js
 @@ -0,0 +1,44 @@
-+const platforms = ['ios', 'android'];
++const platforms = ['android', 'ios'];
 +function selectPlatform(platform) {
 +  platforms.forEach(os => {
 +    const selected = os === platform;
@@ -3594,13 +3593,13 @@
 +  tab.addEventListener('keydown', event => {
 +    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
 +    event.preventDefault();
-+    const next = event.key === 'Home' ? 'ios' : event.key === 'End' ? 'android' : os === 'ios' ? 'android' : 'ios';
++    const next = event.key === 'Home' ? 'android' : event.key === 'End' ? 'ios' : os === 'ios' ? 'android' : 'ios';
 +    selectPlatform(next);
 +    document.getElementById(`tab-${next}`).focus();
 +  });
 +});
 +const requested = new URLSearchParams(location.search).get('os');
-+const detected = /Android/i.test(navigator.userAgent) ? 'android' : 'ios';
++const detected = 'android';
 +selectPlatform(platforms.includes(requested) ? requested : detected);
 +fetch('/api/mobile-downloads', {credentials:'omit', cache:'no-store'})
 +  .then(response => { if (!response.ok) throw new Error('unavailable'); return response.json(); })
