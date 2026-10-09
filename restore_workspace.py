@@ -5,6 +5,9 @@ root=Path(__file__).resolve().parent
 m=json.loads((root/'WORKSPACE.json').read_text())
 update_groups=[]
 updated={}
+previous={}
+allowed_update_roots={'app','ai_worker','src','tests','infra','scripts','envs','docs'}
+allowed_update_files={'.env.example','docker-compose.yml','README.md','requirements-demo.lock.txt'}
 for name in ('RUNTIME_FIXES','CORE_FEATURE_FIXES'):
  updates_path=root/(name+'.json')
  if not updates_path.exists():continue
@@ -12,9 +15,10 @@ for name in ('RUNTIME_FIXES','CORE_FEATURE_FIXES'):
  patch=root/(name+'.patch')
  for f in updates['files']:
   p=Path(f['path'])
-  if p.is_absolute() or '..' in p.parts or not p.parts or (p.parts[0] not in {'app','src','tests','infra','scripts','envs'} and str(p) not in {'.env.example','docker-compose.yml','README.md'}):raise SystemExit('Unsafe update path')
+  if p.is_absolute() or '..' in p.parts or not p.parts or (p.parts[0] not in allowed_update_roots and str(p) not in allowed_update_files and not (p.parts[:2]==('models','registry') and p.suffix=='.json')):raise SystemExit('Unsafe update path')
   if f['path'] in updated:raise SystemExit('Overlapping runtime update path: '+f['path'])
   updated[f['path']]=f['after']
+  previous[f['path']]=f.get('previous')
  if updates['files'] and hashlib.sha256(patch.read_bytes()).hexdigest()!=updates['patch_sha256']:raise SystemExit('Runtime patch checksum mismatch: '+name)
  update_groups.append((name,updates,patch))
 expected={f['path']:f for f in m['files']}
@@ -35,10 +39,12 @@ with tempfile.TemporaryFile() as archive:
     while b:=src.read(1048576):h.update(b)
    digest=expected[member.name]['sha256']
    if h.hexdigest()!=digest:raise SystemExit('File mismatch: '+member.name)
-   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() not in {digest,updated.get(member.name)} and member.name not in {'README.md','DAILY.md','PREWORK.md','DAY_OF_WORK.md'}:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
+   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() not in {digest,updated.get(member.name),previous.get(member.name)} and member.name not in {'README.md','DAILY.md','PREWORK.md','DAY_OF_WORK.md'}:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
   for member in members:
    target=root/member.name;target.parent.mkdir(parents=True,exist_ok=True)
-   if target.exists():continue
+   if target.exists():
+    actual=hashlib.sha256(target.read_bytes()).hexdigest()
+    if actual != previous.get(member.name) or actual == updated.get(member.name):continue
    with t.extractfile(member) as src,target.open('wb') as dst:shutil.copyfileobj(src,dst)
 print('Verified workspace:',len(members),'files at repository root. Git history preserved.')
 
