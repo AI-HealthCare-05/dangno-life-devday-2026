@@ -6,9 +6,11 @@ m=json.loads((root/'WORKSPACE.json').read_text())
 updates_path=root/'RUNTIME_FIXES.json'
 updates=json.loads(updates_path.read_text()) if updates_path.exists() else {'files':[]}
 updated={f['path']:f['after'] for f in updates['files']}
+allowed_update_roots={'app','src','tests','infra','scripts','envs'}
+allowed_update_files={'.env.example','docker-compose.yml','README.md'}
 for f in updates['files']:
  p=Path(f['path'])
- if p.is_absolute() or '..' in p.parts or not p.parts or p.parts[0] not in {'app','src','tests'}:raise SystemExit('Unsafe update path')
+ if p.is_absolute() or '..' in p.parts or not p.parts or (p.parts[0] not in allowed_update_roots and str(p) not in allowed_update_files):raise SystemExit('Unsafe update path')
 patch=root/'RUNTIME_FIXES.patch'
 if updates['files'] and hashlib.sha256(patch.read_bytes()).hexdigest()!=updates['patch_sha256']:raise SystemExit('Runtime patch checksum mismatch')
 expected={f['path']:f for f in m['files']}
@@ -38,18 +40,17 @@ print('Verified workspace:',len(members),'files at repository root. Git history 
 
 if updates['files']:
  import subprocess
- states=[]
+ baseline=[]
  for f in updates['files']:
   target=root/f['path']
   actual=hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else None
-  if actual==f['after']:states.append('updated')
-  elif actual==f['before']:states.append('baseline')
+  if actual==f['after']:continue
+  elif actual==f['before']:baseline.append(f['path'])
   else:raise SystemExit('Local changes; refusing runtime update: '+f['path'])
- if set(states)=={'baseline'}:
-  includes=['--include='+f['path'] for f in updates['files']]
+ if baseline:
+  includes=['--include='+path for path in baseline]
   subprocess.run(['git','apply','--check',*includes,str(patch)],cwd=root,check=True)
   subprocess.run(['git','apply',*includes,str(patch)],cwd=root,check=True)
- elif set(states)!={'updated'}:raise SystemExit('Partial runtime update; refusing overwrite')
  for f in updates['files']:
   if hashlib.sha256((root/f['path']).read_bytes()).hexdigest()!=f['after']:raise SystemExit('Updated file checksum mismatch: '+f['path'])
  print('Verified runtime fixes:',len(updates['files']),'files.')

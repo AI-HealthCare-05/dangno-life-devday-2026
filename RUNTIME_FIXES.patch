@@ -288,3 +288,416 @@
 +        request = SimpleNamespace(token="synthetic", new_password="new", new_password_confirmation="new")
 +        self.assert_empty_response(await confirm_password_reset(request, service))
 +        service.reset_password.assert_awaited_once()
+
+diff --git a/app/apis/v1/challenge_v2_routers.py b/app/apis/v1/challenge_v2_routers.py
+index 50a6d7e..0dfcae3 100644
+--- a/app/apis/v1/challenge_v2_routers.py
++++ b/app/apis/v1/challenge_v2_routers.py
+@@ -10,7 +10,11 @@ from app.models.users import User
+ from app.services import challenge_v2 as service
+ from app.services import challenge_v2_evidence as evidence
+ 
+-challenge_v2_router = APIRouter(prefix="/challenge-v2", tags=["Challenge V2 pilot"])
++challenge_v2_router = APIRouter(
++    prefix="/challenge-v2",
++    tags=["Challenge V2 pilot (deprecated)"],
++    deprecated=True,
++)
+ 
+ 
+ async def active_user(user: Annotated[User, Depends(get_request_user)]):
+
+diff --git a/app/apis/v1/rag_routers.py b/app/apis/v1/rag_routers.py
+index ff13c01..dafd5b0 100644
+--- a/app/apis/v1/rag_routers.py
++++ b/app/apis/v1/rag_routers.py
+@@ -16,14 +16,14 @@ from fastapi import APIRouter, Depends
+ 
+ from app.apis.responses import envelope
+ from app.dependencies.security import get_request_user
+-from app.dtos.wellness import RagQuestionRequest
++from app.dtos.wellness import RagQuestionRequest, RagQuestionResponse
+ from app.models.users import User
+ from src.rag.engine import answer_with_sources
+ 
+ rag_router = APIRouter(tags=["Health education RAG"])
+ 
+ 
+-@rag_router.post("/health-education/questions")
++@rag_router.post("/health-education/questions", response_model=RagQuestionResponse)
+ async def ask_health_education(request: RagQuestionRequest, user: Annotated[User, Depends(get_request_user)]):
+     _ = user
+     result = await answer_with_sources(request.question)
+
+diff --git a/app/dtos/wellness.py b/app/dtos/wellness.py
+index bec7bba..4ef8690 100644
+--- a/app/dtos/wellness.py
++++ b/app/dtos/wellness.py
+@@ -1,9 +1,9 @@
+ from __future__ import annotations
+ 
+-from datetime import date
++from datetime import date, datetime
+ from typing import Literal
+ 
+-from pydantic import BaseModel, Field, model_validator
++from pydantic import BaseModel, Field, HttpUrl, model_validator
+ 
+ 
+ class WearableConnectionRequest(BaseModel):
+@@ -44,6 +44,36 @@ class RagQuestionRequest(BaseModel):
+     question: str = Field(min_length=2, max_length=500)
+ 
+ 
++class RagCitationResponse(BaseModel):
++    document_id: str
++    title: str
++    url: HttpUrl
++    checked_at: date
++
++
++class RagQuestionDataResponse(BaseModel):
++    answer: str
++    answer_status: Literal[
++        "grounded",
++        "insufficient_evidence",
++        "medical_safety_refusal",
++        "emergency_redirect",
++    ]
++    citations: list[RagCitationResponse]
++    retrieval_method: str
++    medical_notice: str
++
++
++class ResponseMeta(BaseModel):
++    request_id: str
++    timestamp: datetime
++
++
++class RagQuestionResponse(BaseModel):
++    data: RagQuestionDataResponse
++    meta: ResponseMeta
++
++
+ class QuizAnswerRequest(BaseModel):
+     answer: str = Field(min_length=1, max_length=100)
+
+diff --git a/app/main.py b/app/main.py
+index 361b828..00bf7f1 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,57 +1,15 @@
+-import asyncio
+-from contextlib import asynccontextmanager, suppress
+ from pathlib import Path
+ 
+ from fastapi import FastAPI, Request, Response, status
+ from fastapi.responses import FileResponse, RedirectResponse
+ from fastapi.staticfiles import StaticFiles
+-from redis.exceptions import RedisError
+-from tortoise import connections
+-from tortoise.exceptions import DBConnectionError, OperationalError
+ 
+ from app.apis.v1 import v1_routers
+-from app.core import config
+ from app.core.db.databases import initialize_tortoise
+-from app.core.redis import close_redis, redis_client
++from app.health import health_router
++from app.lifecycle import lifespan
+ from app.middleware.challenge_upload_limit import ChallengeUploadLimit
+ 
+-_DEPENDENCY_ERRORS = (RedisError, OperationalError, DBConnectionError)
+-
+-
+-async def _preload_embedded_demo_models() -> None:
+-    """Load and verify both approved artifacts before accepting demo traffic."""
+-    from app.prediction.providers import load_standard_model
+-    from src.ml.inference.diabetes_current_screening import load_current_screening_model
+-
+-    await asyncio.gather(
+-        asyncio.to_thread(load_standard_model),
+-        asyncio.to_thread(
+-            load_current_screening_model,
+-            manifest_path=Path(config.CURRENT_SCREENING_MANIFEST_URI),
+-            model_path=config.CURRENT_SCREENING_MODEL_URI,
+-        ),
+-    )
+-
+-
+-@asynccontextmanager
+-async def lifespan(_: FastAPI):
+-    if not config.DEMO_MODE:
+-        await redis_client.ping()
+-    if config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED:
+-        await _preload_embedded_demo_models()
+-    from app.services.challenge_v2_retention import retention_loop
+-
+-    retention = asyncio.create_task(retention_loop())
+-    try:
+-        yield
+-    finally:
+-        retention.cancel()
+-        with suppress(asyncio.CancelledError):
+-            await retention
+-    if not config.DEMO_MODE:
+-        await close_redis()
+-
+-
+ app = FastAPI(
+     docs_url="/api/docs",
+     redoc_url="/api/redoc",
+@@ -62,6 +20,7 @@ initialize_tortoise(app)
+ app.add_middleware(ChallengeUploadLimit)
+ 
+ app.include_router(v1_routers)
++app.include_router(health_router)
+ 
+ _SENSITIVE_REPORT_PATH_PREFIXES = ("/api/v1/reports", "/api/v1/weekly-reports")
+ 
+@@ -145,109 +104,3 @@ async def forest_service_worker() -> FileResponse:
+     response.headers["Cache-Control"] = "no-cache"
+     response.headers["Service-Worker-Allowed"] = "/forest"
+     return response
+-
+-
+-@app.get("/health", tags=["Health"])
+-async def liveness() -> dict[str, str]:
+-    return {"status": "ok"}
+-
+-
+-async def _dependency_status() -> tuple[bool, bool]:
+-    """Redis·DB 연결을 점검하고 (database_ok, redis_ok)를 반환한다.
+-
+-    연결 실패를 그대로 전파하면 헬스체크 엔드포인트 자체가 처리되지 않은 500으로
+-    죽는다. 여기서는 실패를 흡수해 호출자가 503과 함께 어떤 의존성이 죽었는지
+-    구조화된 형태로 응답할 수 있게 한다.
+-    """
+-    database_ok = True
+-    redis_ok = True
+-
+-    if not config.DEMO_MODE:
+-        try:
+-            await redis_client.ping()
+-        except _DEPENDENCY_ERRORS:
+-            redis_ok = False
+-
+-    try:
+-        await connections.get("default").execute_query("SELECT 1")
+-    except _DEPENDENCY_ERRORS:
+-        database_ok = False
+-
+-    return database_ok, redis_ok
+-
+-
+-@app.get("/api/health", tags=["Health"])
+-@app.get("/api/v1/health", tags=["Health"])
+-async def health(response: Response) -> dict[str, str]:
+-    database_ok, redis_ok = await _dependency_status()
+-    healthy = database_ok and redis_ok
+-    if not healthy:
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-    return {
+-        "status": "ok" if healthy else "degraded",
+-        "database": "ok" if database_ok else "unavailable",
+-        "redis": "embedded-demo" if config.DEMO_MODE else ("ok" if redis_ok else "unavailable"),
+-    }
+-
+-
+-@app.get("/api/v1/ready", tags=["Health"])
+-async def ready(response: Response) -> dict[str, object]:
+-    database_ok, redis_ok = await _dependency_status()
+-    if not (database_ok and redis_ok):
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-        return {
+-            "status": "not_ready",
+-            "dependencies": {
+-                "database": "ready" if database_ok else "unavailable",
+-                "redis": "embedded-demo" if config.DEMO_MODE else ("ready" if redis_ok else "unavailable"),
+-            },
+-        }
+-
+-    from app.prediction.contracts import ACTIVE_MODEL, CURRENT_SCREENING_MODEL
+-    from app.vision.food_vision import food_vision_is_configured
+-
+-    future_artifact_available = config.PREDICTION_PROVIDER != "artifact" or Path(config.MODEL_URI).is_file()
+-    current_artifact_path = (
+-        config.ML_SHARED8_MODEL_URI
+-        if config.CURRENT_SCREENING_RUNTIME == "shared8-waist"
+-        else config.CURRENT_SCREENING_MODEL_URI
+-    )
+-    current_artifact_available = bool(current_artifact_path) and Path(current_artifact_path).is_file()
+-    food_vision_ready = config.FOOD_VISION_PROVIDER != "local_kfood" or food_vision_is_configured()
+-    food_vision_vlm_fallback_ready = not config.OPENAI_VLM_FALLBACK_ENABLED or bool(config.OPENAI_API_KEY.strip())
+-    operational_ready = (
+-        (not ACTIVE_MODEL.operational_model_activated or future_artifact_available)
+-        and (not CURRENT_SCREENING_MODEL.operational_model_activated or current_artifact_available)
+-        and food_vision_ready
+-        and food_vision_vlm_fallback_ready
+-    )
+-    if not operational_ready:
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-
+-    return {
+-        "status": "ready" if operational_ready else "not_ready",
+-        "dependencies": {
+-            "database": "ready",
+-            "redis": "embedded-demo" if config.DEMO_MODE else "ready",
+-            "prediction_provider": config.PREDICTION_PROVIDER,
+-            "future_artifact_path_available": future_artifact_available,
+-            "current_artifact_path_available": current_artifact_available,
+-            "food_vision_ready": food_vision_ready,
+-            "food_vision_vlm_fallback_enabled": config.OPENAI_VLM_FALLBACK_ENABLED,
+-            "food_vision_vlm_fallback_ready": food_vision_vlm_fallback_ready,
+-            "demo_artifact_inference_enabled": config.DEMO_ARTIFACT_INFERENCE_ENABLED,
+-            "worker_preload_required_for_release": not (config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED),
+-        },
+-        "active_model": {
+-            "model_key": ACTIVE_MODEL.model_key,
+-            "version": ACTIVE_MODEL.version,
+-            "promotion_status": ACTIVE_MODEL.promotion_status,
+-        },
+-        "current_screening_model": {
+-            "model_key": CURRENT_SCREENING_MODEL.model_key,
+-            "version": CURRENT_SCREENING_MODEL.version,
+-            "runtime": config.CURRENT_SCREENING_RUNTIME,
+-            "promotion_status": CURRENT_SCREENING_MODEL.promotion_status,
+-            "operational_model_activated": CURRENT_SCREENING_MODEL.operational_model_activated,
+-        },
+-    }
+
+diff --git a/src/rag/engine.py b/src/rag/engine.py
+index c9240ee..9bc808e 100644
+--- a/src/rag/engine.py
++++ b/src/rag/engine.py
+@@ -5,7 +5,7 @@ from dataclasses import dataclass
+ 
+ from app.core import config
+ from src.rag.chunking import Chunk, split_into_chunks
+-from src.rag.embeddings import get_embedding_provider
++from src.rag.embeddings import EmbeddingError, get_embedding_provider
+ from src.rag.generation import AnswerGenerationError, get_generation_provider
+ from src.rag.retrieval import hybrid_search, top_chunks
+ from src.rag.verification import cited_document_ids, verify_sentences
+@@ -316,14 +316,21 @@ def _insufficient_evidence() -> dict[str, object]:
+ 
+ async def _hybrid_answer(question: str) -> dict[str, object]:
+     """②~⑥단계: 하이브리드 검색 → 관련도 검사 → 재정렬 → LLM 제한 생성 → 문장별 출처 검사."""
+-    embedding_provider = get_embedding_provider()
+-
+-    scored = await hybrid_search(
+-        question,
+-        chunks=ALL_CHUNKS,
+-        keyword_lookup=KEYWORDS_BY_DOCUMENT,
+-        embedding_provider=embedding_provider,
+-    )
++    try:
++        embedding_provider = get_embedding_provider()
++        scored = await hybrid_search(
++            question,
++            chunks=ALL_CHUNKS,
++            keyword_lookup=KEYWORDS_BY_DOCUMENT,
++            embedding_provider=embedding_provider,
++        )
++    except EmbeddingError:
++        return {
++            "answer": "지금은 근거를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.",
++            "answer_status": "insufficient_evidence",
++            "citations": [],
++            "retrieval_method": "hybrid_keyword_embedding_v2",
++        }
+     top_score = scored[0].combined_score if scored else 0.0
+     if top_score < config.HEALTH_EDUCATION_RELEVANCE_THRESHOLD:
+         return _insufficient_evidence()
+
+diff --git a/tests/test_production_deployment_assets.py b/tests/test_production_deployment_assets.py
+index cda26bb..4a654b8 100644
+--- a/tests/test_production_deployment_assets.py
++++ b/tests/test_production_deployment_assets.py
+@@ -39,3 +39,30 @@ def test_all_nginx_entrypoints_allow_photo_upload_multipart_overhead() -> None:
+     for config_path in configs:
+         config = (ROOT / config_path).read_text(encoding="utf-8")
+         assert "client_max_body_size 10m;" in config, config_path
++
++
++def test_nginx_serves_game_assets_directly_with_long_lived_cache() -> None:
++    configs = (
++        "infra/nginx/default.conf",
++        "infra/nginx/prod_http.conf",
++        "infra/nginx/prod_https.conf",
++        "infra/nginx/prod_http.conf.template",
++        "infra/nginx/prod_https.conf.template",
++        "infra/nginx/ec2-http.conf.template",
++    )
++    for config_path in configs:
++        config = (ROOT / config_path).read_text(encoding="utf-8")
++        assert "location /static/assets/" in config, config_path
++        assert "alias /usr/share/nginx/html/static/assets/;" in config, config_path
++        assert "expires 30d;" in config, config_path
++        assert "access_log off;" in config, config_path
++
++
++def test_release_build_includes_frontend_nginx_image() -> None:
++    dockerfile = (ROOT / "infra" / "nginx" / "Dockerfile").read_text(encoding="utf-8")
++    build_script = (ROOT / "scripts" / "build-release-images.sh").read_text(encoding="utf-8")
++    production_compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
++
++    assert "COPY ./src/frontend /usr/share/nginx/html/static" in dockerfile
++    assert 'web-$APP_VERSION' in build_script
++    assert ":web-${APP_VERSION" in production_compose
+
+diff --git a/tests/test_rag_health_education.py b/tests/test_rag_health_education.py
+index 064e609..9426e26 100644
+--- a/tests/test_rag_health_education.py
++++ b/tests/test_rag_health_education.py
+@@ -9,6 +9,7 @@ from __future__ import annotations
+ 
+ import pytest
+ 
++from app.dtos.wellness import RagQuestionResponse
+ from src.rag.engine import answer_with_sources
+ 
+ 
+@@ -52,3 +53,17 @@ async def test_rag_diet_and_complication_questions_are_grounded_in_new_documents
+     complications = await answer_with_sources("당뇨병 합병증으로 어떤 검진을 받아야 하나요?")
+     assert complications["answer_status"] == "grounded"
+     assert any(item["document_id"] == "kdca-diabetes-complications" for item in complications["citations"])
++
++
++def test_rag_response_model_documents_the_complete_envelope() -> None:
++    schema = RagQuestionResponse.model_json_schema()
++    data_schema = schema["$defs"]["RagQuestionDataResponse"]
++
++    assert set(data_schema["required"]) == {
++        "answer",
++        "answer_status",
++        "citations",
++        "retrieval_method",
++        "medical_notice",
++    }
++    assert set(schema["required"]) == {"data", "meta"}
+
+diff --git a/tests/test_rag_pipeline.py b/tests/test_rag_pipeline.py
+index ac1c84b..bf2f98c 100644
+--- a/tests/test_rag_pipeline.py
++++ b/tests/test_rag_pipeline.py
+@@ -125,6 +125,20 @@ def test_openai_embedding_provider_requires_api_key(monkeypatch: pytest.MonkeyPa
+         OpenAIEmbeddingProvider()
+ 
+ 
++@pytest.mark.asyncio
++async def test_engine_fails_closed_when_embedding_provider_is_unavailable(monkeypatch: pytest.MonkeyPatch):
++    async def unavailable_search(*args: object, **kwargs: object):
++        del args, kwargs
++        raise EmbeddingError("provider unavailable")
++
++    monkeypatch.setattr(engine, "hybrid_search", unavailable_search)
++    result = await engine.answer_with_sources("당뇨병 운동 방법을 알려주세요")
++
++    assert result["answer_status"] == "insufficient_evidence"
++    assert result["citations"] == []
++    assert "잠시 후" in result["answer"]
++
++
+ class _FakeEmbeddingsAsyncClient:
+     def __init__(self, *args: object, **kwargs: object) -> None:
+         del args, kwargs
