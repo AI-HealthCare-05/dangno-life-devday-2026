@@ -1,0 +1,30 @@
+{
+  "patch_sha256": "d844522c4887a552915763ffbdf2c95f60ac0eb451aa1ad709879e2606a789ef",
+  "files": [
+    {
+      "path": "app/ocr/clova.py",
+      "before": "c430726255a5005abc7ec14d31c148950b59f69942a909ca08d52e9d628ee355",
+      "after": "35b852df92f1e30cd9e3011fd1f3e4430f326f47d5e34717c809178803baab86"
+    },
+    {
+      "path": "app/ocr/claude.py",
+      "before": "a447861072b5b7e1e70991898a914ba9e4f0e45a4f095586c61952313f72ef0a",
+      "after": "14982e1c69608b81f9921660416bbb8c1a5f29fa897cb965c91d56c768c2f4f0"
+    },
+    {
+      "path": "app/services/wellness.py",
+      "before": "fe1e6511fa3c3f86ed9a144d94bc8e18e9a981b233036d0b59214703a0bba193",
+      "after": "33c07083d8d94cc606a4debacb389b6da17090d77e544b8d8b17668c84342aed"
+    },
+    {
+      "path": "src/rag/embeddings.py",
+      "before": "df6de8806b9b532c77859b46c28669dff88a24352d9eb03540c533d4fa08ec9b",
+      "after": "2969d91401ae8f09e69f0ae294e6e212b98d7de520742c40b8ceab794af40bf5"
+    },
+    {
+      "path": "tests/test_core_feature_resilience.py",
+      "before": null,
+      "after": "bb8e3299cf5ef3e999a69bf910bb69bce6694ef9ef3cd629ba5015b7a6b9a887"
+    }
+  ]
+}

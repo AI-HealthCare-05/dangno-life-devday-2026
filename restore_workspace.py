@@ -3,17 +3,24 @@ from pathlib import Path
 import hashlib,json,tarfile,tempfile,shutil
 root=Path(__file__).resolve().parent
 m=json.loads((root/'WORKSPACE.json').read_text())
-updates_path=root/'RUNTIME_FIXES.json'
-updates=json.loads(updates_path.read_text()) if updates_path.exists() else {'files':[]}
-updated={f['path']:f['after'] for f in updates['files']}
-previous={f['path']:f.get('previous') for f in updates['files']}
+update_groups=[]
+updated={}
+previous={}
 allowed_update_roots={'app','ai_worker','src','tests','infra','scripts','envs','docs'}
 allowed_update_files={'.env.example','docker-compose.yml','README.md','requirements-demo.lock.txt'}
-for f in updates['files']:
- p=Path(f['path'])
- if p.is_absolute() or '..' in p.parts or not p.parts or (p.parts[0] not in allowed_update_roots and str(p) not in allowed_update_files and not (p.parts[:2]==('models','registry') and p.suffix=='.json')):raise SystemExit('Unsafe update path')
-patch=root/'RUNTIME_FIXES.patch'
-if updates['files'] and hashlib.sha256(patch.read_bytes()).hexdigest()!=updates['patch_sha256']:raise SystemExit('Runtime patch checksum mismatch')
+for name in ('RUNTIME_FIXES','CORE_FEATURE_FIXES'):
+ updates_path=root/(name+'.json')
+ if not updates_path.exists():continue
+ updates=json.loads(updates_path.read_text())
+ patch=root/(name+'.patch')
+ for f in updates['files']:
+  p=Path(f['path'])
+  if p.is_absolute() or '..' in p.parts or not p.parts or (p.parts[0] not in allowed_update_roots and str(p) not in allowed_update_files and not (p.parts[:2]==('models','registry') and p.suffix=='.json')):raise SystemExit('Unsafe update path')
+  if f['path'] in updated:raise SystemExit('Overlapping runtime update path: '+f['path'])
+  updated[f['path']]=f['after']
+  previous[f['path']]=f.get('previous')
+ if updates['files'] and hashlib.sha256(patch.read_bytes()).hexdigest()!=updates['patch_sha256']:raise SystemExit('Runtime patch checksum mismatch: '+name)
+ update_groups.append((name,updates,patch))
 expected={f['path']:f for f in m['files']}
 with tempfile.TemporaryFile() as archive:
  for part in m['parts']:
@@ -41,7 +48,8 @@ with tempfile.TemporaryFile() as archive:
    with t.extractfile(member) as src,target.open('wb') as dst:shutil.copyfileobj(src,dst)
 print('Verified workspace:',len(members),'files at repository root. Git history preserved.')
 
-if updates['files']:
+for name,updates,patch in update_groups:
+ if not updates['files']:continue
  import subprocess
  baseline=[]
  for f in updates['files']:
@@ -56,4 +64,4 @@ if updates['files']:
   subprocess.run(['git','apply',*includes,str(patch)],cwd=root,check=True)
  for f in updates['files']:
   if hashlib.sha256((root/f['path']).read_bytes()).hexdigest()!=f['after']:raise SystemExit('Updated file checksum mismatch: '+f['path'])
- print('Verified runtime fixes:',len(updates['files']),'files.')
+ print('Verified runtime fixes:',name,len(updates['files']),'files.')

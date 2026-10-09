@@ -1,0 +1,194 @@
+--- a/app/ocr/clova.py
++++ b/app/ocr/clova.py
+@@ -81,4 +81,10 @@
+             raise ClovaOcrError(f"OCR 서비스가 요청을 처리하지 못했습니다({exc.response.status_code}).") from exc
+         except httpx.HTTPError as exc:
+             raise ClovaOcrError("OCR 서비스에 연결할 수 없습니다.") from exc
+-        return self._parse_text(response.json())
++        try:
++            payload = response.json()
++        except ValueError as exc:
++            raise ClovaOcrError("OCR 응답 형식을 해석하지 못했습니다.") from exc
++        if not isinstance(payload, dict):
++            raise ClovaOcrError("OCR 응답 형식을 해석하지 못했습니다.")
++        return self._parse_text(payload)
+--- a/app/ocr/claude.py
++++ b/app/ocr/claude.py
+@@ -124,4 +124,10 @@
+             ) from exc
+         except httpx.HTTPError as exc:
+             raise OcrProviderError("Claude OCR 서비스에 연결할 수 없습니다.") from exc
+-        return self._parse_text(response.json())
++        try:
++            payload = response.json()
++        except ValueError as exc:
++            raise OcrProviderError("Claude OCR 응답 형식을 해석하지 못했습니다.") from exc
++        if not isinstance(payload, dict):
++            raise OcrProviderError("Claude OCR 응답 형식을 해석하지 못했습니다.")
++        return self._parse_text(payload)
+--- a/app/services/wellness.py
++++ b/app/services/wellness.py
+@@ -15,7 +15,7 @@
+     WearableImportRequest,
+ )
+ from app.models.users import User
+-from app.ocr.providers import get_health_checkup_ocr_provider
++from app.ocr.providers import OcrProviderError, get_health_checkup_ocr_provider
+ from app.repositories.health_repository import HealthRepository
+ from app.repositories.wellness_repository import WellnessRepository
+ from src.ocr.health_checkup_2025 import extract_health_checkup_fields
+@@ -301,9 +301,12 @@
+             content_type=content_type,
+             content=content,
+         )
++        extracted = extract_health_checkup_fields(text)
++        if not any(key in ALLOWED_OCR_FIELDS for key in extracted):
++            raise OcrProviderError("검진 수치를 찾지 못했습니다. 원문이 선명한 사진으로 다시 시도하거나 직접 입력해 주세요.")
+         return await self.ocr_draft(
+             user,
+-            OcrDraftRequest(document_name=document_name, ocr_text=text),
++            OcrDraftRequest(document_name=document_name, extracted_fields=extracted),
+             provider=provider.provider_kind,
+         )
+ 
+--- a/src/rag/embeddings.py
++++ b/src/rag/embeddings.py
+@@ -83,8 +83,22 @@
+         try:
+             body = response.json()
+             items = sorted(body["data"], key=lambda item: item["index"])
+-            return [item["embedding"] for item in items]
+-        except (KeyError, IndexError, TypeError, ValueError) as exc:
++            if len(items) != len(texts) or any(
++                type(item["index"]) is not int or item["index"] != index
++                for index, item in enumerate(items)
++            ):
++                raise ValueError("Embedding response indexes do not match the input")
++            vectors = [item["embedding"] for item in items]
++            dimensions = len(vectors[0]) if isinstance(vectors[0], list) else 0
++            if not dimensions or any(
++                not isinstance(vector, list)
++                or len(vector) != dimensions
++                or any(type(value) not in (int, float) or not math.isfinite(value) for value in vector)
++                for vector in vectors
++            ):
++                raise ValueError("Embedding response contains invalid vectors")
++            return vectors
++        except (KeyError, IndexError, TypeError, ValueError, OverflowError) as exc:
+             raise EmbeddingError("임베딩 결과를 해석하지 못했습니다.") from exc
+ 
+ 
+--- /dev/null
++++ b/tests/test_core_feature_resilience.py
+@@ -0,0 +1,111 @@
++"""External-provider failures must remain safe without network calls or real keys."""
++
++import httpx
++import pytest
++from types import SimpleNamespace
++
++from app.core import config
++from app.ocr.claude import ClaudeOcrProvider
++from app.ocr.clova import ClovaOcrProvider
++from app.ocr.providers import OcrProviderError
++from app.services import wellness
++from src.rag import engine
++from src.rag.embeddings import EmbeddingError, OpenAIEmbeddingProvider
++from src.rag.retrieval import ScoredChunk
++
++
++def mock_client(monkeypatch, *, payload=None, non_json=False):
++    class Response:
++        def raise_for_status(self):
++            pass
++
++        def json(self):
++            if non_json:
++                raise ValueError("upstream returned HTML")
++            return payload
++
++    class Client:
++        def __init__(self, *args, **kwargs):
++            pass
++
++        async def __aenter__(self):
++            return self
++
++        async def __aexit__(self, *args):
++            pass
++
++        async def post(self, *args, **kwargs):
++            return Response()
++
++    monkeypatch.setattr(httpx, "AsyncClient", Client)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("phase", ["configuration", "retrieval"])
++async def test_rag_embedding_failure_defers_without_provider_details(monkeypatch, phase):
++    def broken_provider():
++        raise EmbeddingError("private provider error details")
++
++    async def broken_search(*args, **kwargs):
++        raise EmbeddingError("private provider error details")
++
++    if phase == "configuration":
++        monkeypatch.setattr(engine, "get_embedding_provider", broken_provider)
++    else:
++        monkeypatch.setattr(engine, "hybrid_search", broken_search)
++    result = await engine.answer_with_sources("당뇨 예방을 위한 식사 습관")
++    assert result["answer_status"] == "insufficient_evidence"
++    assert result["citations"] == []
++    assert "private" not in result["answer"]
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("data", [
++    [],
++    [{"index": 0, "embedding": [1.0]}],
++    [{"index": 0, "embedding": [1.0]}, {"index": 0, "embedding": [1.0]}],
++    [{"index": False, "embedding": [1.0]}, {"index": 1, "embedding": [1.0]}],
++    [{"index": 0, "embedding": []}, {"index": 1, "embedding": []}],
++    [{"index": 0, "embedding": [float("nan")]}, {"index": 1, "embedding": [1.0]}],
++    [{"index": 0, "embedding": [True]}, {"index": 1, "embedding": [1.0]}],
++    [{"index": 0, "embedding": [10 ** 400]}, {"index": 1, "embedding": [1.0]}],
++    [{"index": 0, "embedding": [1.0]}, {"index": 1, "embedding": [1.0, 2.0]}],
++])
++async def test_invalid_embedding_response_is_a_provider_failure(monkeypatch, data):
++    monkeypatch.setattr(config, "OPENAI_API_KEY", "test-only-placeholder")
++    mock_client(monkeypatch, payload={"data": data})
++    with pytest.raises(EmbeddingError):
++        await OpenAIEmbeddingProvider().embed(["synthetic-a", "synthetic-b"])
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("provider_type", [ClovaOcrProvider, ClaudeOcrProvider])
++@pytest.mark.parametrize("payload,non_json", [(None, True), ([], False), ("not an object", False)])
++async def test_malformed_ocr_response_uses_existing_failure_contract(monkeypatch, provider_type, payload, non_json):
++    monkeypatch.setattr(config, "CLOVA_OCR_URL", "https://example.test/ocr")
++    monkeypatch.setattr(config, "CLOVA_OCR_SECRET", "test-only-placeholder")
++    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "test-only-placeholder")
++    mock_client(monkeypatch, payload=payload, non_json=non_json)
++    with pytest.raises(OcrProviderError, match="응답 형식"):
++        await provider_type().extract_text(file_name="synthetic.png", content_type="image/png", content=b"synthetic")
++
++
++@pytest.mark.asyncio
++async def test_ocr_image_without_health_fields_never_creates_empty_draft(monkeypatch):
++    class Provider:
++        provider_kind = "test_ocr"
++
++        async def extract_text(self, **kwargs):
++            return "글자는 읽혔지만 검진 수치가 없는 합성 문서"
++
++    monkeypatch.setattr(wellness, "get_health_checkup_ocr_provider", Provider)
++    service = wellness.WellnessService()
++
++    async def must_not_save(*args, **kwargs):
++        raise AssertionError("An empty OCR draft must not be saved")
++
++    monkeypatch.setattr(service.repo, "create_ocr_draft", must_not_save)
++    with pytest.raises(OcrProviderError, match="직접 입력"):
++        await service.ocr_draft_from_image(
++            SimpleNamespace(id=1), document_name="synthetic.png", content_type="image/png", content=b"synthetic"
++        )
