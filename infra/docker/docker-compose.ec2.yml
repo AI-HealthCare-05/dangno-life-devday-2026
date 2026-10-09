@@ -1,0 +1,125 @@
+name: ah-05-02
+
+# EC2 release configuration.
+# Run with: docker compose --env-file .env -f infra/docker/docker-compose.ec2.yml up -d
+# The application images are built and pushed before this file is used.  Source code,
+# raw data, and model binaries are never copied into the repository as part of a release.
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - healthcare
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --port=${DB_PORT:-3306}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - healthcare
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  fastapi:
+    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:app-${APP_VERSION}
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      DB_GENERATE_SCHEMAS: "true"
+    command: ["sh", "app/start-fastapi.sh", "--workers", "3"]
+    # Model files are provisioned separately on the EC2 host and are never committed.
+    volumes:
+      - ../../models:/app/models:ro
+      - food_vision_cache:/app/storage/food_vision
+    networks:
+      - healthcare
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  ai-worker:
+    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:ai-${AI_WORKER_VERSION}
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    command: ["uv", "run", "--no-sync", "python", "-m", "ai_worker.main"]
+    mem_limit: 4g
+    volumes:
+      - ../../models:/app/models:ro
+      - model_cache:/app/storage/cache
+    networks:
+      - healthcare
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ai-worker-ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  nginx:
+    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:web-${APP_VERSION}
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME}
+      # Keep Nginx variables such as $host untouched when the template is rendered.
+      NGINX_ENVSUBST_FILTER: SERVER_NAME
+    volumes:
+      - ../nginx/ec2-http.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "80:80"
+    networks:
+      - healthcare
+    depends_on:
+      fastapi:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  redis_data:
+  model_cache:
+  food_vision_cache:
+
+networks:
+  healthcare:
+    driver: bridge
