@@ -288,3 +288,179 @@
 +        request = SimpleNamespace(token="synthetic", new_password="new", new_password_confirmation="new")
 +        self.assert_empty_response(await confirm_password_reset(request, service))
 +        service.reset_password.assert_awaited_once()
+
+diff --git a/app/apis/v1/rag_routers.py b/app/apis/v1/rag_routers.py
+index ff13c01..dafd5b0 100644
+--- a/app/apis/v1/rag_routers.py
++++ b/app/apis/v1/rag_routers.py
+@@ -16,14 +16,14 @@ from fastapi import APIRouter, Depends
+ 
+ from app.apis.responses import envelope
+ from app.dependencies.security import get_request_user
+-from app.dtos.wellness import RagQuestionRequest
++from app.dtos.wellness import RagQuestionRequest, RagQuestionResponse
+ from app.models.users import User
+ from src.rag.engine import answer_with_sources
+ 
+ rag_router = APIRouter(tags=["Health education RAG"])
+ 
+ 
+-@rag_router.post("/health-education/questions")
++@rag_router.post("/health-education/questions", response_model=RagQuestionResponse)
+ async def ask_health_education(request: RagQuestionRequest, user: Annotated[User, Depends(get_request_user)]):
+     _ = user
+     result = await answer_with_sources(request.question)
+
+diff --git a/app/dtos/wellness.py b/app/dtos/wellness.py
+index bec7bba..4ef8690 100644
+--- a/app/dtos/wellness.py
++++ b/app/dtos/wellness.py
+@@ -1,9 +1,9 @@
+ from __future__ import annotations
+ 
+-from datetime import date
++from datetime import date, datetime
+ from typing import Literal
+ 
+-from pydantic import BaseModel, Field, model_validator
++from pydantic import BaseModel, Field, HttpUrl, model_validator
+ 
+ 
+ class WearableConnectionRequest(BaseModel):
+@@ -44,6 +44,36 @@ class RagQuestionRequest(BaseModel):
+     question: str = Field(min_length=2, max_length=500)
+ 
+ 
++class RagCitationResponse(BaseModel):
++    document_id: str
++    title: str
++    url: HttpUrl
++    checked_at: date
++
++
++class RagQuestionDataResponse(BaseModel):
++    answer: str
++    answer_status: Literal[
++        "grounded",
++        "insufficient_evidence",
++        "medical_safety_refusal",
++        "emergency_redirect",
++    ]
++    citations: list[RagCitationResponse]
++    retrieval_method: str
++    medical_notice: str
++
++
++class ResponseMeta(BaseModel):
++    request_id: str
++    timestamp: datetime
++
++
++class RagQuestionResponse(BaseModel):
++    data: RagQuestionDataResponse
++    meta: ResponseMeta
++
++
+ class QuizAnswerRequest(BaseModel):
+     answer: str = Field(min_length=1, max_length=100)
+
+diff --git a/src/rag/engine.py b/src/rag/engine.py
+index c9240ee..9bc808e 100644
+--- a/src/rag/engine.py
++++ b/src/rag/engine.py
+@@ -5,7 +5,7 @@ from dataclasses import dataclass
+ 
+ from app.core import config
+ from src.rag.chunking import Chunk, split_into_chunks
+-from src.rag.embeddings import get_embedding_provider
++from src.rag.embeddings import EmbeddingError, get_embedding_provider
+ from src.rag.generation import AnswerGenerationError, get_generation_provider
+ from src.rag.retrieval import hybrid_search, top_chunks
+ from src.rag.verification import cited_document_ids, verify_sentences
+@@ -316,14 +316,21 @@ def _insufficient_evidence() -> dict[str, object]:
+ 
+ async def _hybrid_answer(question: str) -> dict[str, object]:
+     """②~⑥단계: 하이브리드 검색 → 관련도 검사 → 재정렬 → LLM 제한 생성 → 문장별 출처 검사."""
+-    embedding_provider = get_embedding_provider()
+-
+-    scored = await hybrid_search(
+-        question,
+-        chunks=ALL_CHUNKS,
+-        keyword_lookup=KEYWORDS_BY_DOCUMENT,
+-        embedding_provider=embedding_provider,
+-    )
++    try:
++        embedding_provider = get_embedding_provider()
++        scored = await hybrid_search(
++            question,
++            chunks=ALL_CHUNKS,
++            keyword_lookup=KEYWORDS_BY_DOCUMENT,
++            embedding_provider=embedding_provider,
++        )
++    except EmbeddingError:
++        return {
++            "answer": "지금은 근거를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.",
++            "answer_status": "insufficient_evidence",
++            "citations": [],
++            "retrieval_method": "hybrid_keyword_embedding_v2",
++        }
+     top_score = scored[0].combined_score if scored else 0.0
+     if top_score < config.HEALTH_EDUCATION_RELEVANCE_THRESHOLD:
+         return _insufficient_evidence()
+
+diff --git a/tests/test_rag_health_education.py b/tests/test_rag_health_education.py
+index 064e609..9426e26 100644
+--- a/tests/test_rag_health_education.py
++++ b/tests/test_rag_health_education.py
+@@ -9,6 +9,7 @@ from __future__ import annotations
+ 
+ import pytest
+ 
++from app.dtos.wellness import RagQuestionResponse
+ from src.rag.engine import answer_with_sources
+ 
+ 
+@@ -52,3 +53,17 @@ async def test_rag_diet_and_complication_questions_are_grounded_in_new_documents
+     complications = await answer_with_sources("당뇨병 합병증으로 어떤 검진을 받아야 하나요?")
+     assert complications["answer_status"] == "grounded"
+     assert any(item["document_id"] == "kdca-diabetes-complications" for item in complications["citations"])
++
++
++def test_rag_response_model_documents_the_complete_envelope() -> None:
++    schema = RagQuestionResponse.model_json_schema()
++    data_schema = schema["$defs"]["RagQuestionDataResponse"]
++
++    assert set(data_schema["required"]) == {
++        "answer",
++        "answer_status",
++        "citations",
++        "retrieval_method",
++        "medical_notice",
++    }
++    assert set(schema["required"]) == {"data", "meta"}
+
+diff --git a/tests/test_rag_pipeline.py b/tests/test_rag_pipeline.py
+index ac1c84b..bf2f98c 100644
+--- a/tests/test_rag_pipeline.py
++++ b/tests/test_rag_pipeline.py
+@@ -125,6 +125,20 @@ def test_openai_embedding_provider_requires_api_key(monkeypatch: pytest.MonkeyPa
+         OpenAIEmbeddingProvider()
+ 
+ 
++@pytest.mark.asyncio
++async def test_engine_fails_closed_when_embedding_provider_is_unavailable(monkeypatch: pytest.MonkeyPatch):
++    async def unavailable_search(*args: object, **kwargs: object):
++        del args, kwargs
++        raise EmbeddingError("provider unavailable")
++
++    monkeypatch.setattr(engine, "hybrid_search", unavailable_search)
++    result = await engine.answer_with_sources("당뇨병 운동 방법을 알려주세요")
++
++    assert result["answer_status"] == "insufficient_evidence"
++    assert result["citations"] == []
++    assert "잠시 후" in result["answer"]
++
++
+ class _FakeEmbeddingsAsyncClient:
+     def __init__(self, *args: object, **kwargs: object) -> None:
+         del args, kwargs
