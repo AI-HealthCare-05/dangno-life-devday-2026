@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "315e7e2667f3d4558436ec2aa57a50b83ab229e68ef7646302a9b81fb10ab8cb",
+  "patch_sha256": "e5dd37f552d214215c5f5b544d89e2f576108b1aa629b5445941c3b985460336",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -296,12 +296,12 @@
     {
       "path": "src/frontend/mobile-downloads.html",
       "before": null,
-      "after": "82793a462aff83a5f20a2ba9c0b6b34ac65c29b61c8a141aa4bce68a05e184ee"
+      "after": "8b83a441779d7811b36c0c3179d13352fabbe9034c1511c826b10d3f932cc1cb"
     },
     {
       "path": "src/frontend/mobile-downloads.css",
       "before": null,
-      "after": "63bc7028fdca050a63915aca5188a769f05d1f91009ee4ad5370b20b937b9cdd"
+      "after": "d524c7d576c17cace653896bc1f1b91f7ee970af04857cc873c36151812d2bbf"
     },
     {
       "path": "src/frontend/mobile-downloads.js",
