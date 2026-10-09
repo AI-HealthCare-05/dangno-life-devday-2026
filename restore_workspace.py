@@ -3,6 +3,14 @@ from pathlib import Path
 import hashlib,json,tarfile,tempfile,shutil
 root=Path(__file__).resolve().parent
 m=json.loads((root/'WORKSPACE.json').read_text())
+updates_path=root/'RUNTIME_FIXES.json'
+updates=json.loads(updates_path.read_text()) if updates_path.exists() else {'files':[]}
+updated={f['path']:f['after'] for f in updates['files']}
+for f in updates['files']:
+ p=Path(f['path'])
+ if p.is_absolute() or '..' in p.parts or not p.parts or p.parts[0] not in {'app','src','tests'}:raise SystemExit('Unsafe update path')
+patch=root/'RUNTIME_FIXES.patch'
+if updates['files'] and hashlib.sha256(patch.read_bytes()).hexdigest()!=updates['patch_sha256']:raise SystemExit('Runtime patch checksum mismatch')
 expected={f['path']:f for f in m['files']}
 with tempfile.TemporaryFile() as archive:
  for part in m['parts']:
@@ -21,9 +29,27 @@ with tempfile.TemporaryFile() as archive:
     while b:=src.read(1048576):h.update(b)
    digest=expected[member.name]['sha256']
    if h.hexdigest()!=digest:raise SystemExit('File mismatch: '+member.name)
-   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest()!=digest and member.name not in {'README.md','DAILY.md','PREWORK.md','DAY_OF_WORK.md'}:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
+   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() not in {digest,updated.get(member.name)} and member.name not in {'README.md','DAILY.md','PREWORK.md','DAY_OF_WORK.md'}:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
   for member in members:
    target=root/member.name;target.parent.mkdir(parents=True,exist_ok=True)
    if target.exists():continue
    with t.extractfile(member) as src,target.open('wb') as dst:shutil.copyfileobj(src,dst)
 print('Verified workspace:',len(members),'files at repository root. Git history preserved.')
+
+if updates['files']:
+ import subprocess
+ states=[]
+ for f in updates['files']:
+  target=root/f['path']
+  actual=hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else None
+  if actual==f['after']:states.append('updated')
+  elif actual==f['before']:states.append('baseline')
+  else:raise SystemExit('Local changes; refusing runtime update: '+f['path'])
+ if set(states)=={'baseline'}:
+  includes=['--include='+f['path'] for f in updates['files']]
+  subprocess.run(['git','apply','--check',*includes,str(patch)],cwd=root,check=True)
+  subprocess.run(['git','apply',*includes,str(patch)],cwd=root,check=True)
+ elif set(states)!={'updated'}:raise SystemExit('Partial runtime update; refusing overwrite')
+ for f in updates['files']:
+  if hashlib.sha256((root/f['path']).read_bytes()).hexdigest()!=f['after']:raise SystemExit('Updated file checksum mismatch: '+f['path'])
+ print('Verified runtime fixes:',len(updates['files']),'files.')

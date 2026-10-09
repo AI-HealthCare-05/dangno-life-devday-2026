@@ -1,0 +1,290 @@
+--- a/src/frontend/app.js
++++ b/src/frontend/app.js
+@@ -3860,6 +3860,9 @@
+ }
+ 
+ function renderTodayTaskStatus() {
++  const rewardAction = $("#claim-daily-reward");
++  if (rewardAction) rewardAction.hidden = !hasCurrentChallengeCycle()
++    || ["loading", "error"].includes(state.dailyRecordsStatus) || !allDailyChallengesCompleted();
+   const title = $("#today-task-title");
+   const description = $("#today-task-description");
+   const action = $("#today-record-action");
+@@ -4115,7 +4118,7 @@
+ 
+ function allDailyChallengesCompleted() {
+   const required = dailyChallengeTargetCount();
+-  return required > 0 && state.dailyCompleted.size >= required;
++  return required > 0 && state.cycle.user_challenges.every(item => state.dailyCompleted.has(String(item.user_challenge_id)));
+ }
+ 
+ function closeChallengeRewardDialog() {
+@@ -4124,8 +4127,9 @@
+ }
+ 
+ function openChallengeRewardDialog(reward = {}) {
+-  const amount = Number(reward.carrot_amount) || 55;
+-  $("#challenge-reward-amount").textContent = `+${amount} 당근`;
++  const amount = Number(reward.carrot_amount);
++  $("#challenge-reward-amount").textContent = reward.already_claimed
++    ? "오늘 보상 지급 완료" : Number.isFinite(amount) ? `+${amount} 당근` : "오늘 보상 지급 완료";
+   $("#challenge-reward-copy").textContent = reward.already_claimed
+     ? "오늘 보상은 이미 받았어요. 숲에서 보유 당근을 확인할 수 있습니다."
+     : "오늘의 실천 보상이 지급됐어요. 당근의 숲에서 확인해 보세요.";
+@@ -4142,15 +4146,26 @@
+ async function maybeOpenDailyReward() {
+   if (!allDailyChallengesCompleted()) return;
+   const today = challengeDay();
++  if (state.dailyRewardRequest?.token === state.token
++    && state.dailyRewardRequest?.cycle === state.cycle && state.dailyRewardRequest?.day === today) return;
+   if (isLocalPreview()) {
+     openChallengeRewardDialog({ carrot_amount: 55 });
+     return;
+   }
++  const token = state.token;
++  const cycle = state.cycle;
++  const request = {token, cycle, day: today};
++  state.dailyRewardRequest = request;
++  const isCurrent = () => state.token === token && state.cycle === cycle && challengeDay() === today;
+   try {
+-    openChallengeRewardDialog(await api(`/challenge-rewards/daily/${today}`, { method: "POST" }));
++    const reward = await api(`/challenge-rewards/daily/${today}`, { method: "POST" });
++    if (isCurrent()) openChallengeRewardDialog(reward);
+   } catch (error) {
++    if (!isCurrent()) return;
+     if (error.status === 409) return showMessage("오늘 챌린지를 모두 완료하면 보상을 받을 수 있어요.");
+-    showMessage(error.message || "보상 화면을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
++    showMessage("실천 기록은 저장됐지만 보상을 확인하지 못했어요. ‘오늘 보상 확인하기’를 눌러 다시 시도해 주세요.");
++  } finally {
++    if (state.dailyRewardRequest === request) state.dailyRewardRequest = null;
+   }
+ }
+ 
+@@ -4176,8 +4191,8 @@
+   renderDailyRecordList();
+   updateDailyRecordSummary();
+   if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
++  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
+   if (allDailyChallengesCompleted()) await maybeOpenDailyReward();
+-  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
+ }
+ 
+ async function undoDailyRecord(target) {
+@@ -6956,7 +6971,12 @@
+   showPhotoRecordState("photo-state-success");
+ }));
+ $("#close-photo-success").addEventListener("click", async (event) => {
+-  if (state.recordTarget?.item?.catalog_version === "evidence-v3") { closeRecordModal(); return; }
++  if (state.recordTarget?.item?.catalog_version === "evidence-v3") {
++    const saved = state.recordTarget.saved === true;
++    closeRecordModal();
++    if (saved) await maybeOpenDailyReward();
++    return;
++  }
+   const releaseBusy = setButtonBusy(event.currentTarget, "기록 저장 중…");
+   try {
+     const target = state.recordTarget;
+@@ -6964,6 +6984,11 @@
+     closeRecordModal();
+     await completeDailyRecord(target, source);
+   } catch (error) { showMessage(error.message); }
++  finally { releaseBusy(); }
++});
++$("#claim-daily-reward")?.addEventListener("click", async (event) => {
++  const releaseBusy = setButtonBusy(event.currentTarget, "보상 확인 중…");
++  try { await maybeOpenDailyReward(); }
+   finally { releaseBusy(); }
+ });
+ $("#daily-log-form")?.addEventListener("submit", async (event) => {
+--- a/src/frontend/index.html
++++ b/src/frontend/index.html
+@@ -817,6 +817,7 @@
+         <section class="workspace-panel" id="workspace-panel-challenge" role="region" tabindex="-1" data-workspace-panel="challenge" aria-label="챌린지" hidden>
+           <section class="daily-record-panel" aria-labelledby="daily-record-title">
+             <h4 id="daily-record-title">오늘 기록할 항목</h4>
++            <button type="button" class="secondary" id="claim-daily-reward" hidden>오늘 보상 확인하기</button>
+             <div id="daily-log-list" class="daily-record-list"><article class="daily-record-empty daily-record-empty-selection"><strong>기록할 챌린지가 없습니다</strong><p>챌린지를 선택하고 오늘의 실천을 시작해 보세요.</p><button type="button" class="primary daily-record-select">생활습관 챌린지 선택하기</button></article></div>
+           </section>
+           <div id="record-modal" class="record-modal" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
+--- a/app/apis/v1/auth_routers.py
++++ b/app/apis/v1/auth_routers.py
+@@ -4,6 +4,7 @@
+ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, status
+ from fastapi.encoders import jsonable_encoder
+ from fastapi.responses import JSONResponse as Response
++from fastapi.responses import Response as EmptyResponse
+ 
+ from app.apis.responses import envelope
+ from app.core import config
+@@ -83,7 +84,7 @@
+ 
+ @auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+ async def logout(_: Annotated[User, Depends(get_request_user)]) -> Response:
+-    response = Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
++    response = EmptyResponse(status_code=status.HTTP_204_NO_CONTENT)
+     response.delete_cookie(key="refresh_token", domain=config.COOKIE_DOMAIN or None)
+     return response
+ 
+@@ -97,7 +98,7 @@
+     await auth_service.change_password(
+         user, request.current_password, request.new_password, request.new_password_confirmation
+     )
+-    response = Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
++    response = EmptyResponse(status_code=status.HTTP_204_NO_CONTENT)
+     response.delete_cookie(key="refresh_token", domain=config.COOKIE_DOMAIN or None)
+     return response
+ 
+@@ -128,6 +129,6 @@
+     auth_service: Annotated[AuthService, Depends(AuthService)],
+ ) -> Response:
+     await auth_service.reset_password(request.token, request.new_password, request.new_password_confirmation)
+-    response = Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
++    response = EmptyResponse(status_code=status.HTTP_204_NO_CONTENT)
+     response.delete_cookie(key="refresh_token", domain=config.COOKIE_DOMAIN or None)
+     return response
+--- a/tests/frontend/challenge_selection_entry.test.cjs
++++ b/tests/frontend/challenge_selection_entry.test.cjs
+@@ -19,7 +19,7 @@
+   const nodes = {};
+   const $ = key => nodes[key] ||= { hidden: false, textContent: "" };
+   const state = { cycle: null, dailyCompleted: new Set(), visitedSteps: new Set([2, 3, 4, 5, 6, 8]) };
+-  const ctx = load(["hasCurrentChallengeCycle", "renderTodayTaskStatus"], { $, state });
++  const ctx = load(["hasCurrentChallengeCycle", "dailyChallengeTargetCount", "allDailyChallengesCompleted", "renderTodayTaskStatus"], { $, state });
+   ctx.renderTodayTaskStatus();
+   assert.equal($("#today-select-challenge").hidden, false);
+   assert.match($("#today-task-title").textContent, /선택한 챌린지가 없/);
+--- /dev/null
++++ b/tests/frontend/daily_reward_recovery.test.cjs
+@@ -0,0 +1,101 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const vm = require('node:vm');
++const source = fs.readFileSync(require('node:path').join(__dirname, '../../src/frontend/app.js'), 'utf8');
++
++function harness() {
++  const state = { token: 'account-a', cycle: { cycle_id: 1, user_challenges: [{user_challenge_id: 7}] }, dailyCompleted: new Set(['7']) };
++  const requests = [], dialogs = [], messages = [];
++  let day = '2026-10-09';
++  const context = vm.createContext({state, Number, challengeDay: () => day, isLocalPreview: () => false,
++    api: async (url, options) => { requests.push({url, options}); return {carrot_amount: 55, carrot_balance: 55}; },
++    openChallengeRewardDialog: reward => dialogs.push(reward), showMessage: message => messages.push(message),
++  });
++  for (const name of ['dailyChallengeTargetCount', 'allDailyChallengesCompleted', 'maybeOpenDailyReward']) {
++    const body = source.match(new RegExp(`^(?:async )?function ${name}\\([^]*?^}`, 'm'));
++    assert.ok(body, name); vm.runInContext(body[0], context);
++  }
++  return {context, state, requests, dialogs, messages, setDay: value => {day = value;}};
++}
++
++test('accepted photo completion requests daily reward without writing the log again', async () => {
++  for (const saved of [true, false]) {
++    const h = harness();
++    h.state.recordTarget = {saved, item: {catalog_version: 'evidence-v3'}};
++    let handler;
++    h.context.$ = () => ({addEventListener: (_, fn) => {handler = fn;}});
++    h.context.closeRecordModal = () => {h.state.recordTarget = null;};
++    const body = source.slice(source.indexOf('$("#close-photo-success").addEventListener'));
++    vm.runInContext(body.slice(0, body.indexOf('\n});') + 4), h.context);
++    await handler({});
++    assert.equal(h.requests.length, saved ? 1 : 0);
++    if (saved) assert.equal(h.requests[0].url, '/challenge-rewards/daily/2026-10-09');
++    assert.equal(h.state.recordTarget, null);
++  }
++});
++
++test('failed reward request keeps completion and can be retried', async () => {
++  const h = harness();
++  h.context.api = async () => {throw new Error('offline');};
++  await h.context.maybeOpenDailyReward();
++  assert.ok(h.state.dailyCompleted.has('7'));
++  assert.match(h.messages[0], /실천 기록은 저장됐지만/);
++  h.context.api = async () => ({carrot_amount: 55, carrot_balance: 55});
++  await h.context.maybeOpenDailyReward();
++  assert.equal(h.dialogs.length, 1);
++});
++
++test('duplicate clicks share one pending request and late responses cannot cross account, cycle or day', async () => {
++  for (const change of ['token', 'cycle', 'day']) {
++    const h = harness();
++    let resolve, writes = 0;
++    h.context.api = () => {writes++; return new Promise(r => {resolve = r;});};
++    const pending = h.context.maybeOpenDailyReward();
++    await h.context.maybeOpenDailyReward();
++    assert.equal(writes, 1);
++    if (change === 'token') h.state.token = 'account-b';
++    if (change === 'cycle') h.state.cycle = {cycle_id: 2};
++    if (change === 'day') h.setDay('2026-10-10');
++    resolve({carrot_amount: 55, carrot_balance: 55});
++    await pending;
++    assert.equal(h.dialogs.length, 0);
++    assert.equal(h.state.dailyRewardRequest, null);
++  }
++});
++
++test('an already claimed reward does not display another +55 credit', () => {
++  const nodes = new Map();
++  const $ = id => {if (!nodes.has(id)) nodes.set(id, {showModal() {}, focus() {}}); return nodes.get(id);};
++  const context = vm.createContext({$, Number});
++  const body = source.match(/^function openChallengeRewardDialog\([^]*?^}/m);
++  vm.runInContext(body[0], context);
++  context.openChallengeRewardDialog({already_claimed: true, carrot_amount: 55, carrot_balance: 55});
++  assert.equal($('#challenge-reward-amount').textContent, '오늘 보상 지급 완료');
++  assert.match($('#challenge-reward-balance').textContent, /55개/);
++});
++
++test('unrelated old completions cannot satisfy the current selected challenge', async () => {
++  const h = harness();
++  h.state.dailyCompleted = new Set(['old-id']);
++  await h.context.maybeOpenDailyReward();
++  assert.equal(h.requests.length, 0);
++});
++
++test('a new account can claim while the previous account request is pending', async () => {
++  const h = harness();
++  const resolvers = [];
++  h.context.api = () => new Promise(resolve => resolvers.push(resolve));
++  const first = h.context.maybeOpenDailyReward();
++  h.state.token = 'account-b';
++  const second = h.context.maybeOpenDailyReward();
++  assert.equal(resolvers.length, 2);
++  resolvers[0]({carrot_balance: 1});
++  await first;
++  assert.equal(h.dialogs.length, 0);
++  assert.ok(h.state.dailyRewardRequest);
++  resolvers[1]({carrot_balance: 55});
++  await second;
++  assert.equal(h.dialogs.length, 1);
++  assert.equal(h.dialogs[0].carrot_balance, 55);
++});
+--- /dev/null
++++ b/tests/test_auth_empty_responses.py
+@@ -0,0 +1,28 @@
++"""204 authentication responses must not send JSON null on a persistent connection."""
++import unittest
++from types import SimpleNamespace
++from unittest.mock import AsyncMock
++
++from app.apis.v1.auth_routers import change_password, confirm_password_reset, logout
++
++
++class AuthEmptyResponseTests(unittest.IsolatedAsyncioTestCase):
++    def assert_empty_response(self, response):
++        self.assertEqual(response.status_code, 204)
++        self.assertEqual(response.body, b"")
++        self.assertIn('refresh_token=""', response.headers["set-cookie"])
++
++    async def test_logout(self):
++        self.assert_empty_response(await logout(SimpleNamespace(id=1)))
++
++    async def test_password_change(self):
++        service = SimpleNamespace(change_password=AsyncMock())
++        request = SimpleNamespace(current_password="old", new_password="new", new_password_confirmation="new")
++        self.assert_empty_response(await change_password(request, SimpleNamespace(id=1), service))
++        service.change_password.assert_awaited_once()
++
++    async def test_password_reset(self):
++        service = SimpleNamespace(reset_password=AsyncMock())
++        request = SimpleNamespace(token="synthetic", new_password="new", new_password_confirmation="new")
++        self.assert_empty_response(await confirm_password_reset(request, service))
++        service.reset_password.assert_awaited_once()
