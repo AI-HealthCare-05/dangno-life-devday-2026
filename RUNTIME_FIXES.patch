@@ -3411,7 +3411,7 @@
 +    ):
 +        raise ValueError("Reference/model/split contract mismatch")
 +    artifact = (ROOT / manifest["artifact_local_path"]).resolve()
-+    if not artifact.is_relative_to(ROOT / "models/artifacts"):
++    if not artifact.is_relative_to((ROOT / "models/artifacts").resolve()):
 +        raise ValueError("Reference must remain in the private artifact directory")
 +    if hashlib.sha256(artifact.read_bytes()).hexdigest() != manifest["artifact_sha256"]:
 +        raise ValueError("Reference checksum mismatch")
