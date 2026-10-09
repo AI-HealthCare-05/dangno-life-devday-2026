@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "e0d378b53b7d610162bcd3448137a3986346ac8f7e39bd84700e174ff76f445c",
+  "patch_sha256": "5a86f526ca0c3f5bc0f361f8284f888bc0aec619f648e9e14d798f31be7d1136",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -246,7 +246,7 @@
     {
       "path": "src/frontend/result-xai.css",
       "before": "a158e679d54446b34b09944f40988a0adfc5e450f9692f062d34a6eb5515e34c",
-      "after": "4e0d97411fa556494c6e47add0fb6760c4c271cc8c403b162367e6760bad36c0"
+      "after": "4a24cdacf4f41d265fa75449444c53664bd47a5d4112ff8b40f2c72d28046f03"
     },
     {
       "path": "requirements-demo.lock.txt",

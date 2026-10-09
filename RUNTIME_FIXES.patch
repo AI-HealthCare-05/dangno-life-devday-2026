@@ -3073,7 +3073,7 @@
  .result-room-screen .result-xai-card.current-xai-slot {
    min-width: 0;
    padding: 24px;
-@@ -206,3 +215,49 @@
+@@ -206,3 +215,60 @@
      justify-self: start;
    }
  }
@@ -3123,6 +3123,17 @@
 +.result-room-screen .model-analysis-details[hidden],
 +.result-room-screen .shap-graph[hidden] { display: none !important; }
 +
++/* Keep mobile installation entry readable beside the health tools. */
++.topbar:has(#workspace-top-nav:not([hidden])) { flex-wrap: wrap; }
++#workspace-top-nav { flex: 1 0 auto; max-width: 100%; }
++#workspace-top-nav [data-mobile-download] {
++  display: flex; flex-direction: column; align-items: center;
++  justify-content: center; gap: 2px; font-size: 14px; line-height: 1.25;
++}
++#workspace-top-nav [data-mobile-download] span { font-size: 12px; }
++@media (max-width: 760px) {
++  .topbar #workspace-top-nav { flex: 1 1 100%; }
++}
 --- a/requirements-demo.lock.txt
 +++ b/requirements-demo.lock.txt
 @@ -60,3 +60,6 @@
