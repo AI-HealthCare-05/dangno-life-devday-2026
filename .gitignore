@@ -1,0 +1,74 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+envs/.local.env
+envs/.prod.env
+envs/.legacy.env
+
+# Python and UV environments
+.venv/
+.venv*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+wheels/
+
+# Test and coverage artifacts
+.coverage
+*.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Medical source data and generated artifacts
+data/raw/
+data/interim/
+data/processed/
+data/external/
+data/private/
+outputs/
+output/
+tmp/
+
+# Local data/document archives
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+
+# Local Codex worktree metadata and recovery artifacts
+.codex-worktrees/
+rollback-before-restore.patch
+
+# Model binaries
+models/**/*.joblib
+models/**/*.pkl
+models/**/*.pt
+models/**/*.onnx
+models/artifacts/
+models/cache/
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.log
+
+# Frontend and build outputs
+node_modules/
+dist/
+build/
+
+# Additional inference binaries and local state
+*.tflite
+*.sqlite3-*
