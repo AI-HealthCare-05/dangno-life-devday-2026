@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "a00ab1781cbb1cdefed7ed7c27e37efd9c6017d35d6fc2ddb3e6759e09f6bfa7",
+  "patch_sha256": "3fa2585493366346fee2cd713970d5492fdb20d2e8bc7d722058e9674af238c6",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -30,6 +30,56 @@
       "path": "tests/test_auth_empty_responses.py",
       "before": null,
       "after": "345c5fcba30baf02e6968c9d9e8261e609a081765bd6537fc67b9414ae18b98c"
+    },
+    {
+      "path": "app/apis/v1/challenge_v2_routers.py",
+      "before": "868063b7d300f839d40b8c04008591b608b9ee66e41916b462824beb895010c2",
+      "after": "1bf2da566e870359d52e55bd9d5ad14ed3028d749aa6004da4299447bbedd8c5"
+    },
+    {
+      "path": "app/apis/v1/rag_routers.py",
+      "before": "3146c2cc6a746083799c258986afab82c37988033b8ff391a465396db2e35e58",
+      "after": "34cfdef602c8fc516c3389155a6c18557ca4a309cd2c925c836f83e9616da673"
+    },
+    {
+      "path": "app/dtos/wellness.py",
+      "before": "2fd59dcd075866448c3173c85d466d5eea7707c7e5f4367ce1a9945173441e7a",
+      "after": "5a786c395acb42b7bd8bf59eea78eaa41dee66dace479dcf9c34d4f64e246026"
+    },
+    {
+      "path": "app/health.py",
+      "before": null,
+      "after": "1be8bb9736b87bc52f739199d2f1921f8bffc64bd1e560baa7219706f73510fb"
+    },
+    {
+      "path": "app/lifecycle.py",
+      "before": null,
+      "after": "0fb5473f38222833c13660f60ac0b1296be9ef5ddc87dd7f122e05ef7c91348f"
+    },
+    {
+      "path": "app/main.py",
+      "before": "1379aa4161714f89620711e6f866c512b33929022bf70c9173100efc75cf0c15",
+      "after": "2cc2cf09d0eed824ebd913d4187cf3954fa091a4216feb5aabbb35f46f751827"
+    },
+    {
+      "path": "src/rag/engine.py",
+      "before": "50908cffef75548477b3539a7270aa4d8a2af6fe6f055f729d951c87f35bd7cc",
+      "after": "44275809705159933238eb34322063db90b14925cea27dc237fb332b7376343e"
+    },
+    {
+      "path": "tests/test_app_structure.py",
+      "before": null,
+      "after": "f6cdcfbc0a160c3338bcaadf2a3f62262c3bf204a7eed08f94ecf49ee0569c59"
+    },
+    {
+      "path": "tests/test_rag_health_education.py",
+      "before": "378de6627c66d5967792afdd54d7d6c0a5fe3015cc206c1c1e3ffa8b611c64c2",
+      "after": "45c7ac061347dfdb59c83a1c69a8b52824088e7837516aa92747c27fe2a0de90"
+    },
+    {
+      "path": "tests/test_rag_pipeline.py",
+      "before": "65f9edd2bbef57dee11c10c90589c344eac7e3c6593964004cbe161e419bcaed",
+      "after": "67a19addf610f3e39e3a6e51a7afa19b8d9a357a8bf2c77fb88e92ab9abdb946"
     }
   ]
 }
