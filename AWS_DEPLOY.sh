@@ -73,7 +73,7 @@ mv -Tf "$BASE/current.next" "$BASE/current"
 sudo install -m 644 "$SERVICE" /etc/systemd/system/dangno-life.service
 sudo systemctl daemon-reload
 sudo systemctl enable dangno-life
-sudo systemctl restart dangno-life
+if sudo systemctl restart dangno-life; then
 for attempt in {1..30}; do
   if curl --fail --silent http://127.0.0.1:8000/api/health; then
     echo; echo "Deployed main commit: $SHA"
@@ -82,6 +82,7 @@ for attempt in {1..30}; do
   fi
   sleep 2
 done
+fi
 if [[ -n "$PREVIOUS" ]]; then
   ln -s "$PREVIOUS" "$BASE/current.rollback"
   mv -Tf "$BASE/current.rollback" "$BASE/current"
