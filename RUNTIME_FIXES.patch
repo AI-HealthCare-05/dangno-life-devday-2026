@@ -3225,7 +3225,7 @@
 +
 --- /dev/null
 +++ b/app/services/xai_presentation.py
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,141 @@
 +"""Display saved inputs without inferring health advice from SHAP signs."""
 +
 +import math
@@ -3273,6 +3273,9 @@
 +        return _number(value, units[feature])
 +    if feature.endswith("_diagnosis"):
 +        return _boolean_label(value, "진단받음", "진단받지 않음")
++    if feature == "current_smoker" and value is None:
++        smoking = getattr(checkup, "smoking_status", None)
++        value = {"never": False, "former": False, "current": True}.get(smoking)
 +    if feature in {"current_smoker", "current_drinker", "regular_exercise"}:
 +        return _boolean_label(value, "예", "아니요")
 +    return _categorical_input_label(feature, value, checkup, screening)
@@ -3610,7 +3613,7 @@
 +  }));
 --- /dev/null
 +++ b/tests/test_xai_presentation.py
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,62 @@
 +from types import SimpleNamespace
 +
 +from app.services.xai_presentation import input_label
@@ -3667,6 +3670,12 @@
 +        dict(all_items=[dict(feature="age", contribution=float("nan"))]),
 +    ]:
 +        assert shap_graph_payload({**value, **override}) is None
++
++
++def test_current_smoker_label_uses_the_saved_smoking_status_conversion():
++    for smoking, expected in [("never", "아니요"), ("former", "아니요"), ("current", "예"), (None, "입력하지 않음")]:
++        assert input_label("current_smoker", SimpleNamespace(smoking_status=smoking)) == expected
++    assert input_label("current_smoker", SimpleNamespace(current_smoker=False, smoking_status="current")) == "아니요"
 --- /dev/null
 +++ b/tests/test_mobile_downloads.py
 @@ -0,0 +1,15 @@
