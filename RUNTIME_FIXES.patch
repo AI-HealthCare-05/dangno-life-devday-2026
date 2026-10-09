@@ -288,3 +288,692 @@
 +        request = SimpleNamespace(token="synthetic", new_password="new", new_password_confirmation="new")
 +        self.assert_empty_response(await confirm_password_reset(request, service))
 +        service.reset_password.assert_awaited_once()
+diff --git a/.env.example b/.env.example
+index f0f4643..81ef0de 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,9 +1,122 @@
+-# Variable names only. See docs/DEVDay_REPRODUCTION.md for the non-secret rehearsal values.
+-DEMO_MODE=
+-DEMO_ARTIFACT_INFERENCE_ENABLED=
+-PREDICTION_PROVIDER=
+-PYTHON_VERSION=
+-WEB_CONCURRENCY=
+-RAG_EMBEDDING_PROVIDER=
+-RAG_GENERATION_PROVIDER=
++APP_ENV=local
++ENV=local
++DOCKER_USER=
++DOCKER_REPOSITORY=ah-05-02
++APP_VERSION=
++AI_WORKER_VERSION=
++# EC2 public IP for HTTP, or the final domain for HTTPS.
++SERVER_NAME=
+ SECRET_KEY=
++COOKIE_DOMAIN=localhost
++ACCESS_TOKEN_EXPIRE_MINUTES=60
++REFRESH_TOKEN_EXPIRE_MINUTES=20160
++DB_HOST=mysql
++DB_PORT=3306
++DB_USER=
++DB_PASSWORD=
++DB_ROOT_PASSWORD=
++DB_NAME=ai_health
++DB_EXPOSE_PORT=3306
++DB_GENERATE_SCHEMAS=true
++DATABASE_URL=
++DEMO_MODE=false
++DEMO_ARTIFACT_INFERENCE_ENABLED=false
++XAI_DISPLAY_ALLOWED=false
++REDIS_HOST=redis
++REDIS_PORT=6379
++REDIS_DB=0
++REDIS_STREAM=ai:jobs
++REDIS_CONSUMER_GROUP=ai-workers
++REDIS_JOB_TTL_SECONDS=86400
++REDIS_CLAIM_IDLE_MS=60000
++AI_JOB_MAX_ATTEMPTS=3
++PREDICTION_PROVIDER=artifact
++PREDICTION_MODEL_KEY=diabetes_incidence
++PREDICTION_MODEL_VERSION=rf25-tuned-education4-v2
++PREDICTION_FEATURE_SCHEMA_VERSION=klosa_stage3_25features_education4_v2
++PREDICTION_INPUT_SCHEMA_VERSION=diabetes-incidence-api-education4-v2
++PREDICTION_PREPROCESSING_VERSION=train-median-indicator-mode-onehot-education4-v2
++PREDICTION_TARGET_DEFINITION_VERSION=next-observation-new-diabetes-v1
++PREDICTION_CALIBRATION_VERSION=not_probability_calibrated-v1
++PREDICTION_THRESHOLD_VERSION=education4-validation-spec043-caution-recall090-v2
++PREDICTION_PROMOTION_STATUS=approved
++PREDICTION_OPERATIONAL_MODEL_ACTIVATED=true
++CURRENT_SCREENING_PROMOTION_STATUS=approved
++CURRENT_SCREENING_OPERATIONAL_MODEL_ACTIVATED=true
++PREDICTION_MODEL_ARTIFACT_DIGEST=45f7de434a887b82aaff86a3b6afd8e99f75ebdc8bb3c0cd320484db9b71ad8e
++PREDICTION_DECISION_THRESHOLD=0.02113653615781283
++PREDICTION_MODEL_MIN_AGE=45
++PREDICTION_MODEL_MAX_AGE=105
++PREDICTION_MODEL_POPULATION=undiagnosed_klosa_age_45_105
++PREDICTION_TIMEOUT_SECONDS=30
++MODEL_URI=/app/models/artifacts/candidates/diabetes_incidence/rf25-tuned-education4-v2/model.joblib
++MODEL_MANIFEST_URI=/app/models/registry/diabetes_incidence/candidates/rf25-tuned-education4-v2.json
++CURRENT_SCREENING_MODEL_URI=/app/models/artifacts/candidates/diabetes_current_screening/knhanes-today14-sk180-service-v3/model.joblib
++CURRENT_SCREENING_MANIFEST_URI=/app/models/registry/diabetes_current_screening/candidates/knhanes-today14-sk180-service-v3.json
++# operational_model_activated=false even when the Worker executes them.
++S2_MODEL_RUNTIME_ENABLED=false
++MODEL_PRELOAD_ENABLED=false
++CURRENT_SCREENING_RUNTIME=shared8-waist
++TOMORROW_RUNTIME=rf25
++ML_SHARED8_MODEL_URI=s3://ah05-model-artifacts-20260915-019fdc6f/오늘이8.joblib
++ML_SHARED7_MODEL_URI=/app/models/artifacts/candidates/diabetes_current_screening/knhanes-shared7-sk180-v1/model.joblib
++ML_FIRST_INTERVAL_MODEL_URI=/app/models/artifacts/candidates/diabetes_incidence/rf25-first-interval-survival-ensemble-v1/model.joblib
++ML_RF25_MODEL_URI=s3://ah05-model-artifacts-20260915-019fdc6f/내일이25.joblib
++MODEL_CACHE_DIR=/app/storage/cache
++OPENAI_API_KEY=
++OPENAI_MODEL=
++OPENAI_VLM_MODEL=gpt-4o-mini
++# true이면 로컬 CV 경계·취약 판정에 OpenAI VLM 보완을 자동 적용합니다.
++OPENAI_VLM_FALLBACK_ENABLED=false
++# Local model binaries are mounted, not committed.
++FOOD_VISION_PROVIDER=local_kfood
++KFOOD_CLASSIFIER_PATH=/app/models/artifacts/food_vision/kfood/best.pt
++KFOOD_CLASSIFIER_META_PATH=/app/models/artifacts/food_vision/kfood/meta.json
++KFOOD_CLASSIFIER_META_SHA256=a193e1faf4e7c266e0ba4481451ded587fcd01cfc7d89c60d834bac63e14e0b3
++KFOOD_CLASSIFIER_SHA256=4c4df6ba2b9d3daf77f7ffe107285df17a360342729177d15465ba9872d42726
++KFOOD_SEGMENTER_PATH=/app/models/artifacts/food_vision/kfood/1.tflite
++KFOOD_SEGMENTER_SHA256=edb7df52467afd02a502d7765ca7ac82e63ad86082c72e18135764f1b1817b52
++KFOOD_SEGMENTATION_CONFIG_PATH=/app/configs/food_vision/seg_config.json
++KFOOD_DISH_VEGETABLES_PATH=/app/configs/food_vision/dish_vegetables.json
++KFOOD_DRIVE_FILE_ID=1KvCX9bU9GwZvcvZSl0eYHlZ-yg4UbAjQ
++KFOOD_BUNDLE_SHA256=753d7c4d3a7d9f9e074565cda0233179243466129a48830fd299a07a9bf0b96c
++KFOOD_BUNDLE_DIR=/app/storage/food_vision/kfood
++KFOOD_BUNDLE_DOWNLOAD_TIMEOUT_SECONDS=120
++FOOD_COVERAGE_PASS_THRESHOLD=0.50
++VEGETABLE_RATIO_PASS_THRESHOLD=0.30
++
++# 건강교육 RAG(질의응답·퀴즈 근거 검색). 운영에서는 HEALTH_EDUCATION_EMBEDDING_PROVIDER와
++# HEALTH_EDUCATION_GENERATION_PROVIDER를 openai로 전환합니다. development로 두면 실제 의미
++# 검색이 아닌 해싱 기반 근사치로 동작하므로 운영 배포 전 반드시 확인하세요.
++HEALTH_EDUCATION_EMBEDDING_PROVIDER=development
++HEALTH_EDUCATION_EMBEDDING_MODEL=text-embedding-3-small
++HEALTH_EDUCATION_GENERATION_PROVIDER=development
++HEALTH_EDUCATION_TIMEOUT_SECONDS=20
++HEALTH_EDUCATION_KEYWORD_WEIGHT=0.5
++HEALTH_EDUCATION_EMBEDDING_WEIGHT=0.5
++HEALTH_EDUCATION_RELEVANCE_THRESHOLD=0.18
++HEALTH_EDUCATION_TOP_K=6
++HEALTH_EDUCATION_MAX_CITATIONS=3
++HEALTH_EDUCATION_RETRIEVER=memory
++QDRANT_URL=http://qdrant:6333
++QDRANT_COLLECTION=health_education
++QDRANT_API_KEY=
++
++# 위치 기반 근처 의료기관 조회
++MEDICAL_FACILITY_SEARCH_PROVIDER=kakao
++KAKAO_REST_API_KEY=
++KAKAO_JAVASCRIPT_KEY=
++MEDICAL_FACILITY_SEARCH_KEYWORDS=당뇨
++EMERGENCY_FACILITY_SEARCH_PROVIDER=nemc
++NEMC_SERVICE_KEY=
++CLOVA_OCR_URL=
++CLOVA_OCR_SECRET=
++CLOVA_OCR_TIMEOUT_SECONDS=20
++CLOVA_OCR_MAX_BYTES=10485760
++
++# 건강검진 OCR provider: clova 또는 claude. 원본 검진표는 외부 provider로 전송되므로 업로드 전 사용자 동의가 필요합니다.
++HEALTH_CHECKUP_OCR_PROVIDER=clova
++ANTHROPIC_API_KEY=
++CLAUDE_OCR_MODEL=claude-haiku-4-5-20251001
++CLAUDE_OCR_TIMEOUT_SECONDS=25
++CLAUDE_OCR_MAX_BYTES=10485760
+diff --git a/README.md b/README.md
+index ddd5c06..b921afa 100644
+--- a/README.md
++++ b/README.md
+@@ -21,6 +21,18 @@ sh start-project.sh
+ 
+ 소스·동적 시각 자산은 브라우저 업로드 제한에 맞춰 분할 보관합니다. 체크섬을 확인하고 app/, src/, configs/, scripts/를 저장소 루트에 복원하며 Git 이력과 팀 작업 문서를 보존합니다. 복원 후 소스 파일은 팀원이 feature 브랜치/PR로 추적하여 반영합니다.
+ 
++## RAG 벡터 검색
++
++건강교육 RAG는 로컬·테스트에서 `HEALTH_EDUCATION_RETRIEVER=memory`를 기본으로 사용합니다.
++운영에서 Qdrant HNSW 인덱스를 사용하려면 provider와 API 키를 설정한 뒤 승인 문서를 동기화합니다.
++
++```bash
++HEALTH_EDUCATION_RETRIEVER=qdrant uv run python -m src.rag.indexing sync
++```
++
++동기화가 성공한 뒤 FastAPI의 `HEALTH_EDUCATION_RETRIEVER`를 `qdrant`로 전환합니다. 실패한 동기화는
++기존 컬렉션의 검색 가능 상태를 유지하며, 검색 서비스 장애 시 API는 근거 없는 답변을 생성하지 않습니다.
++
+ 모델은 build에서 별도 다운로드·체크섬 검증합니다. 모델 바이너리·DB·API 키는 Git에 넣지 않습니다. Linux에서는 LightGBM용 libgomp1이 필요합니다.
+ 
+ 합성 입력의 실제 예측·챌린지 기록은 사전 검증했습니다. OCR/CV/RAG 외부 연결·숲 보상·모바일 전체 흐름·AWS 배포는 추가 검증 대상입니다. 결과는 진단·처방이 아닌 위험 선별·건강교육으로 표현합니다.
+diff --git a/app/apis/v1/challenge_v2_routers.py b/app/apis/v1/challenge_v2_routers.py
+index 50a6d7e..0dfcae3 100644
+--- a/app/apis/v1/challenge_v2_routers.py
++++ b/app/apis/v1/challenge_v2_routers.py
+@@ -10,7 +10,11 @@ from app.models.users import User
+ from app.services import challenge_v2 as service
+ from app.services import challenge_v2_evidence as evidence
+ 
+-challenge_v2_router = APIRouter(prefix="/challenge-v2", tags=["Challenge V2 pilot"])
++challenge_v2_router = APIRouter(
++    prefix="/challenge-v2",
++    tags=["Challenge V2 pilot (deprecated)"],
++    deprecated=True,
++)
+ 
+ 
+ async def active_user(user: Annotated[User, Depends(get_request_user)]):
+diff --git a/app/apis/v1/rag_routers.py b/app/apis/v1/rag_routers.py
+index ff13c01..dafd5b0 100644
+--- a/app/apis/v1/rag_routers.py
++++ b/app/apis/v1/rag_routers.py
+@@ -16,14 +16,14 @@ from fastapi import APIRouter, Depends
+ 
+ from app.apis.responses import envelope
+ from app.dependencies.security import get_request_user
+-from app.dtos.wellness import RagQuestionRequest
++from app.dtos.wellness import RagQuestionRequest, RagQuestionResponse
+ from app.models.users import User
+ from src.rag.engine import answer_with_sources
+ 
+ rag_router = APIRouter(tags=["Health education RAG"])
+ 
+ 
+-@rag_router.post("/health-education/questions")
++@rag_router.post("/health-education/questions", response_model=RagQuestionResponse)
+ async def ask_health_education(request: RagQuestionRequest, user: Annotated[User, Depends(get_request_user)]):
+     _ = user
+     result = await answer_with_sources(request.question)
+diff --git a/app/core/config.py b/app/core/config.py
+index f74a062..591df46 100644
+--- a/app/core/config.py
++++ b/app/core/config.py
+@@ -123,6 +123,10 @@ class Config(BaseSettings):
+     HEALTH_EDUCATION_RELEVANCE_THRESHOLD: float = 0.18
+     HEALTH_EDUCATION_TOP_K: int = 6
+     HEALTH_EDUCATION_MAX_CITATIONS: int = 3
++    HEALTH_EDUCATION_RETRIEVER: str = "memory"
++    QDRANT_URL: str = "http://qdrant:6333"
++    QDRANT_COLLECTION: str = "health_education"
++    QDRANT_API_KEY: str = ""
+ 
+     # 위치 기반 근처 의료기관 조회. 진단·처방을 대신하지 않고, 위치 기반 안내만 제공합니다.
+     MEDICAL_FACILITY_SEARCH_PROVIDER: str = "development"
+diff --git a/app/dtos/wellness.py b/app/dtos/wellness.py
+index bec7bba..4ef8690 100644
+--- a/app/dtos/wellness.py
++++ b/app/dtos/wellness.py
+@@ -1,9 +1,9 @@
+ from __future__ import annotations
+ 
+-from datetime import date
++from datetime import date, datetime
+ from typing import Literal
+ 
+-from pydantic import BaseModel, Field, model_validator
++from pydantic import BaseModel, Field, HttpUrl, model_validator
+ 
+ 
+ class WearableConnectionRequest(BaseModel):
+@@ -44,6 +44,36 @@ class RagQuestionRequest(BaseModel):
+     question: str = Field(min_length=2, max_length=500)
+ 
+ 
++class RagCitationResponse(BaseModel):
++    document_id: str
++    title: str
++    url: HttpUrl
++    checked_at: date
++
++
++class RagQuestionDataResponse(BaseModel):
++    answer: str
++    answer_status: Literal[
++        "grounded",
++        "insufficient_evidence",
++        "medical_safety_refusal",
++        "emergency_redirect",
++    ]
++    citations: list[RagCitationResponse]
++    retrieval_method: str
++    medical_notice: str
++
++
++class ResponseMeta(BaseModel):
++    request_id: str
++    timestamp: datetime
++
++
++class RagQuestionResponse(BaseModel):
++    data: RagQuestionDataResponse
++    meta: ResponseMeta
++
++
+ class QuizAnswerRequest(BaseModel):
+     answer: str = Field(min_length=1, max_length=100)
+ 
+diff --git a/app/main.py b/app/main.py
+index 361b828..00bf7f1 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,57 +1,15 @@
+-import asyncio
+-from contextlib import asynccontextmanager, suppress
+ from pathlib import Path
+ 
+ from fastapi import FastAPI, Request, Response, status
+ from fastapi.responses import FileResponse, RedirectResponse
+ from fastapi.staticfiles import StaticFiles
+-from redis.exceptions import RedisError
+-from tortoise import connections
+-from tortoise.exceptions import DBConnectionError, OperationalError
+ 
+ from app.apis.v1 import v1_routers
+-from app.core import config
+ from app.core.db.databases import initialize_tortoise
+-from app.core.redis import close_redis, redis_client
++from app.health import health_router
++from app.lifecycle import lifespan
+ from app.middleware.challenge_upload_limit import ChallengeUploadLimit
+ 
+-_DEPENDENCY_ERRORS = (RedisError, OperationalError, DBConnectionError)
+-
+-
+-async def _preload_embedded_demo_models() -> None:
+-    """Load and verify both approved artifacts before accepting demo traffic."""
+-    from app.prediction.providers import load_standard_model
+-    from src.ml.inference.diabetes_current_screening import load_current_screening_model
+-
+-    await asyncio.gather(
+-        asyncio.to_thread(load_standard_model),
+-        asyncio.to_thread(
+-            load_current_screening_model,
+-            manifest_path=Path(config.CURRENT_SCREENING_MANIFEST_URI),
+-            model_path=config.CURRENT_SCREENING_MODEL_URI,
+-        ),
+-    )
+-
+-
+-@asynccontextmanager
+-async def lifespan(_: FastAPI):
+-    if not config.DEMO_MODE:
+-        await redis_client.ping()
+-    if config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED:
+-        await _preload_embedded_demo_models()
+-    from app.services.challenge_v2_retention import retention_loop
+-
+-    retention = asyncio.create_task(retention_loop())
+-    try:
+-        yield
+-    finally:
+-        retention.cancel()
+-        with suppress(asyncio.CancelledError):
+-            await retention
+-    if not config.DEMO_MODE:
+-        await close_redis()
+-
+-
+ app = FastAPI(
+     docs_url="/api/docs",
+     redoc_url="/api/redoc",
+@@ -62,6 +20,7 @@ initialize_tortoise(app)
+ app.add_middleware(ChallengeUploadLimit)
+ 
+ app.include_router(v1_routers)
++app.include_router(health_router)
+ 
+ _SENSITIVE_REPORT_PATH_PREFIXES = ("/api/v1/reports", "/api/v1/weekly-reports")
+ 
+@@ -145,109 +104,3 @@ async def forest_service_worker() -> FileResponse:
+     response.headers["Cache-Control"] = "no-cache"
+     response.headers["Service-Worker-Allowed"] = "/forest"
+     return response
+-
+-
+-@app.get("/health", tags=["Health"])
+-async def liveness() -> dict[str, str]:
+-    return {"status": "ok"}
+-
+-
+-async def _dependency_status() -> tuple[bool, bool]:
+-    """Redis·DB 연결을 점검하고 (database_ok, redis_ok)를 반환한다.
+-
+-    연결 실패를 그대로 전파하면 헬스체크 엔드포인트 자체가 처리되지 않은 500으로
+-    죽는다. 여기서는 실패를 흡수해 호출자가 503과 함께 어떤 의존성이 죽었는지
+-    구조화된 형태로 응답할 수 있게 한다.
+-    """
+-    database_ok = True
+-    redis_ok = True
+-
+-    if not config.DEMO_MODE:
+-        try:
+-            await redis_client.ping()
+-        except _DEPENDENCY_ERRORS:
+-            redis_ok = False
+-
+-    try:
+-        await connections.get("default").execute_query("SELECT 1")
+-    except _DEPENDENCY_ERRORS:
+-        database_ok = False
+-
+-    return database_ok, redis_ok
+-
+-
+-@app.get("/api/health", tags=["Health"])
+-@app.get("/api/v1/health", tags=["Health"])
+-async def health(response: Response) -> dict[str, str]:
+-    database_ok, redis_ok = await _dependency_status()
+-    healthy = database_ok and redis_ok
+-    if not healthy:
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-    return {
+-        "status": "ok" if healthy else "degraded",
+-        "database": "ok" if database_ok else "unavailable",
+-        "redis": "embedded-demo" if config.DEMO_MODE else ("ok" if redis_ok else "unavailable"),
+-    }
+-
+-
+-@app.get("/api/v1/ready", tags=["Health"])
+-async def ready(response: Response) -> dict[str, object]:
+-    database_ok, redis_ok = await _dependency_status()
+-    if not (database_ok and redis_ok):
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-        return {
+-            "status": "not_ready",
+-            "dependencies": {
+-                "database": "ready" if database_ok else "unavailable",
+-                "redis": "embedded-demo" if config.DEMO_MODE else ("ready" if redis_ok else "unavailable"),
+-            },
+-        }
+-
+-    from app.prediction.contracts import ACTIVE_MODEL, CURRENT_SCREENING_MODEL
+-    from app.vision.food_vision import food_vision_is_configured
+-
+-    future_artifact_available = config.PREDICTION_PROVIDER != "artifact" or Path(config.MODEL_URI).is_file()
+-    current_artifact_path = (
+-        config.ML_SHARED8_MODEL_URI
+-        if config.CURRENT_SCREENING_RUNTIME == "shared8-waist"
+-        else config.CURRENT_SCREENING_MODEL_URI
+-    )
+-    current_artifact_available = bool(current_artifact_path) and Path(current_artifact_path).is_file()
+-    food_vision_ready = config.FOOD_VISION_PROVIDER != "local_kfood" or food_vision_is_configured()
+-    food_vision_vlm_fallback_ready = not config.OPENAI_VLM_FALLBACK_ENABLED or bool(config.OPENAI_API_KEY.strip())
+-    operational_ready = (
+-        (not ACTIVE_MODEL.operational_model_activated or future_artifact_available)
+-        and (not CURRENT_SCREENING_MODEL.operational_model_activated or current_artifact_available)
+-        and food_vision_ready
+-        and food_vision_vlm_fallback_ready
+-    )
+-    if not operational_ready:
+-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+-
+-    return {
+-        "status": "ready" if operational_ready else "not_ready",
+-        "dependencies": {
+-            "database": "ready",
+-            "redis": "embedded-demo" if config.DEMO_MODE else "ready",
+-            "prediction_provider": config.PREDICTION_PROVIDER,
+-            "future_artifact_path_available": future_artifact_available,
+-            "current_artifact_path_available": current_artifact_available,
+-            "food_vision_ready": food_vision_ready,
+-            "food_vision_vlm_fallback_enabled": config.OPENAI_VLM_FALLBACK_ENABLED,
+-            "food_vision_vlm_fallback_ready": food_vision_vlm_fallback_ready,
+-            "demo_artifact_inference_enabled": config.DEMO_ARTIFACT_INFERENCE_ENABLED,
+-            "worker_preload_required_for_release": not (config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED),
+-        },
+-        "active_model": {
+-            "model_key": ACTIVE_MODEL.model_key,
+-            "version": ACTIVE_MODEL.version,
+-            "promotion_status": ACTIVE_MODEL.promotion_status,
+-        },
+-        "current_screening_model": {
+-            "model_key": CURRENT_SCREENING_MODEL.model_key,
+-            "version": CURRENT_SCREENING_MODEL.version,
+-            "runtime": config.CURRENT_SCREENING_RUNTIME,
+-            "promotion_status": CURRENT_SCREENING_MODEL.promotion_status,
+-            "operational_model_activated": CURRENT_SCREENING_MODEL.operational_model_activated,
+-        },
+-    }
+diff --git a/src/rag/engine.py b/src/rag/engine.py
+index c9240ee..9fb8e21 100644
+--- a/src/rag/engine.py
++++ b/src/rag/engine.py
+@@ -5,8 +5,9 @@ from dataclasses import dataclass
+ 
+ from app.core import config
+ from src.rag.chunking import Chunk, split_into_chunks
+-from src.rag.embeddings import get_embedding_provider
++from src.rag.embeddings import EmbeddingError, get_embedding_provider
+ from src.rag.generation import AnswerGenerationError, get_generation_provider
++from src.rag.qdrant import QdrantError, qdrant_search
+ from src.rag.retrieval import hybrid_search, top_chunks
+ from src.rag.verification import cited_document_ids, verify_sentences
+ 
+@@ -305,25 +306,43 @@ def _citation(document: KnowledgeDocument) -> dict[str, object]:
+     }
+ 
+ 
++def _retrieval_method() -> str:
++    if config.HEALTH_EDUCATION_RETRIEVER == "qdrant":
++        return "qdrant_dense_hnsw_v1"
++    return "hybrid_keyword_embedding_v2"
++
++
+ def _insufficient_evidence() -> dict[str, object]:
+     return {
+         "answer": "승인된 자료에서 질문과 충분히 가까운 근거를 찾지 못했습니다. 질문을 운동·식사·혈압·생활습관처럼 구체적으로 적어 주세요.",
+         "answer_status": "insufficient_evidence",
+         "citations": [],
+-        "retrieval_method": "hybrid_keyword_embedding_v2",
++        "retrieval_method": _retrieval_method(),
+     }
+ 
+ 
+ async def _hybrid_answer(question: str) -> dict[str, object]:
+     """②~⑥단계: 하이브리드 검색 → 관련도 검사 → 재정렬 → LLM 제한 생성 → 문장별 출처 검사."""
+-    embedding_provider = get_embedding_provider()
+-
+-    scored = await hybrid_search(
+-        question,
+-        chunks=ALL_CHUNKS,
+-        keyword_lookup=KEYWORDS_BY_DOCUMENT,
+-        embedding_provider=embedding_provider,
+-    )
++    try:
++        embedding_provider = get_embedding_provider()
++        if config.HEALTH_EDUCATION_RETRIEVER == "memory":
++            scored = await hybrid_search(
++                question,
++                chunks=ALL_CHUNKS,
++                keyword_lookup=KEYWORDS_BY_DOCUMENT,
++                embedding_provider=embedding_provider,
++            )
++        elif config.HEALTH_EDUCATION_RETRIEVER == "qdrant":
++            scored = await qdrant_search(question, embedding_provider=embedding_provider)
++        else:
++            raise QdrantError(f"지원하지 않는 RAG retriever입니다: {config.HEALTH_EDUCATION_RETRIEVER}")
++    except (EmbeddingError, QdrantError):
++        return {
++            "answer": "지금은 근거를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.",
++            "answer_status": "insufficient_evidence",
++            "citations": [],
++            "retrieval_method": _retrieval_method(),
++        }
+     top_score = scored[0].combined_score if scored else 0.0
+     if top_score < config.HEALTH_EDUCATION_RELEVANCE_THRESHOLD:
+         return _insufficient_evidence()
+@@ -341,7 +360,7 @@ async def _hybrid_answer(question: str) -> dict[str, object]:
+             "answer": "지금은 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+             "answer_status": "insufficient_evidence",
+             "citations": [],
+-            "retrieval_method": "hybrid_keyword_embedding_v2",
++            "retrieval_method": _retrieval_method(),
+         }
+ 
+     verified_sentences = verify_sentences(generated, chunks_by_id)
+@@ -356,7 +375,7 @@ async def _hybrid_answer(question: str) -> dict[str, object]:
+         "answer": " ".join(verified_sentences),
+         "answer_status": "grounded",
+         "citations": citations,
+-        "retrieval_method": "hybrid_keyword_embedding_v2",
++        "retrieval_method": _retrieval_method(),
+     }
+ 
+ 
+diff --git a/tests/test_production_deployment_assets.py b/tests/test_production_deployment_assets.py
+index cda26bb..d52e11d 100644
+--- a/tests/test_production_deployment_assets.py
++++ b/tests/test_production_deployment_assets.py
+@@ -12,7 +12,7 @@ def _service_block(compose: str, name: str) -> str:
+ 
+ def test_production_compose_keeps_data_and_application_services_private() -> None:
+     compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
+-    for service in ("redis", "mysql", "fastapi", "ai-worker"):
++    for service in ("redis", "qdrant", "mysql", "fastapi", "ai-worker"):
+         assert "ports:" not in _service_block(compose, service)
+         assert "restart: unless-stopped" in _service_block(compose, service)
+     assert '"80:80"' in _service_block(compose, "nginx")
+@@ -39,3 +39,30 @@ def test_all_nginx_entrypoints_allow_photo_upload_multipart_overhead() -> None:
+     for config_path in configs:
+         config = (ROOT / config_path).read_text(encoding="utf-8")
+         assert "client_max_body_size 10m;" in config, config_path
++
++
++def test_nginx_serves_game_assets_directly_with_long_lived_cache() -> None:
++    configs = (
++        "infra/nginx/default.conf",
++        "infra/nginx/prod_http.conf",
++        "infra/nginx/prod_https.conf",
++        "infra/nginx/prod_http.conf.template",
++        "infra/nginx/prod_https.conf.template",
++        "infra/nginx/ec2-http.conf.template",
++    )
++    for config_path in configs:
++        config = (ROOT / config_path).read_text(encoding="utf-8")
++        assert "location /static/assets/" in config, config_path
++        assert "alias /usr/share/nginx/html/static/assets/;" in config, config_path
++        assert "expires 30d;" in config, config_path
++        assert "access_log off;" in config, config_path
++
++
++def test_release_build_includes_frontend_nginx_image() -> None:
++    dockerfile = (ROOT / "infra" / "nginx" / "Dockerfile").read_text(encoding="utf-8")
++    build_script = (ROOT / "scripts" / "build-release-images.sh").read_text(encoding="utf-8")
++    production_compose = (ROOT / "infra" / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
++
++    assert "COPY ./src/frontend /usr/share/nginx/html/static" in dockerfile
++    assert "web-$APP_VERSION" in build_script
++    assert ":web-${APP_VERSION" in production_compose
+diff --git a/tests/test_rag_health_education.py b/tests/test_rag_health_education.py
+index 064e609..9426e26 100644
+--- a/tests/test_rag_health_education.py
++++ b/tests/test_rag_health_education.py
+@@ -9,6 +9,7 @@ from __future__ import annotations
+ 
+ import pytest
+ 
++from app.dtos.wellness import RagQuestionResponse
+ from src.rag.engine import answer_with_sources
+ 
+ 
+@@ -52,3 +53,17 @@ async def test_rag_diet_and_complication_questions_are_grounded_in_new_documents
+     complications = await answer_with_sources("당뇨병 합병증으로 어떤 검진을 받아야 하나요?")
+     assert complications["answer_status"] == "grounded"
+     assert any(item["document_id"] == "kdca-diabetes-complications" for item in complications["citations"])
++
++
++def test_rag_response_model_documents_the_complete_envelope() -> None:
++    schema = RagQuestionResponse.model_json_schema()
++    data_schema = schema["$defs"]["RagQuestionDataResponse"]
++
++    assert set(data_schema["required"]) == {
++        "answer",
++        "answer_status",
++        "citations",
++        "retrieval_method",
++        "medical_notice",
++    }
++    assert set(schema["required"]) == {"data", "meta"}
+diff --git a/tests/test_rag_pipeline.py b/tests/test_rag_pipeline.py
+index ac1c84b..e7dd62c 100644
+--- a/tests/test_rag_pipeline.py
++++ b/tests/test_rag_pipeline.py
+@@ -30,6 +30,7 @@ from src.rag.generation import (
+     OpenAIAnswerGenerationProvider,
+     get_generation_provider,
+ )
++from src.rag.qdrant import qdrant_search
+ from src.rag.retrieval import hybrid_search, top_chunks
+ from src.rag.verification import cited_document_ids, verify_sentences
+ 
+@@ -125,6 +126,20 @@ def test_openai_embedding_provider_requires_api_key(monkeypatch: pytest.MonkeyPa
+         OpenAIEmbeddingProvider()
+ 
+ 
++@pytest.mark.asyncio
++async def test_engine_fails_closed_when_embedding_provider_is_unavailable(monkeypatch: pytest.MonkeyPatch):
++    async def unavailable_search(*args: object, **kwargs: object):
++        del args, kwargs
++        raise EmbeddingError("provider unavailable")
++
++    monkeypatch.setattr(engine, "hybrid_search", unavailable_search)
++    result = await engine.answer_with_sources("당뇨병 운동 방법을 알려주세요")
++
++    assert result["answer_status"] == "insufficient_evidence"
++    assert result["citations"] == []
++    assert "잠시 후" in result["answer"]
++
++
+ class _FakeEmbeddingsAsyncClient:
+     def __init__(self, *args: object, **kwargs: object) -> None:
+         del args, kwargs
+@@ -156,6 +171,49 @@ class _FakeHttpResponse:
+         return self._payload
+ 
+ 
++class _FakeQdrantAsyncClient:
++    def __init__(self, *args: object, **kwargs: object) -> None:
++        del args, kwargs
++
++    async def __aenter__(self) -> _FakeQdrantAsyncClient:
++        return self
++
++    async def __aexit__(self, *exc_info: object) -> None:
++        del exc_info
++
++    async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]):
++        assert url.endswith("/collections/health_education/points/query")
++        assert json["filter"] == {"must": [{"key": "approved", "match": {"value": True}}]}
++        del headers
++        return _FakeHttpResponse(
++            {
++                "result": {
++                    "points": [
++                        {
++                            "score": 0.91,
++                            "payload": {
++                                "chunk_id": "doc-a#0",
++                                "document_id": "doc-a",
++                                "chunk_index": 0,
++                                "text": "승인된 근거 문장",
++                            },
++                        }
++                    ]
++                }
++            }
++        )
++
++
++@pytest.mark.asyncio
++async def test_qdrant_search_filters_approved_documents_and_maps_payload(monkeypatch: pytest.MonkeyPatch):
++    monkeypatch.setattr(httpx, "AsyncClient", _FakeQdrantAsyncClient)
++
++    results = await qdrant_search("질문", embedding_provider=DevelopmentEmbeddingProvider())
++
++    assert results[0].chunk == _chunk("doc-a", 0, "승인된 근거 문장")
++    assert results[0].combined_score == pytest.approx(0.91)
++
++
+ @pytest.mark.asyncio
+ async def test_openai_embedding_provider_reorders_by_index(monkeypatch: pytest.MonkeyPatch):
+     monkeypatch.setattr(config, "OPENAI_API_KEY", "test-key")

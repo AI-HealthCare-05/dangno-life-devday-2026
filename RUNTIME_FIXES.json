@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "a00ab1781cbb1cdefed7ed7c27e37efd9c6017d35d6fc2ddb3e6759e09f6bfa7",
+  "patch_sha256": "ce72424317500344fa93686fd79d2684991dc7b0d46ae3621209c54393fbd2c2",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -30,6 +30,161 @@
       "path": "tests/test_auth_empty_responses.py",
       "before": null,
       "after": "345c5fcba30baf02e6968c9d9e8261e609a081765bd6537fc67b9414ae18b98c"
+    },
+    {
+      "path": ".env.example",
+      "before": "634ad45af2523eb53c8d923f03f918213d3dd46004a59de7b4acb852e7e0b38e",
+      "after": "b8762fdf98425a2545cebb29e784bc40443a19912d921464ab9bcb049bc54ce7"
+    },
+    {
+      "path": "README.md",
+      "before": "e46b1cadb6ef761dba6064821063c3cb637a620526d0880cbff87fe9204c5e15",
+      "after": "f1a74f06a4752e5ee401f1d2e8aae9bc05c913eea8c530903dd61a989e11425c"
+    },
+    {
+      "path": "app/apis/v1/challenge_v2_routers.py",
+      "before": "868063b7d300f839d40b8c04008591b608b9ee66e41916b462824beb895010c2",
+      "after": "1bf2da566e870359d52e55bd9d5ad14ed3028d749aa6004da4299447bbedd8c5"
+    },
+    {
+      "path": "app/apis/v1/rag_routers.py",
+      "before": "3146c2cc6a746083799c258986afab82c37988033b8ff391a465396db2e35e58",
+      "after": "34cfdef602c8fc516c3389155a6c18557ca4a309cd2c925c836f83e9616da673"
+    },
+    {
+      "path": "app/core/config.py",
+      "before": "af466fdaddd2d68a939143895583902839a5e3bb04013d4e4711eb89ed6f0da2",
+      "after": "df000b64ec339ab7fb24c97adc1d5f20161f858e4bc6e33224200910f5508f8f"
+    },
+    {
+      "path": "app/dtos/wellness.py",
+      "before": "2fd59dcd075866448c3173c85d466d5eea7707c7e5f4367ce1a9945173441e7a",
+      "after": "5a786c395acb42b7bd8bf59eea78eaa41dee66dace479dcf9c34d4f64e246026"
+    },
+    {
+      "path": "app/health.py",
+      "before": null,
+      "after": "1be8bb9736b87bc52f739199d2f1921f8bffc64bd1e560baa7219706f73510fb"
+    },
+    {
+      "path": "app/lifecycle.py",
+      "before": null,
+      "after": "0fb5473f38222833c13660f60ac0b1296be9ef5ddc87dd7f122e05ef7c91348f"
+    },
+    {
+      "path": "app/main.py",
+      "before": "1379aa4161714f89620711e6f866c512b33929022bf70c9173100efc75cf0c15",
+      "after": "2cc2cf09d0eed824ebd913d4187cf3954fa091a4216feb5aabbb35f46f751827"
+    },
+    {
+      "path": "docker-compose.yml",
+      "before": null,
+      "after": "3797491e138b16afa60977f41884973c015b511e3bbbf64262aa338f4616308b"
+    },
+    {
+      "path": "envs/example.local.env",
+      "before": null,
+      "after": "403a927a4934044cacb2889e56785b50500800f05fdd0f8df2ef8a1d8bf20016"
+    },
+    {
+      "path": "envs/example.prod.env",
+      "before": null,
+      "after": "034845669c4a3b2e449d329b00b6702fb25259ba791ff168118bd5b9f677144d"
+    },
+    {
+      "path": "infra/docker/docker-compose.ec2.yml",
+      "before": null,
+      "after": "0c413cc22e878087fb156d7bc24c19f97bb246bed0732b73384ddbce0cd1c20b"
+    },
+    {
+      "path": "infra/docker/docker-compose.prod.yml",
+      "before": null,
+      "after": "3a56eb9037fed08fbf8ca984aa01aff9ef878468bcd4beb5e9f4604d2762235e"
+    },
+    {
+      "path": "infra/nginx/Dockerfile",
+      "before": null,
+      "after": "2c9c453958c0cfdbf15509c1768bdc4ae8eea3dcada4a9522b28d02c1d8cb327"
+    },
+    {
+      "path": "infra/nginx/default.conf",
+      "before": null,
+      "after": "1f42cbed8908350b5ed9ff311e35c0e0794f384c5b1de9ce82810fb55de5aaf9"
+    },
+    {
+      "path": "infra/nginx/ec2-http.conf.template",
+      "before": null,
+      "after": "8125c146c9b4b11a16de334536c46aef05c3ce818a471c8dc57a36e7e0835b20"
+    },
+    {
+      "path": "infra/nginx/prod_http.conf",
+      "before": null,
+      "after": "fef34b60a1160c8939f58635f591521b157e6aadadd2768d4a6cbcc4545965bd"
+    },
+    {
+      "path": "infra/nginx/prod_http.conf.template",
+      "before": null,
+      "after": "24d0b834ffcc585463d1dce10f975a0968a8fe721ef2b2227fc857707373a75a"
+    },
+    {
+      "path": "infra/nginx/prod_https.conf",
+      "before": null,
+      "after": "b59c77ffe9c1084cc974fcb6bd03677d48c2e4ae65c0b05ce4734cc5268577c3"
+    },
+    {
+      "path": "infra/nginx/prod_https.conf.template",
+      "before": null,
+      "after": "e515f79f1fafa1abfe837fede0b0419b675ad5663aa4bd31393aacdd50a79c28"
+    },
+    {
+      "path": "scripts/build-release-images.sh",
+      "before": null,
+      "after": "4a4b3e4ffd368de5459a79cc347cf00f29356cf9ab92aa6e5cde4d4f1d6ab288"
+    },
+    {
+      "path": "scripts/preflight-production.sh",
+      "before": null,
+      "after": "6f9dc175c10530442824d83c372e0ff69ac401e2f6d4d3b38fc6b0078e090423"
+    },
+    {
+      "path": "scripts/prepare-ec2-release.sh",
+      "before": null,
+      "after": "f737560ba9cbd281b4f1e413907b6789d745838a0351b5eb781799f69e67af1a"
+    },
+    {
+      "path": "src/rag/engine.py",
+      "before": "50908cffef75548477b3539a7270aa4d8a2af6fe6f055f729d951c87f35bd7cc",
+      "after": "d4982b2d2fab097dc916575349b08607e73ca2a8581a80c6855a0e9f3f5a89f9"
+    },
+    {
+      "path": "src/rag/indexing.py",
+      "before": null,
+      "after": "7e6e37afbcde9eebb89323d7049da3e72adf1ac80423b6d1e139b5b8509b9966"
+    },
+    {
+      "path": "src/rag/qdrant.py",
+      "before": null,
+      "after": "734ec3b6b48971f0eadc1054c65b03db9bfab16ffeebbac726aba32b0985aea3"
+    },
+    {
+      "path": "tests/test_app_structure.py",
+      "before": null,
+      "after": "f6cdcfbc0a160c3338bcaadf2a3f62262c3bf204a7eed08f94ecf49ee0569c59"
+    },
+    {
+      "path": "tests/test_production_deployment_assets.py",
+      "before": "c75d50eae5ec8b79c0c61e8eca81677805dee2c3abc254c914b61d5aa4a92ec6",
+      "after": "947d411aa0da8e65a6ff38dd434cd17472ccc91078b467e2e2b9ec19a752aa53"
+    },
+    {
+      "path": "tests/test_rag_health_education.py",
+      "before": "378de6627c66d5967792afdd54d7d6c0a5fe3015cc206c1c1e3ffa8b611c64c2",
+      "after": "45c7ac061347dfdb59c83a1c69a8b52824088e7837516aa92747c27fe2a0de90"
+    },
+    {
+      "path": "tests/test_rag_pipeline.py",
+      "before": "65f9edd2bbef57dee11c10c90589c344eac7e3c6593964004cbe161e419bcaed",
+      "after": "7503aa4371f94de57a7cafc507b655422f8e813132aae0c6f7a529f9f8ceeec0"
     }
   ]
 }
