@@ -21,7 +21,7 @@ with tempfile.TemporaryFile() as archive:
     while b:=src.read(1048576):h.update(b)
    digest=expected[member.name]['sha256']
    if h.hexdigest()!=digest:raise SystemExit('File mismatch: '+member.name)
-   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest()!=digest:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
+   if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest()!=digest and member.name not in {'README.md','DAILY.md','PREWORK.md','DAY_OF_WORK.md'}:raise SystemExit('Existing local changes; refusing overwrite: '+member.name)
   for member in members:
    target=root/member.name;target.parent.mkdir(parents=True,exist_ok=True)
    if target.exists():continue
