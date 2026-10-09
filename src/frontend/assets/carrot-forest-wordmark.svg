@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="244" height="76" viewBox="0 0 244 76" role="img" aria-labelledby="title">
+<title id="title">당근의 숲</title>
+<defs><path id="letters" d="M14 23h21v3h-21zM41 23h6v3h-6zM14 26h21v3h-21zM41 26h6v3h-6zM14 29h6v3h-6zM41 29h6v3h-6zM14 32h6v3h-6zM41 32h12v3h-12zM14 35h6v3h-6zM41 35h12v3h-12zM14 38h21v3h-21zM41 38h6v3h-6zM14 41h21v3h-21zM41 41h6v3h-6zM20 47h18v3h-18zM17 50h6v3h-6zM35 50h6v3h-6zM14 53h6v3h-6zM38 53h6v3h-6zM14 56h6v3h-6zM38 56h6v3h-6zM17 59h6v3h-6zM35 59h6v3h-6zM20 62h18v3h-18zM65 23h36v3h-36zM65 26h36v3h-36zM95 29h6v3h-6zM95 32h6v3h-6zM95 35h6v3h-6zM65 41h36v3h-36zM65 44h36v3h-36zM65 50h6v3h-6zM65 53h6v3h-6zM65 56h6v3h-6zM65 59h36v3h-36zM65 62h36v3h-36zM122 23h15v3h-15zM146 23h6v3h-6zM119 26h6v3h-6zM134 26h6v3h-6zM146 26h6v3h-6zM116 29h6v3h-6zM137 29h6v3h-6zM146 29h6v3h-6zM116 32h6v3h-6zM137 32h6v3h-6zM146 32h6v3h-6zM116 35h6v3h-6zM137 35h6v3h-6zM146 35h6v3h-6zM119 38h6v3h-6zM134 38h6v3h-6zM146 38h6v3h-6zM122 41h15v3h-15zM146 41h6v3h-6zM146 44h6v3h-6zM146 47h6v3h-6zM116 50h27v3h-27zM146 50h6v3h-6zM116 53h27v3h-27zM146 53h6v3h-6zM146 56h6v3h-6zM146 59h6v3h-6zM146 62h6v3h-6zM198 23h6v3h-6zM195 26h12v3h-12zM192 29h6v3h-6zM204 29h6v3h-6zM189 32h6v3h-6zM207 32h6v3h-6zM186 35h6v3h-6zM210 35h6v3h-6zM183 41h39v3h-39zM183 44h39v3h-39zM198 47h6v3h-6zM198 50h6v3h-6zM186 56h33v3h-33zM192 59h6v3h-6zM204 59h6v3h-6zM192 62h6v3h-6zM204 62h6v3h-6zM186 65h33v3h-33z"/></defs>
+<use href="#letters" transform="translate(0 2)" fill="#164c22" stroke="#164c22" stroke-width="5" stroke-linejoin="round" opacity=".13"/>
+<use href="#letters" fill="#fffdf0" stroke="#fffdf0" stroke-width="5" stroke-linejoin="round"/>
+<use href="#letters" fill="#17682d"/>
+<g stroke="#fffdf0" stroke-width="3" stroke-linejoin="round">
+<path d="M34 22V12h3v10z" fill="#17682d"/>
+<path d="M34 15h-6v-3h-3V7h7v3h3v5z" fill="#3e9743"/>
+<path d="M36 12V7h3V4h8v5h-3v3z" fill="#17682d"/>
+</g>
+</svg>

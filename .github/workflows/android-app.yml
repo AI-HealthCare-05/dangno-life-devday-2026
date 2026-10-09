@@ -15,11 +15,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare pinned mobile application
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Restore verified application source from this revision
         run: |
-          git clone --depth 1 --branch codex/local-mobile-development https://github.com/AI-HealthCare-05/AH_05_02.git mobile-app
-          git -C mobile-app fetch origin 020f13bca46a4f0eb1dee300008734069a399aca
-          git -C mobile-app checkout --detach 020f13bca46a4f0eb1dee300008734069a399aca
+          python restore_workspace.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -28,23 +29,23 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Build mobile bundle for AWS
-        working-directory: mobile-app
         env:
           MOBILE_API_ORIGIN: https://www.dang-no.life
         run: |
           npm install --global pnpm@11.19.0
           pnpm install --frozen-lockfile
-          pnpm build:mobile
+          pnpm test:mobile
+          pnpm build:mobile:deployment
           pnpm exec cap sync android
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
           chmod +x src/frontend/native/android/gradlew
-          src/frontend/native/android/gradlew -p src/frontend/native/android :app:assembleDebug --console=plain --no-daemon
+          src/frontend/native/android/gradlew -p src/frontend/native/android :app:assembleDebug -PmobileDeployment=true --console=plain --no-daemon
       - name: Publish Android test app
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          cp mobile-app/src/frontend/native/android/app/build/outputs/apk/debug/app-debug.apk dangno-life-android.apk
+          cp src/frontend/native/android/app/build/outputs/apk/debug/app-debug.apk dangno-life-android.apk
           sha256sum dangno-life-android.apk > dangno-life-android.apk.sha256
           gh release view android-devday >/dev/null 2>&1 || gh release create android-devday --target "$GITHUB_SHA" --title '간당간당 Android 체험 앱' --notes 'Android 7 이상. https://www.dang-no.life API에 연결되는 모바일 앱 체험판입니다. iOS 설치 파일은 포함하지 않습니다.' --prerelease
           gh release upload android-devday dangno-life-android.apk dangno-life-android.apk.sha256 --clobber

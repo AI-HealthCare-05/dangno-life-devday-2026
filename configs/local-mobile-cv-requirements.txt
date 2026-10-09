@@ -1,0 +1,4 @@
+# Official CPU runtime tested with the approved, unchanged kfood artifacts.
+--index-url https://download.pytorch.org/whl/cpu
+torch==2.8.0+cpu
+torchvision==0.23.0+cpu

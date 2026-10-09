@@ -1,0 +1,9 @@
+{
+  "source_folder_id": "1jhPrlVGf8jlykOYVCIEbeuX0vTvv122o",
+  "cv_folder_id": "1lOJfpkOP_uoiz0SXxw6ThS9T22dUQHaR",
+  "files": [
+    {"name": "best.pt", "file_id": "14UI-dnUCUvyDQ8kVlYlWtDrx7dViBm9M", "registry_section": "classifier", "digest_key": "sha256"},
+    {"name": "meta.json", "file_id": "1Q7JuQzge_H_b20XfBbgOrQ_jWHJeFA-1", "registry_section": "classifier", "digest_key": "meta_sha256"},
+    {"name": "1.tflite", "file_id": "1Q0bXcvJZO95075quDJsVR2xENgS-3Vcp", "registry_section": "segmenter", "digest_key": "sha256"}
+  ]
+}

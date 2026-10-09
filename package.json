@@ -1,0 +1,35 @@
+{
+  "name": "gandang-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor packaging for the existing Gandang web frontend",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:mobile": "node scripts/mobile/build.mjs",
+    "test:mobile": "node --test tests/mobile/*.test.mjs",
+    "sync:android": "node scripts/mobile/build.mjs && cap sync android",
+    "sync:ios": "node scripts/mobile/build.mjs && cap sync ios",
+    "dev:ios:web": "node scripts/mobile/live-reload.mjs",
+    "dev:ios:connect": "node scripts/mobile/connect-ios-live.mjs",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios",
+    "test:mobile:smoke": "node scripts/mobile/smoke.mjs",
+    "build:mobile:local": "node scripts/mobile/build-local.mjs",
+    "build:mobile:deployment": "node scripts/mobile/build-deployment.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/camera": "^8.2.4",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
+  }
+}

@@ -6,6 +6,8 @@
 - 실행 안내: [SETUP.md](SETUP.md)
 - 기능 시작 상태: [PREWORK.md](PREWORK.md)
 - 당일 작업·검증: [DAY_OF_WORK.md](DAY_OF_WORK.md)
+- 스마트폰 앱: [Android·iPhone 실행 가이드](docs/mobile/README.md)
+- 앱 통합 변경사항·검증 제한: [main 대비 앱 변경사항](docs/mobile/CHANGELOG_MAIN.md)
 
 ## 작업 시작
 

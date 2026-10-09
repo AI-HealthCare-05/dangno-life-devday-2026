@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <script src="/static/auth-session.js?v=20261003-navigation-session-v1"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#176B5B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="당근의 숲">
+  <title>당근의 숲 | 간당간당</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/forest-icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/static/icons/forest-icon-192.png">
+  <link rel="preload" as="image" href="/static/assets/carrot-forest-loading-v2.png?v=20260907-1" fetchpriority="high">
+  <style>
+    #forest-boot{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;overflow:hidden;isolation:isolate;background:#dcecc3 url('/static/assets/carrot-forest-loading-v2.png?v=20260907-1') center/cover no-repeat;color:#155528;font:800 18px/1.5 Pretendard,"Noto Sans KR",system-ui,sans-serif}
+    #forest-boot::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(238,247,213,.18),transparent 58%);pointer-events:none}
+    .forest-boot-panel{width:min(650px,47vw);margin-left:clamp(24px,6vw,112px);padding:24px 0;transform:translateY(-5vh);text-align:left}
+    .forest-boot-brand{display:flex;align-items:center;margin:0 0 20px}.forest-boot-logo{display:block;width:auto;height:clamp(50px,6vw,72px);object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges}
+    .forest-boot-title{margin:0;font-size:clamp(48px,6.5vw,116px);font-weight:950;line-height:1.12;letter-spacing:-.07em;white-space:nowrap;text-shadow:0 3px 0 #f6f7d9,3px 0 0 #f6f7d9,-3px 0 0 #f6f7d9,0 -3px 0 #f6f7d9,0 6px 18px rgba(45,86,37,.1)}
+    .forest-boot-copy{max-width:500px;margin:22px 0 34px;color:#235b32;font-size:clamp(15px,1.5vw,23px);font-weight:800;line-height:1.7;letter-spacing:-.035em;text-wrap:balance;text-shadow:0 1px 8px #f7f9dc}
+    .forest-boot-progress{width:min(400px,100%);height:9px;overflow:hidden;border:1px solid rgba(46,95,42,.24);border-radius:999px;background:rgba(255,255,237,.8);box-shadow:0 2px 8px rgba(36,80,37,.08)}
+    .forest-boot-progress i{display:block;width:36%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#e78629,#f4b452,#699644);animation:forestBootLoad 1.6s ease-in-out infinite}
+    .forest-boot-status{display:flex;align-items:center;gap:8px;width:fit-content;margin-top:12px;padding:4px 10px;border-radius:999px;background:rgba(247,249,220,.78);color:#35663c;font-size:13px;font-weight:800}.forest-boot-status span{width:7px;height:7px;border-radius:50%;background:#5a8f47;animation:forestBootPulse 1s ease-in-out infinite alternate}
+    html:not(.forest-style-ready),html:not(.forest-script-ready){overflow:hidden}
+    html:not(.forest-style-ready) body>:not(#forest-boot),html:not(.forest-script-ready) body>:not(#forest-boot){visibility:hidden}
+    html.forest-style-ready.forest-script-ready #forest-boot{display:none}
+    @keyframes forestBootPulse{to{opacity:.48;transform:scale(.84)}}@keyframes forestBootLoad{0%{transform:translateX(-105%)}85%,100%{transform:translateX(285%)}}
+    @media(max-aspect-ratio:1/1){#forest-boot{align-items:flex-end;background-position:73% center}#forest-boot::after{background:linear-gradient(0deg,rgba(243,248,219,.98) 0%,rgba(237,246,213,.96) 21%,rgba(237,246,213,.6) 37%,transparent 61%)}.forest-boot-panel{width:100%;margin:0;padding:28px 26px max(30px,env(safe-area-inset-bottom));transform:none}.forest-boot-brand{margin-bottom:10px}.forest-boot-logo{height:52px}.forest-boot-title{font-size:clamp(48px,11vw,80px)}.forest-boot-copy{max-width:420px;margin:14px 0 22px;font-size:16px}}
+    @media(max-height:500px) and (min-aspect-ratio:1/1){.forest-boot-panel{transform:none;padding:12px 0}.forest-boot-brand{margin-bottom:8px}.forest-boot-logo{height:42px}.forest-boot-title{font-size:clamp(36px,6vw,58px)}.forest-boot-copy{margin:10px 0 16px;font-size:14px}.forest-boot-status{margin-top:8px;font-size:11px}}
+    @media(prefers-reduced-motion:reduce){.forest-boot-progress i,.forest-boot-status span{animation:none}.forest-boot-progress i{width:72%}}
+  </style>
+  <script>
+    (() => {
+      const localDemo = ["127.0.0.1", "localhost"].includes(window.location.hostname);
+      if (!localDemo || !("serviceWorker" in navigator)) return;
+      const resetKey = "forest-local-pwa-reset-v40";
+      if (sessionStorage.getItem(resetKey)) return;
+      sessionStorage.setItem(resetKey, "1");
+      Promise.all([
+        navigator.serviceWorker.getRegistrations().then((registrations) => Promise.all(
+          registrations.filter((registration) => registration.scope.startsWith(`${location.origin}/forest`)).map((registration) => registration.unregister())
+        )),
+        caches.keys().then((keys) => Promise.all(
+          keys.filter((key) => key.startsWith("gandang-carrot-forest-pwa-")).map((key) => caches.delete(key))
+        )),
+      ]).then(() => {
+        if (navigator.serviceWorker.controller) window.location.reload();
+      }).catch(() => {});
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/forest-game.css?v=20260921-wisdom-lp-v1" onload="document.documentElement.classList.add('forest-style-ready')">
+  <link rel="stylesheet" href="/static/forest-atmosphere.css?v=20260903-2">
+  <script type="text/plain" data-forest-script src="/static/vendor/phaser-3.90.0.min.js"></script>
+  <script type="text/plain" data-forest-script src="/static/lpc-avatar-engine.js?v=20260917-1"></script>
+  <script type="text/plain" data-forest-script src="/static/avatar-compositor.js?v=20260827-10"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-atmosphere.js?v=20260907-4"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-objects.js?v=20260910-3"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-fire.js?v=20260907-3"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-animals.js?v=20260908-5"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-pets.js?v=20260908-6"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-riverduck.js?v=20260908-1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-riverduck-art.js?v=20260910-2"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-memories.js?v=20260917-1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-garden.js?v=20260908-1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-phaser.js?v=20260921-wisdom-lp-v1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-hud.js?v=20260908-4"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-profile.js?v=20261003-navigation-session-v1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-game.js?v=20261003-navigation-session-v1"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-joystick.js"></script>
+  <script type="text/plain" data-forest-script src="/static/forest-ingame-hud.js"></script>
+  <link rel="stylesheet" href="/static/challenge-v2.css?v=2.1.3">
+  <link rel="stylesheet" href="/static/suin/design-tokens.css?v=20260908-1">
+  <script type="text/plain" data-forest-script src="/static/challenge-v2.js?v=2.1.11"></script>
+  <link rel="stylesheet" href="/static/navigation.css">
+  <script src="/static/forest-access.js?v=20261003-navigation-session-v1" defer></script>
+</head>
+<body>
+  <div id="forest-boot" role="status" aria-live="polite"><div class="forest-boot-panel"><p class="forest-boot-brand"><img class="forest-boot-logo" src="/static/assets/gandang-logo-forest-pixel-v2.png" width="1629" height="965" alt="간당간당"></p><h1 class="forest-boot-title">당근의 숲</h1><p class="forest-boot-copy">함께 실천하고, 같이 성장하는 모두의 건강 숲</p><div class="forest-boot-progress" aria-hidden="true"><i></i></div><div class="forest-boot-status"><span aria-hidden="true"></span>숲을 준비하고 있어요</div></div></div>
+  <a class="skip-link" href="#forest-main">게임 내용으로 바로가기</a>
+
+  <header class="studio-topbar">
+    <a class="forest-brand" href="/" aria-label="간당간당 홈으로"><img class="forest-brand-logo" src="/static/assets/gandang-logo-forest-pixel-v2.png" width="1629" height="965" alt=""></a>
+    <div class="breadcrumb" aria-label="현재 위치"><strong>당근의 숲</strong></div>
+    <div class="topbar-actions">
+      <span class="sync-state" aria-label="오늘 기록 연결됨" title="오늘 기록 연결됨"><i aria-hidden="true"></i></span>
+      <div class="carrot-balance" aria-label="보유 당근"><span aria-hidden="true">🥕</span><strong id="carrot-balance">100</strong></div>
+      <button id="install-pwa" class="install-button" type="button" hidden>앱으로 설치</button>
+      <button id="music-toggle" class="icon-button" type="button" aria-pressed="false" aria-label="BGM 꺼짐">BGM</button>
+      <div class="volume-control">
+        <button id="volume-toggle" class="icon-button" type="button" aria-expanded="false" aria-controls="volume-panel">음량</button>
+        <div id="volume-panel" class="volume-panel" hidden>
+          <section class="volume-channel" aria-labelledby="bgm-volume-title">
+            <label for="music-volume"><span id="bgm-volume-title">배경음악 음량</span><output id="music-volume-value">24%</output></label>
+            <input id="music-volume" type="range" min="0" max="100" step="1" value="24">
+            <button id="music-mute" class="plain-button" type="button" aria-pressed="false">배경음악 음소거</button>
+          </section>
+          <section class="volume-channel" aria-labelledby="sfx-volume-title">
+            <label for="sfx-volume"><span id="sfx-volume-title">효과음 음량</span><output id="sfx-volume-value">100%</output></label>
+            <input id="sfx-volume" type="range" min="0" max="100" step="1" value="100">
+            <button id="sfx-mute" class="plain-button" type="button" aria-pressed="false">효과음 음소거</button>
+          </section>
+        </div>
+      </div>
+      <button id="atmosphere-toggle" class="icon-button" type="button" aria-pressed="true" aria-label="날씨·시간 효과 켜짐">날씨·시간</button>
+      <label class="font-size-control" for="font-size-select"><span>글자 크기</span><select id="font-size-select" aria-label="글자 크기"><option value="small">작게</option><option value="default" selected>보통</option><option value="large">크게</option></select></label>
+      <div id="open-profile" class="profile-button forest-user-name" aria-label="사용자 이름"><span aria-hidden="true">👤</span><span id="topbar-nickname">내 프로필</span></div>
+    </div>
+  </header>
+
+  <main id="forest-main" class="studio-shell">
+    <section class="studio-heading" aria-labelledby="forest-title">
+      <div>
+        <h1 id="forest-title">당근의 숲</h1>
+      </div>
+      <div class="heading-summary" aria-label="오늘 진행 요약">
+        <div><small>내 퀘스트</small><strong id="heading-personal-progress">0 / 3</strong></div>
+        <div><small>공동 진행</small><strong id="heading-group-progress">12 / 15</strong></div>
+        <div><small>연속 참여</small><strong>🔥 6일</strong></div>
+      </div>
+    </section>
+
+    <p id="game-status" class="game-status sr-only" role="status" aria-live="polite"><span aria-hidden="true">●</span> 게임을 준비하고 있습니다.</p>
+
+    <div class="workspace">
+      <h2 id="map-title" class="sr-only">우리의 작은 숲</h2>
+      <span id="adapter-badge" class="adapter-badge sr-only">숲 체험</span>
+
+      <aside class="tool-rail" aria-label="당근의 숲 작업 도구">
+        <div class="rail-title sr-only"><strong>메뉴</strong></div>
+        <nav class="tool-nav" aria-label="작업 영역 바로가기">
+          <button class="tool-button is-active" type="button" data-workspace-target="world-stage" aria-pressed="true"><span aria-hidden="true">🌲</span><b>월드</b><small>이동·배치</small></button>
+          <button class="tool-button" type="button" data-workspace-target="avatar-editor" aria-pressed="false"><span aria-hidden="true">🧑‍🌾</span><b>아바타</b><small>외형 편집</small></button>
+          <button class="tool-button" type="button" data-workspace-target="asset-dock" aria-pressed="false"><span aria-hidden="true">🎒</span><b>창고</b><small>아이템 관리</small></button>
+          <button class="tool-button" type="button" data-workspace-target="team-inspector" aria-pressed="false"><span aria-hidden="true">👥</span><b>모임</b><small>공동 목표</small></button>
+        </nav>
+
+        <section id="avatar-editor" class="rail-editor" aria-labelledby="avatar-title">
+          <h2 id="avatar-title">아바타</h2>
+          <div class="avatar-form">
+            <button id="open-avatar-studio" class="avatar-studio-button" type="button"><span aria-hidden="true">✦</span> 아바타 꾸미기</button>
+          </div>
+        </section>
+        <section id="asset-dock" class="asset-dock rail-assets" aria-labelledby="inventory-title">
+          <h2 id="inventory-title" class="sr-only">옷장과 창고</h2>
+          <span id="placement-mode" class="sr-only" aria-live="polite">배치할 아이템 없음</span>
+          <div class="asset-library-grid">
+            <section class="asset-group" aria-labelledby="wardrobe-title">
+              <div class="asset-group-title"><span aria-hidden="true">👕</span><div><h3 id="wardrobe-title">옷장</h3></div></div>
+              <div id="wardrobe-list" class="inventory-list"></div>
+            </section>
+            <section class="asset-group" aria-labelledby="storage-title">
+              <div class="asset-group-title"><span aria-hidden="true">📦</span><div><h3 id="storage-title">창고</h3></div><button id="cancel-placement" class="plain-button" type="button" hidden>배치 취소</button></div>
+              <div id="storage-list" class="inventory-list"></div>
+            </section>
+          </div>
+        </section>
+        <section class="object-inspector footer-objects" aria-labelledby="placed-title">
+          <div class="panel-title"><div><h2 id="placed-title">배치한 오브젝트</h2></div><span class="object-count" id="object-count">0개</span><button id="objects-toggle" class="toolbar-button" type="button" aria-expanded="true" aria-controls="placed-list">숨기기</button></div>
+          <div id="placement-controls" class="placement-controls" role="toolbar" aria-label="오브젝트 배치 조작" hidden>
+            <button id="rotate-placement" type="button" disabled><span aria-hidden="true">↻</span> 회전</button>
+            <button id="confirm-placement" class="placement-confirm" type="button" disabled><kbd>V</kbd> 배치 확정</button>
+          </div>
+          <div id="placed-list" class="placed-list"></div>
+        </section>
+      </aside>
+
+      <section id="world-stage" class="world-stage" aria-labelledby="map-title">
+        <div class="forest-weather-strip" aria-label="잠원동 인근 날씨와 한국 시간">
+          <div class="weather-main"><strong>서초구 잠원동 <small>인근</small></strong><span id="forest-weather-value" role="status">날씨 불러오는 중</span><time id="forest-clock">--:--</time></div>
+          <div class="weather-caption sr-only"><span id="forest-weather-updated">잠원동 인근 모델 기반 날씨 · 10분마다 갱신</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></div>
+        </div>
+        <div class="canvas-workarea">
+          <div class="canvas-frame">
+            <div class="viewport-tools" aria-label="게임 화면 도구">
+              <button id="scene-exit" class="toolbar-button" type="button" hidden>← 숲으로</button>
+              <div class="world-zoom" role="group" aria-label="캐릭터 중심 확대·축소">
+                <button id="zoom-out" class="toolbar-button" type="button" aria-label="게임 화면 축소">−</button>
+                <output id="zoom-level" aria-live="polite">100%</output>
+                <button id="zoom-in" class="toolbar-button" type="button" aria-label="게임 화면 확대">+</button>
+              </div>
+            </div>
+            <div id="forest-time-toast" class="forest-time-toast" role="status" aria-live="polite" hidden><span class="time-toast-icon" aria-hidden="true"></span><div><strong></strong><small></small></div></div>
+            <div id="forest-catch-toast" class="forest-catch-toast" aria-hidden="true" hidden></div>
+            <div id="phaser-world" role="application" tabindex="0" aria-label="고해상도 4방향 픽셀 아바타로 이동하는 당근의 숲 월드"></div>
+            <canvas id="forest-canvas" width="1536" height="1024" tabindex="0" aria-label="숲, 당근밭, 공동 나무와 집이 있는 고해상도 픽셀 맵. 방향키나 WASD로 아바타를 움직일 수 있습니다." aria-describedby="movement-help"></canvas>
+            <span class="phaser-quality-badge">JUNE JTOY AVATATA</span>
+            <div class="map-label home-label"><span aria-hidden="true">🏠</span>우리 집</div>
+            <div class="map-label garden-label"><span aria-hidden="true">🥕</span>당근 밭</div>
+            <div id="avatar-nameplate" class="map-label avatar-nameplate" aria-label="아바타 닉네임"></div>
+            <div id="interaction-prompt" class="interaction-prompt" hidden><kbd>Q</kbd><span>상호작용</span></div>
+            <section id="garden-harvest-panel" class="garden-harvest-panel" aria-live="polite" hidden>
+              <span class="harvest-carrot" aria-hidden="true">🥕</span>
+              <div><small>누적 챌린지 수확</small><strong><span id="pending-harvest-carrots">0</span>개가 자랐어요</strong></div>
+              <button id="harvest-challenge-carrots" type="button">Q · 수확하기</button>
+            </section>
+            <div class="canvas-hud sr-only"><span id="avatar-coordinate">X 384 · Y 352</span></div>
+            <div class="game-controls-overlay arcade-deck" aria-label="게임 조작 버튼">
+              <div class="control-cluster">
+                <div class="hud-panel-heading" role="group" aria-label="조작 버튼과 UI 표시"><button id="controls-toggle" class="toolbar-button" type="button" aria-expanded="true" aria-controls="controls-content">버튼 숨기기(8)</button><button id="reset-position" class="toolbar-button" type="button" title="페이지 새로고침">초기화(9)</button><button id="ui-toggle" class="toolbar-button" type="button" aria-pressed="false">UI 숨기기(0)</button></div>
+                <div id="controls-content" class="touch-controls joystick-controls" aria-label="아바타 조작">
+                  <div id="forest-joystick" class="forest-joystick" tabindex="0" role="group" aria-label="이동 조이스틱. 밀어서 이동하고 놓으면 멈춥니다. 키보드 방향키도 사용할 수 있습니다.">
+                    <span class="joystick-ring" aria-hidden="true"></span><span class="joystick-knob" aria-hidden="true"></span>
+                  </div>
+                  <div class="joystick-actions">
+                    <button class="arcade-action action-jump" type="button" data-action="jump" aria-label="점프, 단축키 J">점프</button>
+                    <button class="arcade-action action-interact" type="button" data-action="interact" aria-label="상호작용, 단축키 Q">상호작용</button>
+                    <button class="arcade-action action-run" type="button" data-action="run" aria-pressed="false" aria-label="달리기 꺼짐, 단축키 R">달리기</button>
+                    <button class="arcade-action action-sit" type="button" data-action="sit" aria-label="앉기, 단축키 X">앉기</button>
+                    <button class="arcade-action action-attack" type="button" data-action="attack" aria-label="공격, 단축키 Z">공격</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <dialog id="forest-memory-dialog" class="forest-memory-dialog" aria-label="추억사진 촬영" aria-describedby="forest-memory-status" aria-modal="false" aria-busy="false">
+              <header><button id="forest-memory-close" type="button" aria-label="사진관에서 나가기">사진관에서 나가기</button></header>
+              <p id="forest-memory-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+              <progress id="forest-memory-progress" aria-label="추억사진 준비 중" hidden></progress>
+              <figure id="forest-memory-figure" hidden><img id="forest-memory-preview" alt="당근집 앞에서 여섯 프리셋 친구와 토끼, 고양이, 펫, 젖소가 함께한 단체사진"></figure>
+              <div class="forest-memory-actions"><a id="forest-memory-save" role="button" aria-disabled="true" tabindex="-1" rel="noopener">사진 저장</a><button id="forest-memory-retake" type="button">다시 찍기</button></div>
+            </dialog>
+          </div>
+        </div>
+
+
+      </section>
+
+      <div class="right-hud">
+      <aside class="inspector" aria-label="퀘스트와 구성원 정보">
+        <div class="inspector-tabs" role="tablist" aria-label="인스펙터 보기">
+          <button class="inspector-tab is-active" type="button" role="tab" aria-selected="true" data-inspector-tab="quests-panel">오늘 할 일</button>
+          <button class="inspector-tab" type="button" role="tab" aria-selected="false" data-inspector-tab="team-inspector">함께 하기</button>
+        </div>
+        <div class="daily-reward-panel">
+          <button id="reward-button" class="reward-button daily-reward-button" type="button" disabled>일일 보상 받기</button>
+          <p id="group-reward-help" class="group-reward-help">오늘의 퀘스트 3개를 완료하면 바로 열 수 있어요.</p>
+        </div>
+
+        <section id="quests-panel" class="inspector-panel" role="tabpanel" aria-labelledby="quest-title" tabindex="-1">
+          <div class="panel-title"><div><h2 id="quest-title">오늘의 퀘스트</h2></div><strong id="personal-progress">0/3</strong></div>
+          <button id="start-prediction-flow" class="prediction-flow-button" type="button">로그인하고 챌린지 시작!</button>
+          <p id="quest-generation-status" class="quest-generation-status" role="status" aria-live="polite" hidden>오늘까지의 챌린지 결과를 토대로 챌린지 생성 중</p>
+          <div id="quest-list" class="quest-list"></div>
+          <div data-challenge-v2 data-challenge-v2-view="forest" hidden></div>
+        </section>
+
+        <section id="team-inspector" class="inspector-panel" role="tabpanel" aria-labelledby="group-title" tabindex="-1" hidden>
+          <div class="panel-title"><div><h2 id="group-title">팀 챌린지 달성도</h2></div><strong id="group-progress">12/15</strong></div>
+          <div class="group-mission-card"><div><strong>완료 시 꾸미기 아이템</strong><p id="group-remaining">공동 보상까지 3개 남았어요.</p></div></div>
+          <div class="progress-track" role="progressbar" aria-label="공동 목표 진행률" aria-valuemin="0" aria-valuemax="15" aria-valuenow="12"><span id="group-progress-bar"></span></div>
+          <ul id="member-list" class="member-list" aria-label="구성원별 퀘스트 진행 상태"></ul>
+          <form id="group-goal-form" class="group-goal-form"><label for="group-goal-memo">오늘의 목표</label><textarea id="group-goal-memo" maxlength="80" rows="3" placeholder="예: 오늘도 함께, 가볍게 한 걸음!"></textarea><button type="submit">목표 저장</button></form>
+          <a id="add-family-colleague" class="add-member-button" href="/?workspace=together#forest-invite-title">+ 가족/동료 추가하기</a>
+        </section>
+      </aside>
+      </div>
+
+    </div>
+
+  </main>
+
+  <button id="chat-toggle" class="chat-launcher" type="button" aria-expanded="false" aria-controls="chat-panel">채팅 (Enter / C)</button>
+  <a class="mobile-panel-shortcut" href="#avatar-editor">옷장·창고 ↓</a>
+  <aside id="chat-panel" class="chat-panel bottom-chat" aria-labelledby="chat-title" hidden>
+    <div class="chat-heading"><h2 id="chat-title">숲 채팅</h2><small id="chat-help">C를 다시 누르면 채팅이 숨겨집니다.</small><button id="chat-close" class="toolbar-button" type="button" aria-label="채팅 숨기기">×</button></div>
+    <div id="wisdom-chat-guide" class="wisdom-chat-guide" hidden>
+      <img class="wisdom-chat-banner" src="/static/assets/wisdom-spring-chat-banner-v1.png?v=20260910-1" alt="지혜의 샘 배너">
+    </div>
+    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"><p><strong>숲지기</strong><span>오늘도 같이 숲을 가꿔봐요!</span></p></div>
+    <div id="wisdom-question-suggestions" class="wisdom-question-suggestions" aria-label="건강 질문 예시" hidden></div>
+    <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">채팅 메시지</label><input id="chat-input" maxlength="60" placeholder="메시지를 입력하고 Enter" aria-describedby="chat-help"><button type="submit" aria-label="채팅 보내기">보내기</button></form>
+  </aside>
+
+  <dialog id="avatar-studio" class="avatar-studio" aria-labelledby="avatar-studio-title">
+    <header class="avatar-studio-header">
+      <div><p class="eyebrow">PIXEL AVATAR STUDIO</p><h2 id="avatar-studio-title">아바타 꾸미기</h2></div>
+      <button id="avatar-studio-close" class="avatar-studio-close" type="button" aria-label="아바타 꾸미기 닫기">×</button>
+    </header>
+    <div class="avatar-studio-layout">
+      <nav id="avatar-category-nav" class="avatar-category-nav" aria-label="아바타 꾸미기 카테고리"></nav>
+      <section class="avatar-item-browser" aria-labelledby="avatar-category-title">
+        <div class="avatar-browser-heading"><div><p class="section-kicker">COLLECTION</p><h3 id="avatar-category-title">피부</h3></div><span id="avatar-item-count">0개</span></div>
+        <div id="avatar-item-grid" class="avatar-item-grid"></div>
+      </section>
+      <aside class="avatar-preview-panel" aria-label="아바타 미리보기">
+        <div class="avatar-preview-toolbar">
+          <button id="avatar-undo" type="button" title="마지막 변경 취소" aria-label="마지막 변경 취소">↶</button>
+          <button id="avatar-randomize" type="button" title="무작위 코디" aria-label="무작위 코디">⤨</button>
+          <span class="preview-carrots" aria-label="보유 당근"><span aria-hidden="true">🥕</span><strong id="preview-carrot-balance">100</strong></span>
+        </div>
+        <div class="avatar-preview-stage">
+          <canvas id="avatar-preview-canvas" width="560" height="640" aria-label="선택한 아바타 코디 미리보기"></canvas>
+          <p id="avatar-preview-name">세준</p>
+        </div>
+        <div class="avatar-quick-actions" aria-label="코디 빠른 작업">
+          <button id="avatar-open-presets" type="button">프리셋 · 저장한 코디</button>
+          <button id="avatar-reset-face" type="button">기본 얼굴로</button>
+          <button id="avatar-strip-basics" type="button">모두 벗기</button>
+          <button id="avatar-restore-outfit" type="button">내 코디로 돌아가기</button>
+        </div>
+        <button id="avatar-studio-save" class="avatar-studio-save" type="button">이 코디로 저장</button>
+      </aside>
+    </div>
+  </dialog>
+
+  <dialog id="world-dialog" class="world-dialog" aria-labelledby="world-dialog-title">
+    <button id="world-dialog-close" class="dialog-close" type="button" aria-label="창 닫기">×</button>
+    <div id="world-dialog-icon" class="dialog-icon" aria-hidden="true">🏠</div>
+    <p class="eyebrow">WORLD INTERACTION</p>
+    <h2 id="world-dialog-title">우리 집</h2>
+    <p id="world-dialog-copy">집에서 편안하게 쉬어가세요.</p>
+    <div id="world-dialog-actions" class="dialog-actions"></div>
+  </dialog>
+
+  <dialog id="challenge-flow-dialog" class="flow-dialog" aria-labelledby="challenge-flow-title">
+    <header><div><p class="eyebrow">CHALLENGE SETUP</p><h2 id="challenge-flow-title">오늘의 챌린지 만들기</h2></div><button id="challenge-flow-close" class="dialog-close" type="button" aria-label="챌린지 만들기 닫기">×</button></header>
+    <ol class="flow-stepper" aria-label="챌린지 생성 단계"><li class="is-active" data-flow-indicator="1">이동 가능 확인</li><li data-flow-indicator="2">건강정보 입력</li><li data-flow-indicator="3">분석결과</li><li data-flow-indicator="4">챌린지</li></ol>
+    <form id="challenge-flow-form">
+      <section class="flow-step is-active" data-flow-step="1"><h3>안전하게 움직일 수 있나요?</h3><p>오늘 몸 상태를 먼저 확인해 주세요. 불편하거나 의료진에게 운동 제한을 안내받았다면 무리하지 마세요.</p><label class="flow-check"><input id="mobility-confirmed" type="checkbox" required><span>오늘 가벼운 생활 활동이 가능합니다.</span></label></section>
+      <section class="flow-step" data-flow-step="2" hidden><h3>오늘의 생활습관 정보</h3><p>챌린지 구성에만 사용하는 간단한 입력입니다.</p><label>오늘 가능한 활동 시간<select id="available-minutes"><option value="10">10분</option><option value="20" selected>20분</option><option value="30">30분 이상</option></select></label><label>오늘 식사 기록 상태<select id="meal-readiness"><option value="easy">간단히 기록할 수 있어요</option><option value="normal" selected>보통이에요</option><option value="hard">식사 기록이 어려워요</option></select></label></section>
+      <section class="flow-step" data-flow-step="3" hidden><h3>생활습관 분석 결과</h3><div class="flow-analysis"><strong>작게 시작할 수 있는 상태예요</strong><p>입력한 활동 가능 시간과 식사 기록 상태를 기준으로 챌린지를 구성합니다. 이 결과는 당뇨병 진단이나 처방이 아닙니다.</p></div></section>
+      <section class="flow-step" data-flow-step="4" hidden><h3>어떤 방식으로 실천할까요?</h3><div class="challenge-style-grid"><label><input type="radio" name="challenge-style" value="exercise" required><span>🏃<strong>운동 중심</strong><small>걷기·스트레칭·근력</small></span></label><label><input type="radio" name="challenge-style" value="diet"><span>🥗<strong>식단 중심</strong><small>식사·채소·물 기록</small></span></label><label><input type="radio" name="challenge-style" value="custom"><span>🧩<strong>내가 조합하기</strong><small>원하는 3개를 선택</small></span></label></div><fieldset id="custom-quest-picker" hidden><legend>3개를 선택해 주세요</legend><label><input type="checkbox" value="walk">가볍게 걷기</label><label><input type="checkbox" value="stretch">몸 풀기</label><label><input type="checkbox" value="meal">식사 기록</label><label><input type="checkbox" value="vegetable">채소 포함 확인</label><label><input type="checkbox" value="water">물 마신 횟수 기록</label><label><input type="checkbox" value="check">생활습관 돌아보기</label></fieldset></section>
+      <p id="challenge-flow-error" role="alert" hidden></p>
+      <div class="flow-actions"><button id="challenge-flow-back" type="button" hidden>이전</button><button id="challenge-flow-next" class="primary-button" type="button">다음</button><button id="challenge-flow-generate" class="primary-button" type="submit" hidden>3개 퀘스트 만들기</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="inventory-dialog" class="inventory-dialog" aria-labelledby="inventory-dialog-title">
+    <header><div><p class="eyebrow">MY INVENTORY</p><h2 id="inventory-dialog-title">창고 인벤토리</h2></div><button id="inventory-dialog-close" class="dialog-close" type="button" aria-label="창고 닫기">×</button></header>
+    <div class="inventory-dialog-tabs"><button class="is-active" type="button" data-inventory-view="storage">창고</button><button type="button" data-inventory-view="wardrobe">옷장</button></div>
+    <div id="inventory-dialog-grid" class="inventory-dialog-grid"></div>
+    <p>오브젝트를 선택하면 숲 배치 모드로 전환됩니다. 옷장 아이템은 아바타에 바로 적용됩니다.</p>
+  </dialog>
+
+  <section id="reward-celebration" class="reward-celebration" role="dialog" aria-modal="true" aria-labelledby="reward-celebration-title" hidden>
+    <button id="reward-skip" class="reward-skip" type="button">연출 건너뛰기</button>
+    <div class="reward-rays" aria-hidden="true"></div>
+    <div class="reward-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="reward-stage">
+      <p class="eyebrow">TODAY'S GROUP REWARD</p>
+      <h2 id="reward-celebration-title">오늘의 보물상자</h2>
+      <div class="treasure-chest" aria-hidden="true"><span class="chest-light"></span><span class="chest-lid"></span><span class="chest-body"></span><span class="chest-lock">🥕</span></div>
+      <div id="reward-reveal" class="reward-reveal"><span id="reward-reveal-icon" aria-hidden="true">🎁</span><strong id="reward-reveal-name">새 아이템</strong><small id="reward-reveal-destination">옷장으로 이동합니다</small></div>
+    </div>
+  </section>
+
+
+
+</body>
+</html>

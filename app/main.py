@@ -5,10 +5,12 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.apis.v1 import v1_routers
+from app.core import config
 from app.core.db.databases import initialize_tortoise
 from app.health import health_router
 from app.lifecycle import lifespan
 from app.middleware.challenge_upload_limit import ChallengeUploadLimit
+from app.services.mobile_downloads import mobile_download_payload
 
 app = FastAPI(
     docs_url="/api/docs",
@@ -38,8 +40,20 @@ if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
-_APP_ENTRY_QUERY_KEYS = frozenset({"intro", "auth", "preview", "resume", "workspace", "invite_token"})
+_APP_ENTRY_QUERY_KEYS = frozenset(
+    {"intro", "auth", "preview", "resume", "workspace", "invite_token", "account", "returnTo"}
+)
 _RETRO_INTRO_URL = "/static/intro-retro.html?v=20260917-server-entry-v1"
+
+
+@app.get("/mobile-downloads", include_in_schema=False)
+async def mobile_download_page() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "mobile-downloads.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/mobile-downloads", include_in_schema=False)
+async def mobile_download_links() -> dict:
+    return mobile_download_payload(config.MOBILE_IOS_DOWNLOAD_URL, config.MOBILE_ANDROID_DOWNLOAD_URL)
 
 
 @app.get("/", include_in_schema=False)
@@ -81,8 +95,8 @@ async def site_favicon() -> FileResponse:
 
 @app.get("/service", include_in_schema=False)
 async def suin_service() -> FileResponse:
-    """Namespaced September 7 frontend; shares the forest's host-only session."""
-    response = FileResponse(FRONTEND_DIR / "suin" / "index.html")
+    """Compatibility entry for the current customer UI and its session restore."""
+    response = FileResponse(FRONTEND_DIR / "index.html")
     response.headers["Cache-Control"] = "no-store, max-age=0"
     response.headers["Pragma"] = "no-cache"
     return response
