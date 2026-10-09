@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "56d805cf041be6ee7ffe96851ac00c135e0852b08cb4070b6344a5c77f4f7124",
+  "patch_sha256": "ecde69bf472f245bb66f42d9be4523c6675d4de66938489940a41de8b591aa3f",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -350,6 +350,16 @@
       "path": "tests/forest-return-safety.test.cjs",
       "before": null,
       "after": "a401fe65980def7dee846597f8531c0a5cab2a691fb9ddefe66f1d21a475154f"
+    },
+    {
+      "path": "src/frontend/intro-retro.html",
+      "before": "489bb88cf1d0be7ad739b59711d587ad7e7a415945a73855d64110227950a1cf",
+      "after": "12b1353c3e6c7996ca7807b8b98981ba726063cd8d851e65e48192796717c7a1"
+    },
+    {
+      "path": "src/frontend/retro-intro.css",
+      "before": "344df2781945fd81cbf84c7a0d4293de7325a6aaadc9e5ed4587b87488f09734",
+      "after": "18d77d6d6acfe07eff05a77c16f1d798eda334f7b7a9723e741affabfcc5ab0c"
     }
   ]
 }

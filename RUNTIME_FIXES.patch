@@ -4092,3 +4092,46 @@
 +  assert.match(source,/syncReturningEligibilityState\(latestEligibility\);\s*if \(returnToForestSettings\(latestEligibility\)\) return;/);
 +  assert.match(source,/syncReturningEligibilityState\(result\);\s*if \(returnToForestSettings\(result\)\) return;/);
 +});
+--- a/src/frontend/intro-retro.html
++++ b/src/frontend/intro-retro.html
+@@ -14,7 +14,7 @@
+   <link rel="stylesheet" href="/static/education-carousel.css?v=20260908-carousel-clear-v2">
+   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
+   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
+-  <link rel="stylesheet" href="/static/retro-intro.css?v=20260921-modern-auth-nav-v1">
++  <link rel="stylesheet" href="/static/retro-intro.css?v=20261009-mobile-download-v1">
+   <script src="/static/retro-intro.js?v=20260921-auth-aware-top-nav-v1" defer></script>
+   <script src="/static/intro-retro-app.js?v=20260921-modern-workspace-links-v1" defer></script>
+ </head>
+@@ -50,6 +50,7 @@
+         <li><button type="button" data-onboarding-health>건강정보 입력</button></li>
+       </ol>
+     </nav>
++    <a class="intro-mobile-download" href="/mobile-downloads">Download(모바일 버전)</a>
+     <div class="header-utilities">
+       <details class="header-my-page" id="header-my-page" hidden>
+         <summary id="header-my-page-toggle">마이페이지</summary>
+--- a/src/frontend/retro-intro.css
++++ b/src/frontend/retro-intro.css
+@@ -483,3 +483,21 @@
+  .story-step-flow { z-index: 6; }
+  .orbit-handoff { z-index: 4; }
+ }
++
++/* Keep app installation visible on the first screen, including guest visits. */
++body.intro-mode:has(.retro-intro) .topbar { flex-wrap: wrap; }
++.topbar .intro-mobile-download {
++ display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
++ min-height: 44px; padding: 12px 18px; margin-left: auto; border: 1px solid #a6421b;
++ border-radius: 999px; background: #c45124; color: #fffdf4; font: inherit;
++ font-size: 14px; font-weight: 800; line-height: 1.2; text-decoration: none;
++ white-space: nowrap; box-shadow: 0 4px 12px #a6421b26;
++}
++.topbar .intro-mobile-download:hover { background: #a9401c; }
++.topbar .intro-mobile-download:focus-visible { outline: 3px solid #203d32; outline-offset: 4px; }
++@media(max-width:760px) {
++ body.intro-mode:has(.retro-intro) .topbar { width: calc(100% - 24px); gap: 10px; }
++ body.intro-mode.intro-authenticated:has(.retro-intro) .topbar { width: 100%; }
++ .topbar .intro-mobile-download { font-size: 12px; padding: 10px 12px; }
++ body.intro-mode .intro-route-nav:not([hidden]) { order: 3; flex-basis: 100%; white-space: normal; flex-wrap: wrap; }
++}
