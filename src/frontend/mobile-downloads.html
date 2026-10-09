@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>모바일 버전 다운로드 | 간당간당</title>
+  <meta name="theme-color" content="#f5eddb">
+  <link rel="stylesheet" href="/static/mobile-downloads.css?v=20261009-v2">
+  <script src="/static/mobile-downloads.js?v=20261009-v2" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/?workspace=home">간당간당<span>건강한 습관의 시작</span></a><a class="back" href="/?workspace=home">홈으로 돌아가기 ↗</a></header>
+  <main>
+    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>내 손안의 건강 챌린지</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
+    <section class="download-card" aria-label="모바일 앱 다운로드">
+      <div class="tab-list" role="tablist" aria-label="휴대폰 운영체제">
+        <button id="tab-android" role="tab" aria-selected="true" aria-controls="panel-android" tabindex="0"><span class="store-label"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="#32BBFF" d="M5 3v26l13-13z"/><path fill="#00D26A" d="M5 3l17 10-4 3z"/><path fill="#FFCE00" d="M22 13l5 3-5 3-4-3z"/><path fill="#FF4A55" d="M5 29l17-10-4-3z"/></svg><span class="store-copy"><span class="store-title">안드로이드</span><span class="store-subtitle">Android</span></span></span></button>
+        <button id="tab-ios" role="tab" aria-selected="false" aria-controls="panel-ios" tabindex="-1"><span class="store-label"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="7" fill="#1689F8"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 8l8 14M20 8l-8 14M8 22h16M10 25l1-2M22 25l-4-7"/></g></svg><span class="store-copy"><span class="store-title">iOS</span><span class="store-subtitle">iPhone · iPad</span></span></span></button>
+      </div>
+      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios" hidden>
+        <span class="platform-symbol" aria-hidden="true"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="7" fill="#1689F8"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 8l8 14M20 8l-8 14M8 22h16M10 25l1-2M22 25l-4-7"/></g></svg></span><h2>iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
+        <a class="download-link" id="download-ios" hidden>iOS 앱 받기 ↗</a><p id="status-ios" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
+        <details open><summary>iOS 앱 설치 안내</summary><ol><li><strong>iOS 앱 받기</strong>를 누르면 공식 설치 화면으로 이동해요.</li><li>TestFlight 또는 App Store에서 <strong>설치</strong>를 선택해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">iOS 앱은 서명된 배포 링크가 준비된 뒤 설치할 수 있어요.</p></details>
+      </div>
+      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android">
+        <span class="platform-symbol" aria-hidden="true"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="#32BBFF" d="M5 3v26l13-13z"/><path fill="#00D26A" d="M5 3l17 10-4 3z"/><path fill="#FFCE00" d="M22 13l5 3-5 3-4-3z"/><path fill="#FF4A55" d="M5 29l17-10-4-3z"/></svg></span><h2>안드로이드에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
+        <a class="download-link" id="download-android" hidden>안드로이드 앱 받기 ↗</a><p id="status-android" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
+        <details open><summary>안드로이드 앱 설치 안내</summary><ol><li><strong>안드로이드 앱 받기</strong>를 눌러 APK 파일을 내려받아 주세요.</li><li>다운로드한 파일을 열고 Android의 설치 안내를 확인해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">Android 7 이상에서 사용하는 체험 앱입니다. 설치 허용 여부는 휴대폰에서 직접 선택해 주세요.</p></details>
+      </div>
+    </section>
+    <p class="footer-note">이미 가입한 계정으로 웹과 모바일에서 같은 서비스를 이용할 수 있어요.</p>
+  </main>
+  <footer>간당간당 · 진단·처방이 아닌 위험 선별과 건강교육</footer>
+</body>
+</html>

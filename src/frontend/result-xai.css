@@ -260,3 +260,14 @@
 .result-room-screen .shap-bar.is-decrease { background: #17806b; }
 .result-room-screen .model-analysis-details[hidden],
 .result-room-screen .shap-graph[hidden] { display: none !important; }
+
+/* Keep mobile installation entry readable beside the health tools. */
+.topbar:has(#workspace-top-nav:not([hidden])) { flex-wrap: wrap; }
+#workspace-top-nav { flex: 1 0 auto; max-width: 100%; }
+#workspace-top-nav [data-mobile-download] {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  justify-content: center; gap: 2px; font-size: 14px; line-height: 1.25;
+}
+@media (max-width: 760px) {
+  .topbar #workspace-top-nav { flex: 1 1 100%; }
+}

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <script src="/static/auth-session.js?v=20261003-navigation-session-v1"></script>
+  <script src="/static/auth-session.js?v=20261009-account-sync-v1"></script>
   <script>{ const p = new URLSearchParams(location.search); if (!p.has('auth') && !p.has('preview') && ['workspace','account','returnTo'].some(k => p.has(k))) document.documentElement.classList.add('service-session-checking'); }</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="미래 당뇨병 발병 위험 선별과 생활습관 챌린지 개발용 서비스">
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-v1">
   <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
   <link rel="stylesheet" href="/static/education-carousel.css?v=20260915-health-quiz-card-art-v1">
-  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-web-xai-mobile-v1">
+  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-account-sync-v1">
   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
   <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
   <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
-  <script src="/static/app.js?v=20261009-web-xai-mobile-v1" defer></script>
+  <script src="/static/app.js?v=20261009-deployment-integrated-v2" defer></script>
   <link rel="stylesheet" href="/static/navigation.css?v=20261003-health-tabs-row-v1">
   <link rel="stylesheet" href="/static/health-tools-layout.css?v=20261003-health-input-ocr-v1">
   <link rel="stylesheet" href="/static/dashboard-hero-layout.css?v=20261003-alarm-top-right-v1">
@@ -72,7 +72,7 @@
         <li><button type="button" data-top-workspace="report">리포트</button></li>
         <li><button type="button" data-top-workspace="together">함께하기</button></li>
         <li><button type="button" data-top-workspace="tools">건강도구</button></li>
-        <li><button type="button" data-mobile-download>모바일 버전 다운로드 <span>iOS | 안드로이드</span></button></li>
+        <li><button type="button" data-mobile-download>Download(모바일 버전)</button></li>
       </ol>
     </nav>
     <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>

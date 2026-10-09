@@ -54,3 +54,9 @@ def test_complete_shap_graph_rejects_missing_invalid_duplicate_or_nonadditive_te
         dict(all_items=[dict(feature="age", contribution=float("nan"))]),
     ]:
         assert shap_graph_payload({**value, **override}) is None
+
+
+def test_current_smoker_label_uses_the_saved_smoking_status_conversion():
+    for smoking, expected in [("never", "아니요"), ("former", "아니요"), ("current", "예"), (None, "입력하지 않음")]:
+        assert input_label("current_smoker", SimpleNamespace(smoking_status=smoking)) == expected
+    assert input_label("current_smoker", SimpleNamespace(current_smoker=False, smoking_status="current")) == "아니요"

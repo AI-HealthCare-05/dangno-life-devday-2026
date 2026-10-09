@@ -1373,6 +1373,7 @@ function accountRecoveryFailure(recovery, error) {
   if (error.code === "SESSION_CHANGED") return;
   if (error.status === 401) {
     state.token = null;
+    window.GandangAuthSession?.clear();
     recovery.token = null;
   }
   const stage = recovery.stage === "login" ? "자동 로그인" : recovery.stage === "profile" ? "프로필 저장" : "건강정보 동의 저장";
@@ -1603,6 +1604,7 @@ function clearAuthenticatedClientState({ keepEmail = true } = {}) {
   clearHealthDraft();
   clearSessionRecovery();
   state.token = null;
+    window.GandangAuthSession?.clear();
   state.userProfile = null;
   state.accountRecovery = null;
   state.healthConsent = null;
@@ -1643,6 +1645,7 @@ function beginSessionRecovery() {
   persistSessionRecovery(recovery);
   const email = state.userProfile?.email || $("#login-email")?.value || "";
   state.token = null;
+    window.GandangAuthSession?.clear();
   state.analysisRun = null;
   showStep(2);
   showAuthMode("login", { moveFocus: false });
@@ -6432,6 +6435,7 @@ $("#signup-form").addEventListener("submit", async (event) => {
     recovery = { name, email: email.trim(), birthday: birthDate, gender, healthAgreed: $("#health-consent").checked, profileSaved: false, stage: "login" };
     state.accountRecovery = recovery;
     state.token = null;
+    window.GandangAuthSession?.clear();
     const login = await api("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     if (!login.access_token) throw new Error("로그인 정보를 받지 못했습니다.");
     state.token = login.access_token;
@@ -6456,6 +6460,7 @@ $("#signup-form").addEventListener("submit", async (event) => {
 $("#recovery-login").addEventListener("click", () => {
   $("#login-email").value = state.accountRecovery?.email || "";
   state.token = null;
+    window.GandangAuthSession?.clear();
   showAuthMode("login");
 });
 $("#signup-login-shortcut")?.addEventListener("click", () => showAuthMode("login", { context: "login" }));
@@ -7529,6 +7534,7 @@ async function resumeAuthenticatedAccount() {
   } catch (error) {
     if (error.status === 401 && state.sessionRecovery) return;
     if (error.status === 401) state.token = null;
+    window.GandangAuthSession?.clear();
     if (state.token) {
       state.accountRecovery = null;
       $("#account-recovery-form").hidden = true;
@@ -7636,6 +7642,7 @@ $("#return-health")?.addEventListener("click", () => {
 $("#return-login-back")?.addEventListener("click", () => {
   state.returningUser = false;
   state.token = null;
+    window.GandangAuthSession?.clear();
   state.cycle = null;
   syncReturningEligibilityState(null);
   state.returningDestination = null;

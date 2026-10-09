@@ -1,6 +1,41 @@
 --- a/src/frontend/app.js
 +++ b/src/frontend/app.js
-@@ -3036,8 +3036,8 @@
+@@ -1255,6 +1255,7 @@
+   if (error.code === "SESSION_CHANGED") return;
+   if (error.status === 401) {
+     state.token = null;
++    window.GandangAuthSession?.clear();
+     recovery.token = null;
+   }
+   const stage = recovery.stage === "login" ? "자동 로그인" : recovery.stage === "profile" ? "프로필 저장" : "건강정보 동의 저장";
+@@ -1483,6 +1484,7 @@
+   clearHealthDraft();
+   clearSessionRecovery();
+   state.token = null;
++    window.GandangAuthSession?.clear();
+   state.userProfile = null;
+   state.accountRecovery = null;
+   state.healthConsent = null;
+@@ -1522,6 +1524,7 @@
+   persistSessionRecovery(recovery);
+   const email = state.userProfile?.email || $("#login-email")?.value || "";
+   state.token = null;
++    window.GandangAuthSession?.clear();
+   state.analysisRun = null;
+   showStep(2);
+   showAuthMode("login", { moveFocus: false });
+@@ -2852,7 +2855,9 @@
+     if (response.status === 401 && authenticatedRequest && !state.accountRecovery) beginSessionRecovery();
+     throw apiError;
+   }
+-  return payload.data ?? payload;
++  const result = payload.data ?? payload;
++  if (path === "/auth/login" || path === "/auth/token/refresh") window.GandangAuthSession?.save(result.access_token);
++  return result;
+ }
+ async function pollPrediction(jobId) {
+   const startedAt = Date.now();
+@@ -3036,8 +3041,8 @@
  
  function factorDirectionLabel(item = {}) {
    const raw = String(item.direction || item.effect_direction || item.impact_direction || "").toLowerCase();
@@ -11,7 +46,7 @@
    return "";
  }
  
-@@ -3057,14 +3057,14 @@
+@@ -3057,14 +3062,14 @@
  function renderFactorItems(items = []) {
    return items.map((item) => {
      const factorName = item.display_name || item.factor_name || item.name || "확인된 신호";
@@ -29,7 +64,7 @@
    }).join("");
  }
  
-@@ -3074,16 +3074,64 @@
+@@ -3074,16 +3079,64 @@
      || (typeof item.contribution === "number" && Number.isFinite(item.contribution)
        && Math.abs(item.contribution) > 1e-10))
      .sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0));
@@ -96,7 +131,7 @@
    const currentList = $("#current-factor-list");
    const currentSignal = state.currentScreeningPrediction?.screening_signal_detected;
    const currentItems = selectXaiFactors(
-@@ -3091,7 +3139,17 @@
+@@ -3091,7 +3144,17 @@
    );
    const futureList = $("#factor-list");
    const currentReady = Boolean(currentApproved && currentFactors?.display_allowed === true && currentItems.length);
@@ -114,7 +149,7 @@
    if (currentTitle) currentTitle.textContent = currentReady ? "현재 위험 신호 설명" : "현재 건강 신호 XAI 연결 대기";
    if (currentList) {
      currentList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", currentReady);
-@@ -3100,16 +3158,23 @@
+@@ -3100,16 +3163,23 @@
        : `<li><strong>현재 건강 신호 XAI 연결 대기</strong><p>${escapeHtml(currentFactors?.message || "검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.")}</p></li>`;
    }
    const futureCategory = normalizeRiskKey({ risk_category: state.prediction?.risk_category });
@@ -143,7 +178,7 @@
    if (futureTitle) futureTitle.textContent = futureReady ? "미래 당뇨 위험 설명" : "미래 위험 XAI 연결 대기";
    futureList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", futureReady);
    futureList.innerHTML = approved && factors?.display_allowed === true && factorItems.length
-@@ -3860,6 +3925,9 @@
+@@ -3860,6 +3930,9 @@
  }
  
  function renderTodayTaskStatus() {
@@ -153,7 +188,7 @@
    const title = $("#today-task-title");
    const description = $("#today-task-description");
    const action = $("#today-record-action");
-@@ -4115,7 +4183,7 @@
+@@ -4115,7 +4188,7 @@
  
  function allDailyChallengesCompleted() {
    const required = dailyChallengeTargetCount();
@@ -162,7 +197,7 @@
  }
  
  function closeChallengeRewardDialog() {
-@@ -4124,8 +4192,9 @@
+@@ -4124,8 +4197,9 @@
  }
  
  function openChallengeRewardDialog(reward = {}) {
@@ -174,7 +209,7 @@
    $("#challenge-reward-copy").textContent = reward.already_claimed
      ? "오늘 보상은 이미 받았어요. 숲에서 보유 당근을 확인할 수 있습니다."
      : "오늘의 실천 보상이 지급됐어요. 당근의 숲에서 확인해 보세요.";
-@@ -4142,15 +4211,26 @@
+@@ -4142,15 +4216,26 @@
  async function maybeOpenDailyReward() {
    if (!allDailyChallengesCompleted()) return;
    const today = challengeDay();
@@ -203,7 +238,7 @@
    }
  }
  
-@@ -4176,8 +4256,8 @@
+@@ -4176,8 +4261,8 @@
    renderDailyRecordList();
    updateDailyRecordSummary();
    if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
@@ -213,7 +248,23 @@
  }
  
  async function undoDailyRecord(target) {
-@@ -6956,7 +7036,12 @@
+@@ -6175,6 +6260,7 @@
+     recovery = { name, email: email.trim(), birthday: birthDate, gender, healthAgreed: $("#health-consent").checked, profileSaved: false, stage: "login" };
+     state.accountRecovery = recovery;
+     state.token = null;
++    window.GandangAuthSession?.clear();
+     const login = await api("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+     if (!login.access_token) throw new Error("로그인 정보를 받지 못했습니다.");
+     state.token = login.access_token;
+@@ -6199,6 +6285,7 @@
+ $("#recovery-login").addEventListener("click", () => {
+   $("#login-email").value = state.accountRecovery?.email || "";
+   state.token = null;
++    window.GandangAuthSession?.clear();
+   showAuthMode("login");
+ });
+ $("#signup-login-shortcut")?.addEventListener("click", () => showAuthMode("login", { context: "login" }));
+@@ -6956,7 +7043,12 @@
    showPhotoRecordState("photo-state-success");
  }));
  $("#close-photo-success").addEventListener("click", async (event) => {
@@ -227,7 +278,7 @@
    const releaseBusy = setButtonBusy(event.currentTarget, "기록 저장 중…");
    try {
      const target = state.recordTarget;
-@@ -6964,6 +7049,11 @@
+@@ -6964,6 +7056,11 @@
      closeRecordModal();
      await completeDailyRecord(target, source);
    } catch (error) { showMessage(error.message); }
@@ -239,32 +290,61 @@
    finally { releaseBusy(); }
  });
  $("#daily-log-form")?.addEventListener("submit", async (event) => {
+@@ -7244,6 +7341,7 @@
+   } catch (error) {
+     if (error.status === 401 && state.sessionRecovery) return;
+     if (error.status === 401) state.token = null;
++    window.GandangAuthSession?.clear();
+     if (state.token) {
+       state.accountRecovery = null;
+       $("#account-recovery-form").hidden = true;
+@@ -7279,9 +7377,8 @@
+ async function resumeCookieSession() {
+   if (state.token || isLocalPreview()) return false;
+   try {
+-    const refreshed = await api("/auth/token/refresh");
+-    if (!refreshed?.access_token) return false;
+-    state.token = refreshed.access_token;
++    const session = await window.GandangAuthSession.resolve();
++    state.token = session.token;
+     await resumeAuthenticatedAccount();
+     return true;
+   } catch (error) {
+@@ -7345,6 +7442,7 @@
+ $("#return-login-back")?.addEventListener("click", () => {
+   state.returningUser = false;
+   state.token = null;
++    window.GandangAuthSession?.clear();
+   state.cycle = null;
+   syncReturningEligibilityState(null);
+   state.returningDestination = null;
 --- a/src/frontend/index.html
 +++ b/src/frontend/index.html
-@@ -35,11 +35,12 @@
+@@ -35,11 +35,13 @@
    <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-restore-v1">
    <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
    <link rel="stylesheet" href="/static/education-carousel.css?v=20260915-health-quiz-card-art-v1">
 -  <link rel="stylesheet" href="/static/result-xai.css?v=20260919-xai-layout-v3">
-+  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-web-xai-mobile-v1">
++  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-account-sync-v1">
    <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
    <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
    <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
 -  <script src="/static/app.js?v=20260921-modern-intro-navigation-v1" defer></script>
 +  <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
-+  <script src="/static/app.js?v=20261009-web-xai-mobile-v1" defer></script>
++  <script src="/static/auth-session.js?v=20261009-account-sync-v1" defer></script>
++  <script src="/static/app.js?v=20261009-account-sync-v1" defer></script>
  </head>
  <body class="intro-mode">
    <a class="skip-link" href="#main">본문으로 바로가기</a>
-@@ -60,6 +61,7 @@
+@@ -60,6 +62,7 @@
          <li><button type="button" data-top-workspace="report">리포트</button></li>
          <li><button type="button" data-top-workspace="together">함께하기</button></li>
          <li><button type="button" data-top-workspace="tools">건강도구</button></li>
-+        <li><button type="button" data-mobile-download>모바일 버전 다운로드 <span>iOS | 안드로이드</span></button></li>
++        <li><button type="button" data-mobile-download>Download(모바일 버전)</button></li>
        </ol>
      </nav>
      <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>
-@@ -593,10 +595,13 @@
+@@ -593,10 +596,13 @@
                </div>
                <article class="xai-factor-card result-xai-card current-xai-slot" aria-labelledby="current-factor-title">
                  <div class="result-xai-waiting">
@@ -279,7 +359,7 @@
                  </div>
                </article>
              </div>
-@@ -623,10 +628,13 @@
+@@ -623,10 +629,13 @@
                </div>
                <article class="forecast-score-placeholder xai-factor-card result-xai-card current-xai-slot" id="forecast-score-placeholder" aria-labelledby="future-factor-title">
                  <div class="result-xai-waiting">
@@ -294,7 +374,7 @@
                  </div>
                </article>
              </div>
-@@ -817,6 +825,7 @@
+@@ -817,6 +826,7 @@
          <section class="workspace-panel" id="workspace-panel-challenge" role="region" tabindex="-1" data-workspace-panel="challenge" aria-label="챌린지" hidden>
            <section class="daily-record-panel" aria-labelledby="daily-record-title">
              <h4 id="daily-record-title">오늘 기록할 항목</h4>
@@ -3073,7 +3153,7 @@
  .result-room-screen .result-xai-card.current-xai-slot {
    min-width: 0;
    padding: 24px;
-@@ -206,3 +215,49 @@
+@@ -206,3 +215,59 @@
      justify-self: start;
    }
  }
@@ -3123,6 +3203,16 @@
 +.result-room-screen .model-analysis-details[hidden],
 +.result-room-screen .shap-graph[hidden] { display: none !important; }
 +
++/* Keep mobile installation entry readable beside the health tools. */
++.topbar:has(#workspace-top-nav:not([hidden])) { flex-wrap: wrap; }
++#workspace-top-nav { flex: 1 0 auto; max-width: 100%; }
++#workspace-top-nav [data-mobile-download] {
++  display: inline-flex; align-items: center; white-space: nowrap;
++  justify-content: center; gap: 2px; font-size: 14px; line-height: 1.25;
++}
++@media (max-width: 760px) {
++  .topbar #workspace-top-nav { flex: 1 1 100%; }
++}
 --- a/requirements-demo.lock.txt
 +++ b/requirements-demo.lock.txt
 @@ -60,3 +60,6 @@
@@ -3225,7 +3315,7 @@
 +
 --- /dev/null
 +++ b/app/services/xai_presentation.py
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,141 @@
 +"""Display saved inputs without inferring health advice from SHAP signs."""
 +
 +import math
@@ -3273,6 +3363,9 @@
 +        return _number(value, units[feature])
 +    if feature.endswith("_diagnosis"):
 +        return _boolean_label(value, "진단받음", "진단받지 않음")
++    if feature == "current_smoker" and value is None:
++        smoking = getattr(checkup, "smoking_status", None)
++        value = {"never": False, "former": False, "current": True}.get(smoking)
 +    if feature in {"current_smoker", "current_drinker", "regular_exercise"}:
 +        return _boolean_label(value, "예", "아니요")
 +    return _categorical_input_label(feature, value, checkup, screening)
@@ -3528,25 +3621,25 @@
 +  <meta name="viewport" content="width=device-width,initial-scale=1">
 +  <title>모바일 버전 다운로드 | 간당간당</title>
 +  <meta name="theme-color" content="#f5eddb">
-+  <link rel="stylesheet" href="/static/mobile-downloads.css?v=20261009-v1">
-+  <script src="/static/mobile-downloads.js?v=20261009-v1" defer></script>
++  <link rel="stylesheet" href="/static/mobile-downloads.css?v=20261009-v2">
++  <script src="/static/mobile-downloads.js?v=20261009-v2" defer></script>
 +</head>
 +<body>
 +  <header><a class="brand" href="/?workspace=home">간당간당<span>건강한 습관의 시작</span></a><a class="back" href="/?workspace=home">홈으로 돌아가기 ↗</a></header>
 +  <main>
-+    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>간당간당을<br>휴대폰에서도 만나세요.</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
-+    <section class="download-card" aria-labelledby="download-title">
++    <div class="intro"><span class="eyebrow">어디서나, 나의 작은 실천</span><h1>내 손안의 건강 챌린지</h1><p>내 휴대폰에 맞는 버전을 선택해 주세요.</p></div>
++    <section class="download-card" aria-label="모바일 앱 다운로드">
 +      <div class="tab-list" role="tablist" aria-label="휴대폰 운영체제">
-+        <button id="tab-ios" role="tab" aria-selected="true" aria-controls="panel-ios" tabindex="0">iOS <span>iPhone · iPad</span></button>
-+        <button id="tab-android" role="tab" aria-selected="false" aria-controls="panel-android" tabindex="-1">안드로이드 <span>Android</span></button>
++        <button id="tab-android" role="tab" aria-selected="true" aria-controls="panel-android" tabindex="0"><span class="store-label"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="#32BBFF" d="M5 3v26l13-13z"/><path fill="#00D26A" d="M5 3l17 10-4 3z"/><path fill="#FFCE00" d="M22 13l5 3-5 3-4-3z"/><path fill="#FF4A55" d="M5 29l17-10-4-3z"/></svg><span class="store-copy"><span class="store-title">안드로이드</span><span class="store-subtitle">Android</span></span></span></button>
++        <button id="tab-ios" role="tab" aria-selected="false" aria-controls="panel-ios" tabindex="-1"><span class="store-label"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="7" fill="#1689F8"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 8l8 14M20 8l-8 14M8 22h16M10 25l1-2M22 25l-4-7"/></g></svg><span class="store-copy"><span class="store-title">iOS</span><span class="store-subtitle">iPhone · iPad</span></span></span></button>
 +      </div>
-+      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios">
-+        <span class="platform-symbol" aria-hidden="true">iOS</span><h2 id="download-title">iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
++      <div class="platform-panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios" hidden>
++        <span class="platform-symbol" aria-hidden="true"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="7" fill="#1689F8"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 8l8 14M20 8l-8 14M8 22h16M10 25l1-2M22 25l-4-7"/></g></svg></span><h2>iPhone에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
 +        <a class="download-link" id="download-ios" hidden>iOS 앱 받기 ↗</a><p id="status-ios" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
 +        <details open><summary>iOS 앱 설치 안내</summary><ol><li><strong>iOS 앱 받기</strong>를 누르면 공식 설치 화면으로 이동해요.</li><li>TestFlight 또는 App Store에서 <strong>설치</strong>를 선택해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">iOS 앱은 서명된 배포 링크가 준비된 뒤 설치할 수 있어요.</p></details>
 +      </div>
-+      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android" hidden>
-+        <span class="platform-symbol" aria-hidden="true">A</span><h2>안드로이드에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
++      <div class="platform-panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android">
++        <span class="platform-symbol" aria-hidden="true"><svg class="store-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="#32BBFF" d="M5 3v26l13-13z"/><path fill="#00D26A" d="M5 3l17 10-4 3z"/><path fill="#FFCE00" d="M22 13l5 3-5 3-4-3z"/><path fill="#FF4A55" d="M5 29l17-10-4-3z"/></svg></span><h2>안드로이드에서 시작하기</h2><p>매일의 건강정보와 실천 기록을 내 손안에서 확인해요.</p>
 +        <a class="download-link" id="download-android" hidden>안드로이드 앱 받기 ↗</a><p id="status-android" class="release-status" role="status">다운로드 정보를 확인하고 있어요.</p>
 +        <details open><summary>안드로이드 앱 설치 안내</summary><ol><li><strong>안드로이드 앱 받기</strong>를 눌러 APK 파일을 내려받아 주세요.</li><li>다운로드한 파일을 열고 Android의 설치 안내를 확인해 주세요.</li><li>간당간당을 열고 기존 계정으로 로그인해 주세요.</li></ol><p class="note">Android 7 이상에서 사용하는 체험 앱입니다. 설치 허용 여부는 휴대폰에서 직접 선택해 주세요.</p></details>
 +      </div>
@@ -3558,13 +3651,15 @@
 +</html>
 --- /dev/null
 +++ b/src/frontend/mobile-downloads.css
-@@ -0,0 +1,2 @@
+@@ -0,0 +1,4 @@
 +:root{color-scheme:light;--ink:#203d32;--muted:#617266;--paper:#f5eddb;--green:#326850}
 +*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--paper);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif}button,a,summary{-webkit-tap-highlight-color:transparent}a{color:inherit}header{max-width:1080px;margin:auto;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{font-size:27px;font-weight:850;text-decoration:none;letter-spacing:-1px}.brand span{display:block;margin-top:5px;font-size:12px;font-weight:500;letter-spacing:0}.back{font-size:14px;text-decoration:none;font-weight:650}main{max-width:920px;margin:35px auto 70px;padding:0 28px}.intro{text-align:center;margin-bottom:32px}.eyebrow{display:inline-block;padding:8px 16px;border:1px solid #ccd7bd;border-radius:30px;font-size:13px;background:#e9eedc}.intro h1{font-size:clamp(30px,5vw,46px);line-height:1.3;letter-spacing:-1.5px;margin:20px 0 16px;word-break:keep-all}.intro p,.platform-panel>p{color:var(--muted);line-height:1.7;word-break:keep-all}.download-card{max-width:640px;margin:auto;border:1px solid #d8dbc8;border-radius:24px;background:#fffdf6;box-shadow:0 12px 40px #203d3208;overflow:hidden}.tab-list{display:grid;grid-template-columns:1fr 1fr;padding:10px;background:#e7ecd9;gap:8px}.tab-list button{min-height:66px;border:0;border-radius:16px;background:transparent;color:var(--muted);font:inherit;font-size:18px;font-weight:750;cursor:pointer}.tab-list button span{display:block;font-size:12px;margin-top:5px;font-weight:500}.tab-list button[aria-selected=true]{background:#fffdf6;color:var(--ink);box-shadow:0 2px 7px #203d3210}.platform-panel{padding:30px 36px}.platform-panel[hidden],[hidden]{display:none!important}.platform-symbol{display:grid;place-items:center;width:58px;height:58px;border-radius:18px;color:#fffdf6;background:var(--green);font-weight:750;font-size:21px}h2{font-size:25px;letter-spacing:-.6px;margin:20px 0 10px;word-break:keep-all}.download-link{display:block;margin:24px 0 14px;padding:16px 24px;text-align:center;text-decoration:none;border-radius:12px;background:var(--green);color:white;font-weight:750}.release-status{padding:14px 18px;border-radius:12px;background:#eef1e3;font-size:14px;color:var(--ink)!important}.platform-panel details{margin-top:26px;border-top:1px solid #e0e4d5;padding-top:20px}summary{font-weight:750;cursor:pointer;min-height:40px;line-height:1.6}ol{padding-left:23px;line-height:1.9;color:#4e6255}li{padding-left:4px;margin:10px 0;word-break:keep-all}.note{font-size:12px;color:var(--muted);line-height:1.6}.footer-note{text-align:center;font-size:13px;line-height:1.8;margin-top:24px;color:var(--muted)}footer{text-align:center;padding:20px;color:var(--muted);font-size:12px}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #dd8e38;outline-offset:4px}@media(max-width:520px){header{padding:20px;align-items:start}.brand{font-size:23px}.back{font-size:12px;padding-top:7px}main{margin-top:22px;padding:0 16px}.platform-panel{padding:26px 22px}.tab-list button{font-size:17px}h2{font-size:22px}}
++
++.tab-list button .store-label{display:inline-grid;grid-template-columns:32px 108px;align-items:center;gap:12px;margin:0;text-align:left}.store-icon{display:block;width:32px;height:32px;flex:none}.tab-list button .store-copy{display:grid;gap:5px;margin:0}.tab-list button .store-title{margin:0;font-size:18px;font-weight:750;line-height:1.2}.tab-list button .store-subtitle{margin:0;font-size:12px;font-weight:500;line-height:1.2}.platform-symbol{background:transparent}.platform-symbol .store-icon{width:48px;height:48px}@media(max-width:520px){.tab-list button .store-label{grid-template-columns:28px 91px;gap:8px}.tab-list .store-icon{width:28px;height:28px}.tab-list button .store-title{font-size:16px}.tab-list button .store-subtitle{font-size:11px}}
 --- /dev/null
 +++ b/src/frontend/mobile-downloads.js
 @@ -0,0 +1,44 @@
-+const platforms = ['ios', 'android'];
++const platforms = ['android', 'ios'];
 +function selectPlatform(platform) {
 +  platforms.forEach(os => {
 +    const selected = os === platform;
@@ -3580,13 +3675,13 @@
 +  tab.addEventListener('keydown', event => {
 +    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
 +    event.preventDefault();
-+    const next = event.key === 'Home' ? 'ios' : event.key === 'End' ? 'android' : os === 'ios' ? 'android' : 'ios';
++    const next = event.key === 'Home' ? 'android' : event.key === 'End' ? 'ios' : os === 'ios' ? 'android' : 'ios';
 +    selectPlatform(next);
 +    document.getElementById(`tab-${next}`).focus();
 +  });
 +});
 +const requested = new URLSearchParams(location.search).get('os');
-+const detected = /Android/i.test(navigator.userAgent) ? 'android' : 'ios';
++const detected = 'android';
 +selectPlatform(platforms.includes(requested) ? requested : detected);
 +fetch('/api/mobile-downloads', {credentials:'omit', cache:'no-store'})
 +  .then(response => { if (!response.ok) throw new Error('unavailable'); return response.json(); })
@@ -3610,7 +3705,7 @@
 +  }));
 --- /dev/null
 +++ b/tests/test_xai_presentation.py
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,62 @@
 +from types import SimpleNamespace
 +
 +from app.services.xai_presentation import input_label
@@ -3667,6 +3762,12 @@
 +        dict(all_items=[dict(feature="age", contribution=float("nan"))]),
 +    ]:
 +        assert shap_graph_payload({**value, **override}) is None
++
++
++def test_current_smoker_label_uses_the_saved_smoking_status_conversion():
++    for smoking, expected in [("never", "아니요"), ("former", "아니요"), ("current", "예"), (None, "입력하지 않음")]:
++        assert input_label("current_smoker", SimpleNamespace(smoking_status=smoking)) == expected
++    assert input_label("current_smoker", SimpleNamespace(current_smoker=False, smoking_status="current")) == "아니요"
 --- /dev/null
 +++ b/tests/test_mobile_downloads.py
 @@ -0,0 +1,15 @@
@@ -3799,3 +3900,97 @@
 +서버 담당자는 서명·배포된 Android 다운로드 URL을 `MOBILE_ANDROID_DOWNLOAD_URL`, iOS TestFlight/App Store URL을 `MOBILE_IOS_DOWNLOAD_URL`에 넣는다. 비어 있으면 다운로드 준비 상태와 해당 OS의 앱 설치 안내를 표시하며 가짜 파일이나 버튼을 만들지 않는다. PR 107의 localhost용 APK는 현재 AWS 주소를 사용하도록 재빌드해야 한다. iOS는 서명된 배포가 필요하며 임의 IPA를 배포하지 않는다.
 +
 +Android 체험 앱은 `.github/workflows/android-app.yml`에서 PR 107의 고정 커밋과 AWS HTTPS 주소로 빌드하고 `android-devday` 사전 릴리스에 APK·체크섬을 게시한다. iOS 배포는 별도 서명된 링크가 필요하다.
+--- /dev/null
++++ b/src/frontend/auth-session.js
+@@ -0,0 +1,49 @@
++/* Same-tab authentication across service, intro and forest navigations.
++ * Storage is only a transport: every restored session is verified by the API. */
++((root) => {
++  "use strict";
++  const KEY = "gandang-auth-session-v1";
++  function clear() { try { root.sessionStorage.removeItem(KEY); } catch {} }
++  function save(token) {
++    if (typeof token !== "string" || !token || token === "local-demo-token") return;
++    let expiresAt = Date.now() + 30 * 60 * 1000;
++    try {
++      const payload = JSON.parse(root.atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
++      if (Number.isFinite(payload.exp)) expiresAt = payload.exp * 1000;
++    } catch { /* The server remains responsible for token validation. */ }
++    if (expiresAt <= Date.now()) { clear(); return; }
++    try { root.sessionStorage.setItem(KEY, JSON.stringify({ token, expiresAt })); } catch {}
++  }
++  function read() {
++    try {
++      const session = JSON.parse(root.sessionStorage.getItem(KEY));
++      if (typeof session?.token === "string" && session.token && Number.isFinite(session.expiresAt) && session.expiresAt > Date.now()) return session.token;
++    } catch {}
++    clear(); return null;
++  }
++  function authError() { return Object.assign(new Error("로그인이 필요합니다."), { status: 401 }); }
++  async function resolve({ signal, fetchImpl = root.fetch.bind(root), forceRefresh = false } = {}) {
++    const options = { credentials: "same-origin", cache: "no-store", signal };
++    async function verify(token) {
++      const response = await fetchImpl("/api/v1/users/me", { ...options, headers: { Authorization: "Bearer " + token } });
++      if ([401, 403].includes(response.status)) { clear(); return null; }
++      if (!response.ok) throw Object.assign(new Error("로그인 상태를 확인하지 못했습니다."), { status: response.status });
++      const payload = await response.json();
++      save(token); return { token, profile: payload.data ?? payload };
++    }
++    const current = forceRefresh ? null : read();
++    if (current) {
++      const verified = await verify(current);
++      if (verified) return verified;
++    }
++    const response = await fetchImpl("/api/v1/auth/token/refresh", options);
++    if ([400, 401, 403].includes(response.status)) { clear(); throw authError(); }
++    if (!response.ok) throw Object.assign(new Error("로그인 상태를 확인하지 못했습니다."), { status: response.status });
++    const payload = await response.json(), token = (payload.data ?? payload).access_token;
++    if (typeof token !== "string" || !token) { clear(); throw authError(); }
++    const verified = await verify(token);
++    if (!verified) throw authError();
++    return verified;
++  }
++  root.GandangAuthSession = Object.freeze({ save, read, clear, resolve });
++})(typeof window !== "undefined" ? window : globalThis);
+--- /dev/null
++++ b/tests/frontend/web_mobile_session.test.cjs
+@@ -0,0 +1,27 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const vm = require('node:vm');
++const fs = require('node:fs');
++const source=fs.readFileSync('src/frontend/auth-session.js','utf8');
++function setup(fetch){
++ const values=new Map();
++ const root={sessionStorage:{setItem:(k,v)=>values.set(k,v),getItem:k=>values.get(k),removeItem:k=>values.delete(k)},fetch,atob:s=>Buffer.from(s,'base64').toString()};
++ vm.runInNewContext(source,{window:root,Date,JSON,Number,Object,Error});return root.GandangAuthSession;
++}
++test('restored bearer is verified; rejected account clears stored token',async()=>{
++ let calls=[]; const auth=setup(async(url,options)=>{calls.push([url,options]);return {status:200,ok:true,json:async()=>({data:{id:7}})}});
++ auth.save('synthetic-valid');assert.equal((await auth.resolve()).profile.id,7);
++ assert.equal(calls[0][0],'/api/v1/users/me');assert.equal(calls[0][1].headers.Authorization,'Bearer synthetic-valid');
++ auth.clear();assert.equal(auth.read(),null);
++ const bad=setup(async()=>({status:401,ok:false}));bad.save('synthetic-bad');
++ await assert.rejects(bad.resolve(),{status:401});assert.equal(bad.read(),null);
++});
++test('refresh token is independently validated; missing cookie requires login',async()=>{
++ const auth=setup(async url=>({ok:true,status:200,json:async()=>url.endsWith('/refresh')?{access_token:'synthetic-refreshed'}:{id:12}}));
++ assert.equal((await auth.resolve()).profile.id,12);
++ const noCookie=setup(async()=>({ok:false,status:401}));await assert.rejects(noCookie.resolve(),{status:401});
++});
++test('transient server failure does not silently switch or erase a valid account',async()=>{
++ const auth=setup(async()=>({ok:false,status:503}));auth.save('synthetic-valid');
++ await assert.rejects(auth.resolve(),{status:503});assert.equal(auth.read(),'synthetic-valid');
++});
+--- /dev/null
++++ b/docs/WEB_MOBILE_ACCOUNT_SYNC.md
+@@ -0,0 +1,9 @@
++# 웹·모바일 계정 연동
++
++웹과 Android 체험 앱은 https://www.dang-no.life 의 같은 회원 API와 데이터베이스를 사용한다. 기존 이메일·비밀번호로 각 기기에서 로그인하며 프로필·건강정보·챌린지는 서버에서 조회한다. 기기 간 로그인 토큰을 전달하거나 로컬 저장소를 공유하지 않는다.
++
++웹에 Android 앱과 동일한 auth-session 모듈을 적용했다. 같은 탭의 페이지 이동/새로고침에서 만료 전 토큰을 복원하되 users/me API로 검증한다. 토큰이 없거나 만료되면 서버의 refresh 쿠키로 복원을 시도한다. 쿠키가 없는 모바일 새 세션은 다시 로그인해야 한다. 로그아웃·계정 전환·인증 만료 처리에서는 저장 토큰을 제거한다.
++
++#16은 다운로드 화면 변경으로 이미 병합됐다. 이 수정은 후속 PR이며 기존 APK 빌드의 네트워크 모듈은 API 경로만 AWS origin으로 연결하고 credentials=include를 적용한다. APK 고정 소스에는 동일 auth-session 모듈이 포함되어 있어 이번 변경은 웹의 복원 방식을 맞춘다.
++
++iOS 서명 배포 및 실제 휴대폰 설치·동기화는 이번 코드 검사만으로 완료를 주장하지 않는다. 로그인은 각 기기에서 수행하고 같은 계정 서버 데이터가 표시되는지 실기기에서 확인해야 한다.

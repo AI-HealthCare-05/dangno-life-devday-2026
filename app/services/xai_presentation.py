@@ -45,6 +45,9 @@ def input_label(feature, checkup, screening=None):
         return _number(value, units[feature])
     if feature.endswith("_diagnosis"):
         return _boolean_label(value, "진단받음", "진단받지 않음")
+    if feature == "current_smoker" and value is None:
+        smoking = getattr(checkup, "smoking_status", None)
+        value = {"never": False, "former": False, "current": True}.get(smoking)
     if feature in {"current_smoker", "current_drinker", "regular_exercise"}:
         return _boolean_label(value, "예", "아니요")
     return _categorical_input_label(feature, value, checkup, screening)

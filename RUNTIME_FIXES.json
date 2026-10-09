@@ -1,17 +1,17 @@
 {
-  "patch_sha256": "623d6470e807d6f0f1d6cbf23797099ff44ec8552be0c0e081eb9ee5b6bae212",
+  "patch_sha256": "456a5fa857cea9165a9a5cc4efb1a7095861b32d51f264a2508ba2f6faa14874",
   "files": [
     {
       "path": "src/frontend/app.js",
       "before": "0fce7c16af6c55bc54de0351d517cc04120dc896755006029b8d649796331f84",
-      "after": "8ae01cf2eb33c565007cc2f6f09448efe5fe279a95c9c4338bce892785e3d405",
-      "previous": "cfa7e59161cd74417ebd6ba9068dc1e0caaeb23863c2fb29ea2ae2cb82e0bd44"
+      "after": "da2bc543b6253675aa413d85bca7e0ffd0e641abfd019e63515944fd2102f21a",
+      "previous": "8ae01cf2eb33c565007cc2f6f09448efe5fe279a95c9c4338bce892785e3d405"
     },
     {
       "path": "src/frontend/index.html",
       "before": "2a62179d639c18efe69f15974ea7b28b40d369fd5811158cff441870b09cad34",
-      "after": "be814f6bbb8c7087fada18be9443c94e4a734068fc173ef898c5c74b9e24a9cc",
-      "previous": "7ed7c267093bc2a274cfb622572808d888a105cbd2e6405da920089bc630ff53"
+      "after": "d0c7c58f69f5cf8661f12fc9f5435d04f51d33aa8a65154ccc4c18587de47060",
+      "previous": "68cf94e77c6c52ead872119b832be63e8e544d2a1b26f1285819ac8f1df6ee43"
     },
     {
       "path": "app/apis/v1/auth_routers.py",
@@ -246,7 +246,7 @@
     {
       "path": "src/frontend/result-xai.css",
       "before": "a158e679d54446b34b09944f40988a0adfc5e450f9692f062d34a6eb5515e34c",
-      "after": "4e0d97411fa556494c6e47add0fb6760c4c271cc8c403b162367e6760bad36c0"
+      "after": "2e333c1283f48094b714806fbf3027606487b51e37e13ca8ffb4e7e00a334ae9"
     },
     {
       "path": "requirements-demo.lock.txt",
@@ -266,7 +266,7 @@
     {
       "path": "app/services/xai_presentation.py",
       "before": null,
-      "after": "3510715bd275e4e463f552266b9a27dc52ea8b9b53fda45552f0e566883c4634"
+      "after": "c6442944a2d3fa3d74d50be7b4eeac875c5b18bcdace8f7ae02eeacf1032feda"
     },
     {
       "path": "app/services/mobile_downloads.py",
@@ -296,22 +296,22 @@
     {
       "path": "src/frontend/mobile-downloads.html",
       "before": null,
-      "after": "b73c0354e78b6bdf1f3c5a381bb90e5d450dbb07930f13ea5b20025c030afa39"
+      "after": "8b83a441779d7811b36c0c3179d13352fabbe9034c1511c826b10d3f932cc1cb"
     },
     {
       "path": "src/frontend/mobile-downloads.css",
       "before": null,
-      "after": "63bc7028fdca050a63915aca5188a769f05d1f91009ee4ad5370b20b937b9cdd"
+      "after": "d524c7d576c17cace653896bc1f1b91f7ee970af04857cc873c36151812d2bbf"
     },
     {
       "path": "src/frontend/mobile-downloads.js",
       "before": null,
-      "after": "84019e2ffdf47804abf57b0e18c7e35bc49a61bee1da1419e88f77e0f4c12e2b"
+      "after": "17a6d99c11c9306ea481940aa2e522a7950ec770a55dc7bdecbead64de3c8e56"
     },
     {
       "path": "tests/test_xai_presentation.py",
       "before": null,
-      "after": "424d7d67a9da8dffa8be66d8d3d9b77a5872df215813cc3452bc410d561ab69d"
+      "after": "2a883e4ca206e8cbbe6b3eef249401f6467121b3552fd8a83616e8ddb19b5446"
     },
     {
       "path": "tests/test_mobile_downloads.py",
@@ -327,6 +327,21 @@
       "path": "docs/WEB_XAI_MOBILE.md",
       "before": null,
       "after": "671f15ab6c520777b5e611a9a53d01960a246259cc2d9c62ec8dee2ed16a826c"
+    },
+    {
+      "path": "src/frontend/auth-session.js",
+      "before": null,
+      "after": "59c0691a4baf4f6d05bcba0b837bd64fbf7b5a5203867b4f6bb5fa4d1f94ff69"
+    },
+    {
+      "path": "tests/frontend/web_mobile_session.test.cjs",
+      "before": null,
+      "after": "afad32ec2ca06f197d7b0913889466ba8089f378511432fc360c2272a2724caf"
+    },
+    {
+      "path": "docs/WEB_MOBILE_ACCOUNT_SYNC.md",
+      "before": null,
+      "after": "15e7d8903bb4ed69a67a032712fa863c0154b48d5e7cbc23450ca8b5f0cbef69"
     }
   ]
 }
