@@ -1,0 +1,26 @@
+/* Keep the notification control in the heading row, including narrow screens. */
+@media screen {
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 48px;
+    align-items:start;
+    gap:8px 12px !important;
+    padding:14px clamp(18px,3vw,30px) !important;
+  }
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) #dashboard-hero-copy {display:contents}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) #dashboard-eyebrow {
+    grid-column:1;
+    grid-row:1;
+    align-self:center;
+    min-width:0;
+    margin:0;
+    overflow-wrap:anywhere;
+  }
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) .dashboard-title-row {grid-column:1 / -1;grid-row:2}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) #dashboard-title {margin:0;overflow-wrap:anywhere;word-break:keep-all}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) #dashboard-lead {grid-column:1 / -1;grid-row:3;margin:0;overflow-wrap:anywhere;word-break:keep-all}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) > .profile-menu {grid-column:2;grid-row:1;justify-self:end;align-self:start}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) .profile-menu summary {width:48px;height:48px}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) .profile-menu-panel {top:56px;min-width:0;width:210px;max-width:calc(100vw - 64px)}
+  .screen[data-step="8"] .dashboard-hero:not(.is-tools) .report-pdf-hero-control {grid-column:1 / -1;grid-row:4;justify-self:end}
+}

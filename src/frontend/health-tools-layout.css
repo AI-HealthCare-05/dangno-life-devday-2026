@@ -1,0 +1,46 @@
+/* Keep health tools within the wooden board, including large-text mode. */
+:is(#workspace-panel-tools,#health-ocr-panel) :is(.health-tool-section,.health-tool-overlay-wrap,.health-tool-card,.health-tool-status-row,.health-tool-row,.health-tool-actions,.manual-input-details,.ocr-confirm-form) {
+  min-width: 0; max-width: 100%;
+}
+.screen[data-step="8"]:has(#workspace-panel-tools.active) .health-tools-pending-grid {
+  grid-template-columns: minmax(0,1fr) !important; min-width: 0;
+}
+:is(#workspace-panel-tools,#health-ocr-panel) .health-tool-row > div,
+:is(#workspace-panel-tools,#health-ocr-panel) :is(.form-row,.check-card > span) { min-width: 0; }
+:is(#workspace-panel-tools,#health-ocr-panel) :is(.health-tool-row strong,.health-tool-row p,.check-card span,.manual-input-details summary) {
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+:is(#workspace-panel-tools,#health-ocr-panel) :is(.health-tool-actions button,.health-tool-inline-action) {
+  min-width: 0; max-width: 100%; white-space: normal;
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+:is(#workspace-panel-tools,#health-ocr-panel) .upload-checkup-button {
+  display: grid; grid-template-columns: 25px minmax(0,1fr);
+  gap: 6px 9px; text-align: center;
+}
+:is(#workspace-panel-tools,#health-ocr-panel) .upload-checkup-button > span { grid-column: 1; grid-row: 1; }
+:is(#workspace-panel-tools,#health-ocr-panel) .upload-checkup-button > strong { grid-column: 2; grid-row: 1; min-width: 0; }
+:is(#workspace-panel-tools,#health-ocr-panel) .upload-checkup-button > small { grid-column: 1 / -1; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-card { padding: 16px; }
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-row { gap: 12px; }
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-mascot { flex-basis: 64px; width: 64px; height: 64px; }
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-status-row,
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-actions,
+  :is(#workspace-panel-tools,#health-ocr-panel) .two-column { display: grid; grid-template-columns: minmax(0,1fr); }
+  :is(#workspace-panel-tools,#health-ocr-panel) :is(.health-tool-actions button,.health-tool-inline-action) { width: 100%; }
+}
+@media (max-width: 800px) {
+  .screen[data-step="8"]:has(#workspace-panel-tools.active) { margin-inline: 0; }
+}
+@media (max-width: 520px) {
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-row { flex-direction: column; }
+  :is(#workspace-panel-tools,#health-ocr-panel) .health-tool-row > div { width: 100%; }
+}
+
+#health-ocr-panel {margin:16px 0; width:100%}
+#health-ocr-entry > summary {min-height:48px;padding:12px 16px;cursor:pointer;font-weight:800;background:var(--sign-paper,#fff7df);border:2px solid #bd905b;border-radius:12px;color:#302014;word-break:keep-all;overflow-wrap:anywhere}
+#health-ocr-entry[open] > summary {margin-bottom:12px}
+#health-ocr-panel .health-tool-card {background:#fffaf0}
+#health-ocr-panel .two-column {grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:760px){#health-ocr-panel .two-column {grid-template-columns:minmax(0,1fr)}}

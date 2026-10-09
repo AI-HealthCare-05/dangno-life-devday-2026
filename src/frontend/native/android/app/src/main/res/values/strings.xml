@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">간당간당</string>
+    <string name="title_activity_main">간당간당</string>
+    <string name="package_name">life.dangno.app</string>
+    <string name="custom_url_scheme">life.dangno.app</string>
+</resources>

@@ -1,0 +1,28 @@
+/* Keep the forecast illustration proportional to its available card width. */
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) {
+ min-width:0; min-height:0 !important; align-self:start;
+ padding:24px; gap:12px;
+}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-point {min-width:0; width:100%; gap:16px}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track {
+ width:min(480px,100%); height:auto; aspect-ratio:2 / 1;
+ border-radius:50% 50% 12px 12px / 100% 100% 12px 12px;
+}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track::before {
+ width:1.5%; height:72%; bottom:8%;
+ transform-origin:50% 100%;
+}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track::after {
+ width:4%; height:auto; aspect-ratio:1; bottom:8%;
+ transform:translate(-50%,50%);
+}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track img {
+ width:22%; height:auto; aspect-ratio:1; object-fit:contain;
+ border-width:clamp(3px,1vw,6px);
+}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track[data-level="low"] {--marker-x:21%; --marker-y:50%; --needle-rotation:-54deg}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track[data-level="moderate"] {--marker-x:50%; --marker-y:20%; --needle-rotation:0deg}
+.result-room-screen :is(.age-risk-chart,.future-signal-visual) .age-risk-signal-track[data-level="high"] {--marker-x:79%; --marker-y:50%; --needle-rotation:54deg}
+@media(max-width:520px) {
+ .result-room-screen :is(.age-risk-chart,.future-signal-visual) {padding:18px 12px}
+}

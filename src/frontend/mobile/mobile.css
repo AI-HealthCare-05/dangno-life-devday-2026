@@ -1,0 +1,14 @@
+
+html.gandang-native { scroll-padding-top: env(safe-area-inset-top); }
+.gandang-native body {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  overscroll-behavior-y: none;
+}
+.gandang-native dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
+@media (max-width: 600px) {
+  .gandang-native input, .gandang-native select, .gandang-native textarea { font-size: 16px; }
+}
+#mobile-notice { position: fixed; z-index: 100000; bottom: calc(24px + env(safe-area-inset-bottom)); left: 16px; right: 16px; padding: 14px; background: #18251f; color: white; border-radius: 12px; font-size: 15px; }

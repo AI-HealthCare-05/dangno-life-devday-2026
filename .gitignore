@@ -72,3 +72,17 @@ build/
 # Additional inference binaries and local state
 *.tflite
 *.sqlite3-*
+
+# Local app builds and private runtime
+storage/
+.env.local-mobile
+*.jks
+*.keystore
+src/frontend/native/android/.gradle/
+src/frontend/native/android/app/src/main/assets/
+src/frontend/native/ios/App/App/public/
+src/frontend/native/ios/App/App/capacitor.config.json
+src/frontend/native/ios/App/CapApp-SPM/.build/
+
+# Creator-owned kitten packs are provisioned locally, never redistributed.
+src/frontend/assets/animals/licensed-kittens/

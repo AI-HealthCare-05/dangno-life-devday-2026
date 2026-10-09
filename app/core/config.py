@@ -34,6 +34,8 @@ class Config(BaseSettings):
     DEMO_MODE: bool = False
     DEMO_ARTIFACT_INFERENCE_ENABLED: bool = False
     XAI_DISPLAY_ALLOWED: bool = False
+    MOBILE_ANDROID_DOWNLOAD_URL: str = ""
+    MOBILE_IOS_DOWNLOAD_URL: str = ""
     CHALLENGE_V2_ENABLED: bool = False
     CHALLENGE_V2_CONTENT_APPROVED: bool = False
     CHALLENGE_V2_REVIEWER_IDS: list[int] = []

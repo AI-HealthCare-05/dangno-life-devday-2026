@@ -1,0 +1,16 @@
+{
+  "appId": "life.dangno.app",
+  "appName": "간당간당",
+  "webDir": "dist/mobile",
+  "android": {
+    "path": "src/frontend/native/android"
+  },
+  "ios": {
+    "path": "src/frontend/native/ios"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

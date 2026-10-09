@@ -1,0 +1,1904 @@
+{
+  "version": 2,
+  "cell_width": 224,
+  "cell_height": 288,
+  "columns": 4,
+  "direction_rows": {
+    "down": 0,
+    "up": 1,
+    "left": 2,
+    "right": 3
+  },
+  "vehicle_rows": {
+    "idle": 4,
+    "moving": 5
+  },
+  "presets": {
+    "red_bow": {
+      "file": "carrot-forest-avatar-red_bow-normalized-v2.png",
+      "rows": 6,
+      "frames": [
+        {
+          "row": 0,
+          "column": 0,
+          "source_bbox": [
+            225,
+            21,
+            356,
+            234
+          ],
+          "normalized_bbox": [
+            46,
+            65,
+            177,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "source_bbox": [
+            451,
+            21,
+            579,
+            234
+          ],
+          "normalized_bbox": [
+            48,
+            65,
+            176,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "source_bbox": [
+            669,
+            21,
+            805,
+            234
+          ],
+          "normalized_bbox": [
+            44,
+            65,
+            180,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "source_bbox": [
+            894,
+            21,
+            1025,
+            234
+          ],
+          "normalized_bbox": [
+            46,
+            65,
+            177,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "source_bbox": [
+            229,
+            255,
+            351,
+            460
+          ],
+          "normalized_bbox": [
+            51,
+            73,
+            173,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "source_bbox": [
+            454,
+            254,
+            575,
+            460
+          ],
+          "normalized_bbox": [
+            51,
+            72,
+            172,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "source_bbox": [
+            674,
+            254,
+            795,
+            459
+          ],
+          "normalized_bbox": [
+            51,
+            73,
+            172,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 3,
+          "source_bbox": [
+            894,
+            254,
+            1014,
+            459
+          ],
+          "normalized_bbox": [
+            52,
+            73,
+            172,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "source_bbox": [
+            233,
+            472,
+            349,
+            651
+          ],
+          "normalized_bbox": [
+            54,
+            99,
+            170,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "source_bbox": [
+            451,
+            472,
+            565,
+            651
+          ],
+          "normalized_bbox": [
+            55,
+            99,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 2,
+          "source_bbox": [
+            678,
+            472,
+            791,
+            650
+          ],
+          "normalized_bbox": [
+            55,
+            100,
+            168,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "source_bbox": [
+            891,
+            472,
+            1013,
+            650
+          ],
+          "normalized_bbox": [
+            51,
+            100,
+            173,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "source_bbox": [
+            228,
+            664,
+            342,
+            841
+          ],
+          "normalized_bbox": [
+            55,
+            101,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "source_bbox": [
+            440,
+            664,
+            552,
+            841
+          ],
+          "normalized_bbox": [
+            56,
+            101,
+            168,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "source_bbox": [
+            670,
+            664,
+            784,
+            840
+          ],
+          "normalized_bbox": [
+            55,
+            102,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 3,
+          "source_bbox": [
+            890,
+            664,
+            1008,
+            841
+          ],
+          "normalized_bbox": [
+            53,
+            101,
+            171,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "source_bbox": [
+            232,
+            859,
+            334,
+            1045
+          ],
+          "normalized_bbox": [
+            61,
+            92,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "source_bbox": [
+            440,
+            858,
+            545,
+            1045
+          ],
+          "normalized_bbox": [
+            59,
+            91,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 2,
+          "source_bbox": [
+            655,
+            852,
+            789,
+            1045
+          ],
+          "normalized_bbox": [
+            45,
+            85,
+            179,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "source_bbox": [
+            885,
+            852,
+            1019,
+            1045
+          ],
+          "normalized_bbox": [
+            45,
+            85,
+            179,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 0,
+          "source_bbox": [
+            231,
+            1051,
+            336,
+            1238
+          ],
+          "normalized_bbox": [
+            59,
+            91,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 1,
+          "source_bbox": [
+            449,
+            1051,
+            552,
+            1238
+          ],
+          "normalized_bbox": [
+            60,
+            91,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 2,
+          "source_bbox": [
+            661,
+            1047,
+            793,
+            1238
+          ],
+          "normalized_bbox": [
+            46,
+            87,
+            178,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 3,
+          "source_bbox": [
+            889,
+            1047,
+            1024,
+            1238
+          ],
+          "normalized_bbox": [
+            44,
+            87,
+            179,
+            278
+          ]
+        }
+      ]
+    },
+    "cow_hood": {
+      "file": "carrot-forest-avatar-cow_hood-normalized-v2.png",
+      "rows": 5,
+      "frames": [
+        {
+          "row": 0,
+          "column": 0,
+          "source_bbox": [
+            120,
+            29,
+            287,
+            246
+          ],
+          "normalized_bbox": [
+            28,
+            61,
+            195,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "source_bbox": [
+            407,
+            29,
+            573,
+            245
+          ],
+          "normalized_bbox": [
+            29,
+            62,
+            195,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "source_bbox": [
+            681,
+            29,
+            846,
+            246
+          ],
+          "normalized_bbox": [
+            29,
+            61,
+            194,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "source_bbox": [
+            949,
+            29,
+            1113,
+            246
+          ],
+          "normalized_bbox": [
+            30,
+            61,
+            194,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "source_bbox": [
+            119,
+            273,
+            287,
+            490
+          ],
+          "normalized_bbox": [
+            28,
+            61,
+            196,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "source_bbox": [
+            405,
+            273,
+            573,
+            490
+          ],
+          "normalized_bbox": [
+            28,
+            61,
+            196,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "source_bbox": [
+            678,
+            273,
+            846,
+            490
+          ],
+          "normalized_bbox": [
+            28,
+            61,
+            196,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 3,
+          "source_bbox": [
+            946,
+            273,
+            1113,
+            490
+          ],
+          "normalized_bbox": [
+            28,
+            61,
+            195,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "source_bbox": [
+            124,
+            514,
+            269,
+            726
+          ],
+          "normalized_bbox": [
+            39,
+            66,
+            184,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "source_bbox": [
+            414,
+            517,
+            557,
+            727
+          ],
+          "normalized_bbox": [
+            40,
+            68,
+            183,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 2,
+          "source_bbox": [
+            685,
+            517,
+            827,
+            727
+          ],
+          "normalized_bbox": [
+            41,
+            68,
+            183,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "source_bbox": [
+            963,
+            517,
+            1104,
+            729
+          ],
+          "normalized_bbox": [
+            41,
+            66,
+            182,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "source_bbox": [
+            124,
+            750,
+            263,
+            956
+          ],
+          "normalized_bbox": [
+            42,
+            72,
+            181,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "source_bbox": [
+            414,
+            752,
+            555,
+            958
+          ],
+          "normalized_bbox": [
+            41,
+            72,
+            182,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "source_bbox": [
+            694,
+            753,
+            832,
+            960
+          ],
+          "normalized_bbox": [
+            43,
+            71,
+            181,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 3,
+          "source_bbox": [
+            964,
+            755,
+            1104,
+            959
+          ],
+          "normalized_bbox": [
+            42,
+            74,
+            182,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "source_bbox": [
+            131,
+            974,
+            269,
+            1217
+          ],
+          "normalized_bbox": [
+            43,
+            35,
+            181,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "source_bbox": [
+            410,
+            974,
+            550,
+            1217
+          ],
+          "normalized_bbox": [
+            42,
+            35,
+            182,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 2,
+          "source_bbox": [
+            654,
+            974,
+            808,
+            1213
+          ],
+          "normalized_bbox": [
+            35,
+            39,
+            189,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "source_bbox": [
+            932,
+            974,
+            1088,
+            1214
+          ],
+          "normalized_bbox": [
+            34,
+            38,
+            190,
+            278
+          ]
+        }
+      ]
+    },
+    "midnight": {
+      "file": "carrot-forest-avatar-midnight-normalized-v2.png",
+      "rows": 6,
+      "frames": [
+        {
+          "row": 0,
+          "column": 0,
+          "source_bbox": [
+            229,
+            22,
+            333,
+            199
+          ],
+          "normalized_bbox": [
+            60,
+            101,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "source_bbox": [
+            458,
+            22,
+            562,
+            199
+          ],
+          "normalized_bbox": [
+            60,
+            101,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "source_bbox": [
+            685,
+            22,
+            789,
+            199
+          ],
+          "normalized_bbox": [
+            60,
+            101,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "source_bbox": [
+            912,
+            22,
+            1015,
+            199
+          ],
+          "normalized_bbox": [
+            60,
+            101,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "source_bbox": [
+            232,
+            215,
+            333,
+            394
+          ],
+          "normalized_bbox": [
+            61,
+            99,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "source_bbox": [
+            465,
+            215,
+            564,
+            398
+          ],
+          "normalized_bbox": [
+            62,
+            95,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "source_bbox": [
+            687,
+            215,
+            788,
+            394
+          ],
+          "normalized_bbox": [
+            61,
+            99,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 3,
+          "source_bbox": [
+            916,
+            215,
+            1015,
+            398
+          ],
+          "normalized_bbox": [
+            62,
+            95,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "source_bbox": [
+            237,
+            422,
+            335,
+            592
+          ],
+          "normalized_bbox": [
+            63,
+            108,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "source_bbox": [
+            456,
+            421,
+            554,
+            590
+          ],
+          "normalized_bbox": [
+            63,
+            109,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 2,
+          "source_bbox": [
+            684,
+            421,
+            784,
+            590
+          ],
+          "normalized_bbox": [
+            62,
+            109,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "source_bbox": [
+            910,
+            421,
+            1008,
+            590
+          ],
+          "normalized_bbox": [
+            63,
+            109,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "source_bbox": [
+            237,
+            619,
+            337,
+            789
+          ],
+          "normalized_bbox": [
+            62,
+            108,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "source_bbox": [
+            459,
+            619,
+            557,
+            787
+          ],
+          "normalized_bbox": [
+            63,
+            110,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "source_bbox": [
+            691,
+            619,
+            789,
+            789
+          ],
+          "normalized_bbox": [
+            63,
+            108,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 3,
+          "source_bbox": [
+            916,
+            619,
+            1013,
+            788
+          ],
+          "normalized_bbox": [
+            63,
+            109,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "source_bbox": [
+            235,
+            805,
+            350,
+            1005
+          ],
+          "normalized_bbox": [
+            54,
+            78,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "source_bbox": [
+            463,
+            803,
+            571,
+            1002
+          ],
+          "normalized_bbox": [
+            58,
+            79,
+            166,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 2,
+          "source_bbox": [
+            666,
+            807,
+            807,
+            1001
+          ],
+          "normalized_bbox": [
+            41,
+            84,
+            182,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "source_bbox": [
+            884,
+            805,
+            1018,
+            1001
+          ],
+          "normalized_bbox": [
+            45,
+            82,
+            179,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 0,
+          "source_bbox": [
+            232,
+            1012,
+            346,
+            1214
+          ],
+          "normalized_bbox": [
+            55,
+            76,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 1,
+          "source_bbox": [
+            456,
+            1011,
+            565,
+            1212
+          ],
+          "normalized_bbox": [
+            57,
+            77,
+            166,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 2,
+          "source_bbox": [
+            660,
+            1016,
+            811,
+            1209
+          ],
+          "normalized_bbox": [
+            36,
+            85,
+            187,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 3,
+          "source_bbox": [
+            883,
+            1017,
+            1028,
+            1209
+          ],
+          "normalized_bbox": [
+            39,
+            86,
+            184,
+            278
+          ]
+        }
+      ]
+    },
+    "blue_cap": {
+      "file": "carrot-forest-avatar-blue_cap-normalized-v2.png",
+      "rows": 6,
+      "frames": [
+        {
+          "row": 0,
+          "column": 0,
+          "source_bbox": [
+            230,
+            25,
+            332,
+            199
+          ],
+          "normalized_bbox": [
+            61,
+            104,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "source_bbox": [
+            468,
+            24,
+            570,
+            201
+          ],
+          "normalized_bbox": [
+            61,
+            101,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "source_bbox": [
+            692,
+            25,
+            794,
+            201
+          ],
+          "normalized_bbox": [
+            61,
+            102,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "source_bbox": [
+            929,
+            25,
+            1030,
+            202
+          ],
+          "normalized_bbox": [
+            61,
+            101,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "source_bbox": [
+            233,
+            222,
+            335,
+            399
+          ],
+          "normalized_bbox": [
+            61,
+            101,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "source_bbox": [
+            468,
+            222,
+            571,
+            402
+          ],
+          "normalized_bbox": [
+            60,
+            98,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "source_bbox": [
+            693,
+            222,
+            796,
+            400
+          ],
+          "normalized_bbox": [
+            60,
+            100,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 3,
+          "source_bbox": [
+            929,
+            222,
+            1031,
+            402
+          ],
+          "normalized_bbox": [
+            61,
+            98,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "source_bbox": [
+            234,
+            423,
+            331,
+            593
+          ],
+          "normalized_bbox": [
+            63,
+            108,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "source_bbox": [
+            466,
+            423,
+            562,
+            591
+          ],
+          "normalized_bbox": [
+            64,
+            110,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 2,
+          "source_bbox": [
+            693,
+            423,
+            789,
+            592
+          ],
+          "normalized_bbox": [
+            64,
+            109,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "source_bbox": [
+            929,
+            423,
+            1025,
+            592
+          ],
+          "normalized_bbox": [
+            64,
+            109,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "source_bbox": [
+            240,
+            614,
+            338,
+            785
+          ],
+          "normalized_bbox": [
+            63,
+            107,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "source_bbox": [
+            471,
+            614,
+            569,
+            785
+          ],
+          "normalized_bbox": [
+            63,
+            107,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "source_bbox": [
+            698,
+            615,
+            796,
+            786
+          ],
+          "normalized_bbox": [
+            63,
+            107,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 3,
+          "source_bbox": [
+            934,
+            615,
+            1032,
+            786
+          ],
+          "normalized_bbox": [
+            63,
+            107,
+            161,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "source_bbox": [
+            231,
+            808,
+            332,
+            1008
+          ],
+          "normalized_bbox": [
+            61,
+            78,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "source_bbox": [
+            463,
+            805,
+            563,
+            1008
+          ],
+          "normalized_bbox": [
+            62,
+            75,
+            162,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 2,
+          "source_bbox": [
+            665,
+            810,
+            807,
+            1007
+          ],
+          "normalized_bbox": [
+            41,
+            81,
+            183,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "source_bbox": [
+            900,
+            810,
+            1043,
+            1007
+          ],
+          "normalized_bbox": [
+            40,
+            81,
+            183,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 0,
+          "source_bbox": [
+            220,
+            1018,
+            347,
+            1219
+          ],
+          "normalized_bbox": [
+            48,
+            77,
+            175,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 1,
+          "source_bbox": [
+            458,
+            1018,
+            575,
+            1217
+          ],
+          "normalized_bbox": [
+            53,
+            79,
+            170,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 2,
+          "source_bbox": [
+            658,
+            1022,
+            813,
+            1213
+          ],
+          "normalized_bbox": [
+            34,
+            87,
+            189,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 3,
+          "source_bbox": [
+            894,
+            1022,
+            1049,
+            1214
+          ],
+          "normalized_bbox": [
+            34,
+            86,
+            189,
+            278
+          ]
+        }
+      ]
+    },
+    "teal_bob": {
+      "file": "carrot-forest-avatar-teal_bob-normalized-v2.png",
+      "rows": 6,
+      "frames": [
+        {
+          "row": 0,
+          "column": 0,
+          "source_bbox": [
+            244,
+            30,
+            350,
+            205
+          ],
+          "normalized_bbox": [
+            59,
+            103,
+            165,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "source_bbox": [
+            459,
+            30,
+            564,
+            203
+          ],
+          "normalized_bbox": [
+            59,
+            105,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "source_bbox": [
+            674,
+            30,
+            780,
+            205
+          ],
+          "normalized_bbox": [
+            59,
+            103,
+            165,
+            278
+          ]
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "source_bbox": [
+            891,
+            30,
+            996,
+            207
+          ],
+          "normalized_bbox": [
+            59,
+            101,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "source_bbox": [
+            245,
+            228,
+            349,
+            404
+          ],
+          "normalized_bbox": [
+            60,
+            102,
+            164,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "source_bbox": [
+            460,
+            228,
+            563,
+            404
+          ],
+          "normalized_bbox": [
+            60,
+            102,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "source_bbox": [
+            676,
+            228,
+            779,
+            406
+          ],
+          "normalized_bbox": [
+            60,
+            100,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 1,
+          "column": 3,
+          "source_bbox": [
+            893,
+            228,
+            996,
+            406
+          ],
+          "normalized_bbox": [
+            60,
+            100,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "source_bbox": [
+            251,
+            425,
+            346,
+            590
+          ],
+          "normalized_bbox": [
+            64,
+            113,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "source_bbox": [
+            468,
+            425,
+            564,
+            591
+          ],
+          "normalized_bbox": [
+            64,
+            112,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 2,
+          "source_bbox": [
+            685,
+            425,
+            782,
+            591
+          ],
+          "normalized_bbox": [
+            63,
+            112,
+            160,
+            278
+          ]
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "source_bbox": [
+            901,
+            425,
+            996,
+            590
+          ],
+          "normalized_bbox": [
+            64,
+            113,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "source_bbox": [
+            247,
+            609,
+            342,
+            773
+          ],
+          "normalized_bbox": [
+            64,
+            114,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "source_bbox": [
+            465,
+            609,
+            560,
+            774
+          ],
+          "normalized_bbox": [
+            64,
+            113,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "source_bbox": [
+            682,
+            609,
+            777,
+            774
+          ],
+          "normalized_bbox": [
+            64,
+            113,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 3,
+          "column": 3,
+          "source_bbox": [
+            898,
+            609,
+            993,
+            773
+          ],
+          "normalized_bbox": [
+            64,
+            114,
+            159,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "source_bbox": [
+            244,
+            788,
+            347,
+            995
+          ],
+          "normalized_bbox": [
+            60,
+            71,
+            163,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "source_bbox": [
+            461,
+            789,
+            576,
+            995
+          ],
+          "normalized_bbox": [
+            54,
+            72,
+            169,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 2,
+          "source_bbox": [
+            645,
+            791,
+            796,
+            990
+          ],
+          "normalized_bbox": [
+            36,
+            79,
+            187,
+            278
+          ]
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "source_bbox": [
+            867,
+            791,
+            1012,
+            990
+          ],
+          "normalized_bbox": [
+            39,
+            79,
+            184,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 0,
+          "source_bbox": [
+            239,
+            1004,
+            356,
+            1206
+          ],
+          "normalized_bbox": [
+            53,
+            76,
+            170,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 1,
+          "source_bbox": [
+            463,
+            1004,
+            573,
+            1206
+          ],
+          "normalized_bbox": [
+            57,
+            76,
+            167,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 2,
+          "source_bbox": [
+            643,
+            1007,
+            810,
+            1199
+          ],
+          "normalized_bbox": [
+            28,
+            86,
+            195,
+            278
+          ]
+        },
+        {
+          "row": 5,
+          "column": 3,
+          "source_bbox": [
+            871,
+            1007,
+            1035,
+            1199
+          ],
+          "normalized_bbox": [
+            30,
+            86,
+            194,
+            278
+          ]
+        }
+      ]
+    }
+  }
+}

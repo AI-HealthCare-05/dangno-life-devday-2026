@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "reference_version": "today-train-reference-v2",
+  "train_only": true,
+  "model_version": "knhanes-today14-sk180-service-v3",
+  "model_artifact_sha256": "2189257587690adfcdf74702f69b516c0a8559cef6059ebd90d003e008c079b1",
+  "source_normalized_sha256": "70c2e4a0d71e883a4181589bfb3042413f6f6e13104756b88d24e103e195ddfa",
+  "train_years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020
+  ],
+  "excluded_years": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "eligible_train_count": 26005,
+  "sampling": "survey-weighted year/sex stratified; without replacement",
+  "seed": 20261001,
+  "sample_size": 128,
+  "features": [
+    "age",
+    "height_cm",
+    "weight_kg",
+    "waist_cm",
+    "bmi",
+    "systolic_bp",
+    "diastolic_bp",
+    "sex",
+    "current_smoker",
+    "education",
+    "region",
+    "diabetes_family_history",
+    "hypertension_family_history",
+    "alcohol_frequency"
+  ],
+  "artifact_local_path": "models/artifacts/xai/today-train-reference-v2/background.csv",
+  "artifact_sha256": "7f76fbebe5b26c426796de81088def9a420f104920c1b7fed750553f552c97d9",
+  "baseline_label": "학습 자료의 대표 표본 기준 (2016–2020년)",
+  "git_policy": "reference rows stay outside Git"
+}

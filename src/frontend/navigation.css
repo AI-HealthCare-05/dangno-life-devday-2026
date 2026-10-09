@@ -1,0 +1,137 @@
+/* One full-width navigation bar on every service screen. */
+html body .topbar {
+  width: 100% !important; max-width: none !important; box-sizing: border-box;
+  left: 0 !important; right: 0 !important; top: 0 !important; transform: none !important;
+  margin: 0 !important; border-radius: 0 !important;
+  padding-inline: clamp(12px, 3vw, 40px) !important;
+}
+html body .topbar .header-utilities { margin-left: auto !important; flex: 0 0 auto; order: 3 !important; }
+html body .topbar .header-my-page { order: 1; margin-left: auto; }
+html body .topbar .font-toggle-button { order: 0; }
+html body .topbar .header-my-page-menu > .text-button {
+  display: flex; align-items: center; width: 100%; box-sizing: border-box;
+  min-height: 48px; padding: 9px 12px; border: 2px solid #9cadab;
+  border-radius: 14px; font-size: 15px; font-weight: 900; line-height: 1.55;
+  text-align: left; white-space: normal !important; text-decoration: none;
+}
+.intro-session-checking .intro-screen { visibility: hidden; }
+.service-session-checking .screen[data-step="1"] { visibility: hidden; }
+.forest-exit-confirm { width: min(420px, calc(100vw - 32px)); padding: 24px; border: 1px solid #a4b9ad; border-radius: 18px; color: #193e32; background: #fffdf4; }
+.forest-exit-confirm::backdrop { background: #11291db3; }
+.forest-exit-confirm h2 { font-size: 20px; line-height: 1.5; word-break: keep-all; }
+.forest-exit-actions { display: flex; gap: 10px; margin-top: 20px; }
+.forest-exit-actions button { flex: 1; min-height: 48px; border: 1px solid #176b5b; border-radius: 10px; background: #fff; color: #176b5b; font-size: 15px; }
+.forest-exit-actions [data-exit] { background: #176b5b; color: #fff; }
+@media (max-width: 760px) {
+  html body .topbar .header-utilities { align-self: flex-start; }
+  html body .topbar #guest-flow-panel, html body .topbar .workspace-top-nav { order: 5; flex: 1 1 100%; min-width: 0; }
+  html body .topbar #guest-flow-panel ol { justify-content: flex-end; }
+}
+
+
+/* Account controls and the forest entry share the same size tokens. */
+html body .topbar {
+  --header-control-width: 108px;
+  --header-control-height: 48px;
+}
+html body .topbar .header-utilities {
+  display: grid; grid-template-columns: repeat(2, var(--header-control-width));
+  gap: 8px; align-items: start; justify-items: end; align-self: center;
+}
+html body .topbar .font-toggle-button {
+  grid-column: 1; grid-row: 1; width: var(--header-control-width);
+  height: var(--header-control-height); min-height: 0; padding: 8px;
+  margin: 0; font-size: 15px; white-space: nowrap;
+}
+html body .topbar .header-my-page {
+  grid-column: 2; grid-row: 1; width: var(--header-control-width); margin: 0;
+}
+html body .topbar .header-my-page > summary {
+  width: 100%; height: var(--header-control-height); min-height: 0;
+  padding: 8px; font-size: 15px;
+}
+html body .topbar .header-forest-entry {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: calc(2 * var(--header-control-width));
+  height: calc(2 * var(--header-control-height)); min-height: 0;
+  padding: 7px 10px; overflow: hidden; border: 2px solid #39752d;
+  border-radius: 18px; background: #e9f1d5;
+  box-shadow: 0 3px 0 #295d2a, 0 5px 12px #24532618;
+  text-decoration: none; transition: filter .15s ease, box-shadow .15s ease;
+}
+html body .topbar .header-forest-entry img {
+  display: block; width: 100%; height: 100%; min-height: 0; flex: 0 1 auto;
+  object-fit: contain; pointer-events: none;
+}
+html body .topbar .header-forest-entry:hover { filter: brightness(1.04); }
+html body .topbar .header-forest-entry:active { box-shadow: 0 1px 0 #295d2a; }
+html body .topbar .header-my-page-menu { z-index: 50; }
+@media (max-width: 520px) {
+  html body .topbar {
+    --header-control-width: 88px; --header-control-height: 44px;
+  }
+  html body .topbar .font-toggle-button,
+  html body .topbar .header-my-page > summary { font-size: 14px; }
+  html body .topbar .brand-logo { width: clamp(90px, 32vw, 145px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .topbar .header-forest-entry { transition: none; }
+}
+
+html body .topbar .header-utilities:has(.header-my-page[hidden]) .font-toggle-button {
+  grid-column: 2;
+}
+
+/* Brand and forest stay together; account actions share the two rows on the right. */
+html body .topbar {
+ display: grid !important;
+ grid-template-columns: calc(2 * var(--header-control-width)) minmax(0, 1fr);
+ grid-template-rows: auto auto;
+ align-items: start !important; gap: 6px 12px !important;
+ padding-block: 10px !important;
+}
+html body .topbar .header-brand-stack {
+ grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column;
+ align-items: flex-start; gap: 6px; min-width: 0;
+}
+html body .topbar .header-brand-stack .brand { min-height: 0; display: flex; align-items: center; }
+html body .topbar .header-brand-stack .brand-logo { max-width: 100%; height: auto; }
+html body .topbar #guest-flow-panel {
+ grid-column: 2; grid-row: 1; margin: 0 !important; min-width: 0;
+ width: 100%; align-self: start;
+}
+html body .topbar #guest-flow-panel ol { justify-content: flex-end; flex-wrap: wrap; gap: 4px; overflow: visible; padding: 0; }
+html body .topbar #guest-flow-panel li { padding: 0; }
+html body .topbar .header-utilities {
+ grid-column: 2; grid-row: 2; justify-self: end; align-self: start;
+ display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px;
+ width: min(100%, calc(2 * var(--header-control-width) + 6px));
+}
+html body .topbar:has(.header-my-page:not([hidden])) .header-utilities { grid-row: 1; }
+html body .topbar .workspace-top-nav {
+ grid-column: 2; grid-row: 2; margin: 0; min-width: 0; width: 100%; align-self: start;
+}
+html body .topbar .workspace-top-nav ol { overflow-x: auto; justify-content: flex-end; }
+@media (max-width: 760px) {
+ html body .topbar { gap: 6px 8px !important; }
+ html body .topbar #guest-flow-panel :is(#sidebar-login,#sidebar-signup) { min-height: 44px; padding: 8px; font-size: 14px; white-space: nowrap; }
+ html body .topbar .workspace-top-nav ol { justify-content: flex-start; }
+ html body .topbar .workspace-top-nav button { min-height: 44px; padding: 8px; font-size: 14px; }
+}
+@media (max-width: 380px) {
+ html body .topbar { --header-control-width: 80px; padding-inline: 8px !important; }
+}
+
+
+html body .topbar .header-utilities :is(.font-toggle-button,.header-my-page) { flex: 0 0 var(--header-control-width); }
+
+/* Health record steps need their own row when the main menu is also visible. */
+html body .topbar #onboarding-top-nav {
+ grid-column:1 / -1; grid-row:3; width:100%; min-width:0;
+ border-top:1px solid #dce8e2; padding-top:6px;
+}
+html body .topbar #onboarding-top-nav ol {
+ display:flex; flex-wrap:nowrap; justify-content:flex-start;
+ width:100%; min-width:0; gap:8px; overflow-x:auto;
+}
+html body .topbar #onboarding-top-nav li {flex:0 0 auto}
