@@ -1,0 +1,11 @@
+# source=journalctl / sshd
+# requested_range=2026-10-09T00:00:00+09:00 ~ 2026-10-09T14:51:42+09:00
+# covered_range=observed successes 2026-10-09T04:12:14+00:00 ~ 2026-10-09T05:50:30+00:00; completeness not established
+# collected_at=2026-10-09T14:51:42+09:00
+# original_timestamp_timezone=UTC (+00:00)
+# redacted_fields=host,account,source_ip,key_fingerprint
+# limitations=successful authentication only; no session close or console-login audit; no records after collection
+# source_command_exit=0; source_stderr=empty
+2026-10-09T04:12:14+00:00 SERVER_01 sshd[1025]: Accepted publickey for ACCOUNT_01 from IP_01 port 32585 ssh2: ED25519 KEY_01
+2026-10-09T04:14:31+00:00 SERVER_01 sshd[3882]: Accepted publickey for ACCOUNT_01 from IP_01 port 2998 ssh2: ED25519 KEY_02
+2026-10-09T05:50:30+00:00 SERVER_01 sshd[6158]: Accepted publickey for ACCOUNT_01 from IP_01 port 53903 ssh2: ED25519 KEY_03
