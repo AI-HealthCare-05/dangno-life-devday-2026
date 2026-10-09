@@ -489,3 +489,21 @@ body.intro-mode .landing-first.retro-intro { height: 420svh; }
  body.intro-mode:has(.retro-intro) #story-forest { padding-top: max(92px, var(--intro-safe-top)); }
  body.intro-mode .service-story .story-closing { padding-top: max(120px, var(--intro-safe-top)); }
 }
+
+/* Keep app installation visible on the first screen, including guest visits. */
+body.intro-mode:has(.retro-intro) .topbar { flex-wrap: wrap; }
+.topbar .intro-mobile-download {
+ display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+ min-height: 44px; padding: 12px 18px; margin-left: auto; border: 1px solid #a6421b;
+ border-radius: 999px; background: #c45124; color: #fffdf4; font: inherit;
+ font-size: 14px; font-weight: 800; line-height: 1.2; text-decoration: none;
+ white-space: nowrap; box-shadow: 0 4px 12px #a6421b26;
+}
+.topbar .intro-mobile-download:hover { background: #a9401c; }
+.topbar .intro-mobile-download:focus-visible { outline: 3px solid #203d32; outline-offset: 4px; }
+@media(max-width:760px) {
+ body.intro-mode:has(.retro-intro) .topbar { width: calc(100% - 24px); gap: 10px; }
+ body.intro-mode.intro-authenticated:has(.retro-intro) .topbar { width: 100%; }
+ .topbar .intro-mobile-download { font-size: 12px; padding: 10px 12px; }
+ body.intro-mode .intro-route-nav:not([hidden]) { order: 3; flex-basis: 100%; white-space: normal; flex-wrap: wrap; }
+}

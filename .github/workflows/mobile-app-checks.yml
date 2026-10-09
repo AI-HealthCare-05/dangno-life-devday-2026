@@ -28,7 +28,7 @@ jobs:
       - run: npm install --global pnpm@11.19.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:mobile
-      - run: node --test tests/frontend/web_mobile_session.test.cjs
+      - run: node --test tests/frontend/web_mobile_session.test.cjs tests/forest-return-safety.test.cjs
       - run: node --test tests/forest-feed-performance.test.cjs tests/forest-preview-performance.test.cjs
       - run: node --test --test-name-pattern='photo|meal|walking|amount|activity submission' tests/frontend/challenge_v3.test.cjs
       - run: pnpm build:mobile:deployment

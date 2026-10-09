@@ -232,7 +232,7 @@
       <div class="v2-compact-cards">${items.map(item=>compactQuest(item,openIds)).join("")}</div>
       ${!items.length?`<p class="v2-notice">설정을 저장했어요.${plan.starts_on?` ${esc(plan.starts_on)}부터 오늘의 퀘스트가 표시돼요.`:" 오늘의 퀘스트를 준비하고 있어요."}</p>`:""}
       ${cycleComplete?`<button class="v2-repeat-button" data-repeat-quests type="button">오늘의 퀘스트 다시 하기</button>`:""}
-      <button id="forest-quest-settings" class="v2-settings-button" data-open-settings type="button" aria-label="나에게 맞게 다시 설정하기" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"다시 설정 닫기":"나에게 맞게 다시 설정하기"}</button>
+      <button id="forest-quest-settings" class="v2-settings-button" data-open-settings type="button" aria-label="나에게 맞게 다시 설정하기" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"설정 닫기":"나에게 맞게 다시 설정하기"}</button>
       ${compactSettings(plan.preferences)}<section data-compact-settings ${settingsOpen?"":"hidden"} aria-label="챌린지 안내와 보상">
       ${(plan.proof_mix_exception_reason||[]).map(r=>`<p class="v2-notice">${esc(reasonLabel[r]||"몸 상태에 맞는 다른 챌린지를 골랐어요.")}</p>`).join("")}
       ${(plan.substitutions||[]).map(()=>'<p class="v2-notice">단 음료 줄이기 대신 마신 양을 돌아보는 챌린지를 골랐어요. 더 마실 필요는 없어요.</p>').join("")}
@@ -245,7 +245,7 @@
     const section=root.querySelector("[data-settings]");if(section)section.hidden=!open;
     const management=root.querySelector("[data-compact-settings]");if(management)management.hidden=!open;
     const toggle=button||root.querySelector("#forest-quest-settings");
-    if(toggle){toggle.setAttribute("aria-expanded",String(open));toggle.textContent=open?"다시 설정 닫기":"나에게 맞게 다시 설정하기";}
+    if(toggle){toggle.setAttribute("aria-expanded",String(open));toggle.textContent=open?"설정 닫기":"나에게 맞게 다시 설정하기";}
     if(open)root.querySelector("[data-settings] button")?.focus();
   }
   function preferencePayload(overrides={}) {
@@ -272,7 +272,7 @@
     const openIds=new Set(Array.from(root.querySelectorAll?.(".v2-quest-details[open]")||[],item=>item.dataset.questDetails));
     root.setAttribute?.("data-compact",String(Boolean(compact)));
     root.innerHTML=compact?compactContent(openIds):`<header class="v2-heading"><h3>당뇨 예방 챌린지</h3><button data-refresh type="button">새로고침</button></header><p data-message role="status" aria-live="polite"></p>${forestView?"":'<p class="v2-safety">생활습관을 돌아보는 활동이에요. 진단·처방이나 건강이 좋아졌다는 판정을 대신하지 않아요.</p>'}
-      ${needsSetup?`<a class="v2-setup-link" href="${setupUrl}">로그인하고 챌린지 시작!</a>`:connectionFailed?'<p>연결을 확인한 뒤 위의 새로고침을 눌러주세요. 연결되지 않은 동안에는 설정과 기록을 저장할 수 없어요.</p>':`<button class="v2-settings-button" data-open-settings type="button" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"다시 설정 닫기":"나에게 맞게 다시 설정하기"}</button>
+      ${needsSetup?`<a class="v2-setup-link" href="${setupUrl}">로그인하고 챌린지 시작!</a>`:connectionFailed?'<p>연결을 확인한 뒤 위의 새로고침을 눌러주세요. 연결되지 않은 동안에는 설정과 기록을 저장할 수 없어요.</p>':`<button class="v2-settings-button" data-open-settings type="button" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"설정 닫기":"나에게 맞게 다시 설정하기"}</button>
       ${(plan?.proof_mix_exception_reason||[]).map(r=>`<p class="v2-notice">${esc(reasonLabel[r]||"몸 상태에 맞는 다른 챌린지를 골랐어요.")}</p>`).join("")}
       ${(plan?.substitutions||[]).map(()=>'<p class="v2-notice">단 음료 줄이기 대신 마신 양을 돌아보는 챌린지를 골랐어요. 더 마실 필요는 없어요.</p>').join("")}
       ${settings(plan?.preferences)}<div class="v2-cards">${(plan?.items||[]).map(card).join("")}</div>

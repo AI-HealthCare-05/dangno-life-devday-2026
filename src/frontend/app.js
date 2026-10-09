@@ -32,11 +32,11 @@ async function returnToForestSettings(eligibility) {
     beginReturningEligibility("forest-challenges");
     return true;
   }
-  const blocked = (eligibility.reason_codes || []).some(code => [
+  const blocked = !Array.isArray(eligibility.reason_codes) || eligibility.reason_codes.some(code => typeof code !== "string" || [
     "DIAGNOSED_DIABETES", "URGENT_MEDICAL_ATTENTION", "SAME_DAY_MEDICAL_ATTENTION",
     "CONSENT_REQUIRED", "UNDER_MINIMUM_SERVICE_AGE",
   ].includes(code));
-  if (!eligibility.service_eligible || blocked) {
+  if (eligibility.service_eligible !== true || blocked) {
     showStoredEligibilityGuidance();
     return true;
   }

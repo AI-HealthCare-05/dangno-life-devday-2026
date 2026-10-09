@@ -1,387 +1,3 @@
---- a/src/frontend/app.js
-+++ b/src/frontend/app.js
-@@ -1255,6 +1255,7 @@
-   if (error.code === "SESSION_CHANGED") return;
-   if (error.status === 401) {
-     state.token = null;
-+    window.GandangAuthSession?.clear();
-     recovery.token = null;
-   }
-   const stage = recovery.stage === "login" ? "자동 로그인" : recovery.stage === "profile" ? "프로필 저장" : "건강정보 동의 저장";
-@@ -1483,6 +1484,7 @@
-   clearHealthDraft();
-   clearSessionRecovery();
-   state.token = null;
-+    window.GandangAuthSession?.clear();
-   state.userProfile = null;
-   state.accountRecovery = null;
-   state.healthConsent = null;
-@@ -1522,6 +1524,7 @@
-   persistSessionRecovery(recovery);
-   const email = state.userProfile?.email || $("#login-email")?.value || "";
-   state.token = null;
-+    window.GandangAuthSession?.clear();
-   state.analysisRun = null;
-   showStep(2);
-   showAuthMode("login", { moveFocus: false });
-@@ -2852,7 +2855,9 @@
-     if (response.status === 401 && authenticatedRequest && !state.accountRecovery) beginSessionRecovery();
-     throw apiError;
-   }
--  return payload.data ?? payload;
-+  const result = payload.data ?? payload;
-+  if (path === "/auth/login" || path === "/auth/token/refresh") window.GandangAuthSession?.save(result.access_token);
-+  return result;
- }
- async function pollPrediction(jobId) {
-   const startedAt = Date.now();
-@@ -3036,8 +3041,8 @@
- 
- function factorDirectionLabel(item = {}) {
-   const raw = String(item.direction || item.effect_direction || item.impact_direction || "").toLowerCase();
--  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "주의 요인 · 당뇨 위험을 높인 방향";
--  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "긍정 요인 · 당뇨 위험을 낮춘 방향";
-+  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "점수를 높인 요인";
-+  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "점수를 낮춘 요인";
-   return "";
- }
- 
-@@ -3057,14 +3062,14 @@
- function renderFactorItems(items = []) {
-   return items.map((item) => {
-     const factorName = item.display_name || item.factor_name || item.name || "확인된 신호";
--    const factorDescription = item.message || item.description || item.guidance || "검증된 설명만 표시합니다.";
-+    const inputValue = item.input_value_label || "저장된 입력값 확인 불가";
-     const direction = factorDirectionLabel(item);
--    const caution = direction.startsWith("주의 요인");
-+    const caution = direction === "점수를 높인 요인";
-     const icon = caution ? "xai-arrow-up.svg" : "xai-arrow-down.svg";
-     const meta = direction
-       ? `<small class="xai-factor-meta"><span class="xai-factor-direction ${caution ? "is-caution" : "is-positive"}">${escapeHtml(direction)}</span></small>`
-       : "";
--    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong>${meta}<p>${escapeHtml(factorDescription)}</p></div></li>`;
-+    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong><p class="xai-input-value">입력: ${escapeHtml(inputValue)}</p>${meta}</div></li>`;
-   }).join("");
- }
- 
-@@ -3074,16 +3079,64 @@
-     || (typeof item.contribution === "number" && Number.isFinite(item.contribution)
-       && Math.abs(item.contribution) > 1e-10))
-     .sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0));
--  const positive = sorted.filter(item => factorDirectionLabel(item).startsWith("긍정 요인"));
--  const caution = sorted.filter(item => factorDirectionLabel(item).startsWith("주의 요인"));
-+  const positive = sorted.filter(item => factorDirectionLabel(item) === "점수를 낮춘 요인");
-+  const caution = sorted.filter(item => factorDirectionLabel(item) === "점수를 높인 요인");
-   return elevated ? [...caution.slice(0, 2), ...positive.slice(0, 1)]
-     : [...positive.slice(0, 2), ...caution.slice(0, 1)];
-+}
-+
-+function formatModelNumber(value, signed = false) {
-+  if (typeof value !== "number" || !Number.isFinite(value)) return "제공되지 않음";
-+  return `${signed && value > 0 ? "+" : ""}${value.toFixed(6)}`;
-+}
-+
-+function renderModelAnalysisDetails(prefix, prediction = {}) {
-+  const details = $(`#${prefix}-model-details`), numbers = $(`#${prefix}-model-numbers`);
-+  if (!details || !numbers) return;
-+  const analysis = prediction?.model_analysis;
-+  const ready = isPublicRiskDisplayAllowed(prediction || {}) && analysis?.status === "available"
-+    && [analysis.model_score, analysis.decision_threshold, analysis.score_minus_threshold].every(value => typeof value === "number" && Number.isFinite(value));
-+  details.hidden = !ready;
-+  details.open = false;
-+  numbers.innerHTML = ready ? `<dl class="model-number-grid">${[
-+    ["모델 점수 (0~1)", formatModelNumber(analysis.model_score)],
-+    ["선별 기준점", formatModelNumber(analysis.decision_threshold)],
-+    ["기준점과의 차이", formatModelNumber(analysis.score_minus_threshold, true)],
-+    ["분석 기준일", prediction.input_as_of_date || "제공되지 않음"],
-+  ].map(([label,value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl><p>저장된 건강정보를 분석한 모델 점수입니다. 선별 기준점과 비교하며 확정 발병 확률이나 진단 결과가 아닙니다.</p>` : "";
-+}
-+
-+function renderShapGraph(prefix, factors, approved) {
-+  const element = $(`#${prefix}-shap-graph`);
-+  if (!element) return;
-+  const graph = factors?.shap_graph;
-+  const items = Array.isArray(graph?.items) ? graph.items : [];
-+  const valid = approved && factors?.display_allowed === true && graph?.complete === true && items.length > 0
-+    && items.every(item => typeof item.contribution === "number" && Number.isFinite(item.contribution))
-+    && [graph.reference_value, graph.explained_score, graph.contribution_sum].every(value => typeof value === "number" && Number.isFinite(value))
-+    && Math.abs(items.reduce((sum,item) => sum + item.contribution, 0) - graph.contribution_sum) <= 1e-8
-+    && Math.abs(graph.reference_value + graph.contribution_sum - graph.explained_score) <= 1e-8;
-+  element.hidden = !valid;
-+  if (!valid) { element.innerHTML = ""; return; }
-+  const sorted = [...items].sort((a,b) => Math.abs(b.contribution) - Math.abs(a.contribution));
-+  const maximum = Math.max(...sorted.map(item => Math.abs(item.contribution)));
-+  const rows = sorted.map(item => {
-+    const width = maximum > 0 ? Math.abs(item.contribution) / maximum * 50 : 0;
-+    const positive = item.contribution > 0;
-+    const direction = positive ? "점수를 높임" : item.contribution < 0 ? "점수를 낮춤" : "기여 없음";
-+    return `<li class="shap-row"><div class="shap-row-heading"><span>${escapeHtml(item.display_name || item.feature)}</span><strong>${formatModelNumber(item.contribution, true)}</strong></div><div class="shap-bar-track" role="img" aria-label="${escapeHtml(`${item.display_name || item.feature}: ${direction}, ${formatModelNumber(item.contribution, true)}`)}"><span class="shap-bar ${positive ? "is-increase" : "is-decrease"}" style="left:${positive ? 50 : 50-width}%;width:${width}%"></span></div></li>`;
-+  }).join("");
-+  element.innerHTML = `<details class="shap-details"><summary>SHAP 분석 결과 자세히 보기</summary><div class="shap-details-body"><p>전체 ${items.length}개 요인의 기여도입니다. 왼쪽은 점수를 낮춘 요인, 오른쪽은 높인 요인입니다.</p><div class="shap-axis" aria-hidden="true"><span>−${formatModelNumber(maximum)}</span><span>0</span><span>+${formatModelNumber(maximum)}</span></div><ol class="shap-rows">${rows}</ol><dl class="shap-total"><div><dt>비교 기준 점수</dt><dd>${formatModelNumber(graph.reference_value)}</dd></div><div><dt>전체 SHAP 기여도 합</dt><dd>${formatModelNumber(graph.contribution_sum, true)}</dd></div><div><dt>설명된 모델 점수</dt><dd>${formatModelNumber(graph.explained_score)}</dd></div></dl><p>비교 기준 점수 + 전체 기여도 합 = 설명된 모델 점수입니다. 생활습관 변경의 효과나 발병 확률 변화가 아닙니다.</p></div></details>`;
- }
- 
- function renderXaiExplanationLists(
-   factors,
-   { approved = false, currentFactors = null, currentApproved = false } = {},
- ) {
-+  renderModelAnalysisDetails("current", state.currentScreeningPrediction);
-+  renderModelAnalysisDetails("future", state.prediction);
-+  renderShapGraph("current", currentFactors, currentApproved);
-+  renderShapGraph("future", factors, approved);
-   const currentList = $("#current-factor-list");
-   const currentSignal = state.currentScreeningPrediction?.screening_signal_detected;
-   const currentItems = selectXaiFactors(
-@@ -3091,7 +3144,17 @@
-   );
-   const futureList = $("#factor-list");
-   const currentReady = Boolean(currentApproved && currentFactors?.display_allowed === true && currentItems.length);
-+  const currentNote = $("#current-factor-note");
-+  if (currentNote) {
-+    currentNote.hidden = !currentReady || currentItems.length >= 3;
-+    currentNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
-+  }
-   const currentTitle = $("#current-factor-title");
-+  const currentBaseline = $("#current-factor-baseline");
-+  if (currentBaseline) {
-+    currentBaseline.hidden = !currentReady;
-+    currentBaseline.textContent = `비교 기준: ${currentFactors?.baseline_label || "모델의 저장된 비교 기준"}. 건강습관 변경의 효과를 뜻하지 않습니다.`;
-+  }
-   if (currentTitle) currentTitle.textContent = currentReady ? "현재 위험 신호 설명" : "현재 건강 신호 XAI 연결 대기";
-   if (currentList) {
-     currentList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", currentReady);
-@@ -3100,16 +3163,23 @@
-       : `<li><strong>현재 건강 신호 XAI 연결 대기</strong><p>${escapeHtml(currentFactors?.message || "검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.")}</p></li>`;
-   }
-   const futureCategory = normalizeRiskKey({ risk_category: state.prediction?.risk_category });
--  const currentDirections = new Map(currentItems.map(item => [factorIdentity(item), factorDirectionLabel(item)]));
--  const futureCandidates = (Array.isArray(factors?.items) ? factors.items : []).filter((item) => {
--    const currentDirection = currentDirections.get(factorIdentity(item));
--    return !currentDirection || currentDirection === factorDirectionLabel(item);
--  });
-+  // Each model has its own outcome and reference; opposite attributions are valid.
-+  const futureCandidates = Array.isArray(factors?.items) ? factors.items : [];
-   const factorItems = selectXaiFactors(futureCandidates,
-     ["low", "moderate", "high"].includes(futureCategory) ? futureCategory !== "low" : null);
-   if (!futureList) return;
-   const futureReady = Boolean(approved && factors?.display_allowed === true && factorItems.length);
-+  const futureNote = $("#future-factor-note");
-+  if (futureNote) {
-+    futureNote.hidden = !futureReady || factorItems.length >= 3;
-+    futureNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
-+  }
-   const futureTitle = $("#future-factor-title");
-+  const futureBaseline = $("#future-factor-baseline");
-+  if (futureBaseline) {
-+    futureBaseline.hidden = !futureReady;
-+    futureBaseline.textContent = `비교 기준: ${factors?.baseline_label || "모델의 저장된 비교 기준"}. 오늘이와 별도로 계산한 모델 설명입니다.`;
-+  }
-   if (futureTitle) futureTitle.textContent = futureReady ? "미래 당뇨 위험 설명" : "미래 위험 XAI 연결 대기";
-   futureList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", futureReady);
-   futureList.innerHTML = approved && factors?.display_allowed === true && factorItems.length
-@@ -3860,6 +3930,9 @@
- }
- 
- function renderTodayTaskStatus() {
-+  const rewardAction = $("#claim-daily-reward");
-+  if (rewardAction) rewardAction.hidden = !hasCurrentChallengeCycle()
-+    || ["loading", "error"].includes(state.dailyRecordsStatus) || !allDailyChallengesCompleted();
-   const title = $("#today-task-title");
-   const description = $("#today-task-description");
-   const action = $("#today-record-action");
-@@ -4115,7 +4188,7 @@
- 
- function allDailyChallengesCompleted() {
-   const required = dailyChallengeTargetCount();
--  return required > 0 && state.dailyCompleted.size >= required;
-+  return required > 0 && state.cycle.user_challenges.every(item => state.dailyCompleted.has(String(item.user_challenge_id)));
- }
- 
- function closeChallengeRewardDialog() {
-@@ -4124,8 +4197,9 @@
- }
- 
- function openChallengeRewardDialog(reward = {}) {
--  const amount = Number(reward.carrot_amount) || 55;
--  $("#challenge-reward-amount").textContent = `+${amount} 당근`;
-+  const amount = Number(reward.carrot_amount);
-+  $("#challenge-reward-amount").textContent = reward.already_claimed
-+    ? "오늘 보상 지급 완료" : Number.isFinite(amount) ? `+${amount} 당근` : "오늘 보상 지급 완료";
-   $("#challenge-reward-copy").textContent = reward.already_claimed
-     ? "오늘 보상은 이미 받았어요. 숲에서 보유 당근을 확인할 수 있습니다."
-     : "오늘의 실천 보상이 지급됐어요. 당근의 숲에서 확인해 보세요.";
-@@ -4142,15 +4216,26 @@
- async function maybeOpenDailyReward() {
-   if (!allDailyChallengesCompleted()) return;
-   const today = challengeDay();
-+  if (state.dailyRewardRequest?.token === state.token
-+    && state.dailyRewardRequest?.cycle === state.cycle && state.dailyRewardRequest?.day === today) return;
-   if (isLocalPreview()) {
-     openChallengeRewardDialog({ carrot_amount: 55 });
-     return;
-   }
-+  const token = state.token;
-+  const cycle = state.cycle;
-+  const request = {token, cycle, day: today};
-+  state.dailyRewardRequest = request;
-+  const isCurrent = () => state.token === token && state.cycle === cycle && challengeDay() === today;
-   try {
--    openChallengeRewardDialog(await api(`/challenge-rewards/daily/${today}`, { method: "POST" }));
-+    const reward = await api(`/challenge-rewards/daily/${today}`, { method: "POST" });
-+    if (isCurrent()) openChallengeRewardDialog(reward);
-   } catch (error) {
-+    if (!isCurrent()) return;
-     if (error.status === 409) return showMessage("오늘 챌린지를 모두 완료하면 보상을 받을 수 있어요.");
--    showMessage(error.message || "보상 화면을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-+    showMessage("실천 기록은 저장됐지만 보상을 확인하지 못했어요. ‘오늘 보상 확인하기’를 눌러 다시 시도해 주세요.");
-+  } finally {
-+    if (state.dailyRewardRequest === request) state.dailyRewardRequest = null;
-   }
- }
- 
-@@ -4176,8 +4261,8 @@
-   renderDailyRecordList();
-   updateDailyRecordSummary();
-   if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
-+  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
-   if (allDailyChallengesCompleted()) await maybeOpenDailyReward();
--  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
- }
- 
- async function undoDailyRecord(target) {
-@@ -6175,6 +6260,7 @@
-     recovery = { name, email: email.trim(), birthday: birthDate, gender, healthAgreed: $("#health-consent").checked, profileSaved: false, stage: "login" };
-     state.accountRecovery = recovery;
-     state.token = null;
-+    window.GandangAuthSession?.clear();
-     const login = await api("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-     if (!login.access_token) throw new Error("로그인 정보를 받지 못했습니다.");
-     state.token = login.access_token;
-@@ -6199,6 +6285,7 @@
- $("#recovery-login").addEventListener("click", () => {
-   $("#login-email").value = state.accountRecovery?.email || "";
-   state.token = null;
-+    window.GandangAuthSession?.clear();
-   showAuthMode("login");
- });
- $("#signup-login-shortcut")?.addEventListener("click", () => showAuthMode("login", { context: "login" }));
-@@ -6956,7 +7043,12 @@
-   showPhotoRecordState("photo-state-success");
- }));
- $("#close-photo-success").addEventListener("click", async (event) => {
--  if (state.recordTarget?.item?.catalog_version === "evidence-v3") { closeRecordModal(); return; }
-+  if (state.recordTarget?.item?.catalog_version === "evidence-v3") {
-+    const saved = state.recordTarget.saved === true;
-+    closeRecordModal();
-+    if (saved) await maybeOpenDailyReward();
-+    return;
-+  }
-   const releaseBusy = setButtonBusy(event.currentTarget, "기록 저장 중…");
-   try {
-     const target = state.recordTarget;
-@@ -6964,6 +7056,11 @@
-     closeRecordModal();
-     await completeDailyRecord(target, source);
-   } catch (error) { showMessage(error.message); }
-+  finally { releaseBusy(); }
-+});
-+$("#claim-daily-reward")?.addEventListener("click", async (event) => {
-+  const releaseBusy = setButtonBusy(event.currentTarget, "보상 확인 중…");
-+  try { await maybeOpenDailyReward(); }
-   finally { releaseBusy(); }
- });
- $("#daily-log-form")?.addEventListener("submit", async (event) => {
-@@ -7244,6 +7341,7 @@
-   } catch (error) {
-     if (error.status === 401 && state.sessionRecovery) return;
-     if (error.status === 401) state.token = null;
-+    window.GandangAuthSession?.clear();
-     if (state.token) {
-       state.accountRecovery = null;
-       $("#account-recovery-form").hidden = true;
-@@ -7279,9 +7377,8 @@
- async function resumeCookieSession() {
-   if (state.token || isLocalPreview()) return false;
-   try {
--    const refreshed = await api("/auth/token/refresh");
--    if (!refreshed?.access_token) return false;
--    state.token = refreshed.access_token;
-+    const session = await window.GandangAuthSession.resolve();
-+    state.token = session.token;
-     await resumeAuthenticatedAccount();
-     return true;
-   } catch (error) {
-@@ -7345,6 +7442,7 @@
- $("#return-login-back")?.addEventListener("click", () => {
-   state.returningUser = false;
-   state.token = null;
-+    window.GandangAuthSession?.clear();
-   state.cycle = null;
-   syncReturningEligibilityState(null);
-   state.returningDestination = null;
---- a/src/frontend/index.html
-+++ b/src/frontend/index.html
-@@ -35,11 +35,13 @@
-   <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-restore-v1">
-   <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
-   <link rel="stylesheet" href="/static/education-carousel.css?v=20260915-health-quiz-card-art-v1">
--  <link rel="stylesheet" href="/static/result-xai.css?v=20260919-xai-layout-v3">
-+  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-account-sync-v1">
-   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
-   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
-   <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
--  <script src="/static/app.js?v=20260921-modern-intro-navigation-v1" defer></script>
-+  <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
-+  <script src="/static/auth-session.js?v=20261009-account-sync-v1" defer></script>
-+  <script src="/static/app.js?v=20261009-account-sync-v1" defer></script>
- </head>
- <body class="intro-mode">
-   <a class="skip-link" href="#main">본문으로 바로가기</a>
-@@ -60,6 +62,7 @@
-         <li><button type="button" data-top-workspace="report">리포트</button></li>
-         <li><button type="button" data-top-workspace="together">함께하기</button></li>
-         <li><button type="button" data-top-workspace="tools">건강도구</button></li>
-+        <li><button type="button" data-mobile-download>Download(모바일 버전)</button></li>
-       </ol>
-     </nav>
-     <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>
-@@ -593,10 +596,13 @@
-               </div>
-               <article class="xai-factor-card result-xai-card current-xai-slot" aria-labelledby="current-factor-title">
-                 <div class="result-xai-waiting">
--                  <h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
-+                  <p id="current-factor-baseline" class="xai-baseline" hidden></p><h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
-                   <ul class="factor-list" id="current-factor-list">
-                     <li><strong>설명 결과 연결 대기</strong><p>현재 건강 신호 XAI 계약이 오면 주요 영향 신호를 표시합니다.</p></li>
-                   </ul>
-+                  <p id="current-factor-note" class="xai-selection-note" hidden></p>
-+                  <div id="current-shap-graph" class="shap-graph" hidden></div>
-+                  <details id="current-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="current-model-numbers"></div></details>
-                 </div>
-               </article>
-             </div>
-@@ -623,10 +629,13 @@
-               </div>
-               <article class="forecast-score-placeholder xai-factor-card result-xai-card current-xai-slot" id="forecast-score-placeholder" aria-labelledby="future-factor-title">
-                 <div class="result-xai-waiting">
--                  <h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
-+                  <p id="future-factor-baseline" class="xai-baseline" hidden></p><h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
-                   <ul class="factor-list" id="factor-list">
-                     <li><strong>설명 결과 연결 대기</strong><p>검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.</p></li>
-                   </ul>
-+                  <p id="future-factor-note" class="xai-selection-note" hidden></p>
-+                  <div id="future-shap-graph" class="shap-graph" hidden></div>
-+                  <details id="future-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="future-model-numbers"></div></details>
-                 </div>
-               </article>
-             </div>
-@@ -817,6 +826,7 @@
-         <section class="workspace-panel" id="workspace-panel-challenge" role="region" tabindex="-1" data-workspace-panel="challenge" aria-label="챌린지" hidden>
-           <section class="daily-record-panel" aria-labelledby="daily-record-title">
-             <h4 id="daily-record-title">오늘 기록할 항목</h4>
-+            <button type="button" class="secondary" id="claim-daily-reward" hidden>오늘 보상 확인하기</button>
-             <div id="daily-log-list" class="daily-record-list"><article class="daily-record-empty daily-record-empty-selection"><strong>기록할 챌린지가 없습니다</strong><p>챌린지를 선택하고 오늘의 실천을 시작해 보세요.</p><button type="button" class="primary daily-record-select">생활습관 챌린지 선택하기</button></article></div>
-           </section>
-           <div id="record-modal" class="record-modal" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
 --- a/app/apis/v1/auth_routers.py
 +++ b/app/apis/v1/auth_routers.py
 @@ -4,6 +4,7 @@
@@ -3900,97 +3516,453 @@
 +서버 담당자는 서명·배포된 Android 다운로드 URL을 `MOBILE_ANDROID_DOWNLOAD_URL`, iOS TestFlight/App Store URL을 `MOBILE_IOS_DOWNLOAD_URL`에 넣는다. 비어 있으면 다운로드 준비 상태와 해당 OS의 앱 설치 안내를 표시하며 가짜 파일이나 버튼을 만들지 않는다. PR 107의 localhost용 APK는 현재 AWS 주소를 사용하도록 재빌드해야 한다. iOS는 서명된 배포가 필요하며 임의 IPA를 배포하지 않는다.
 +
 +Android 체험 앱은 `.github/workflows/android-app.yml`에서 PR 107의 고정 커밋과 AWS HTTPS 주소로 빌드하고 `android-devday` 사전 릴리스에 APK·체크섬을 게시한다. iOS 배포는 별도 서명된 링크가 필요하다.
+diff --git a/src/frontend/app.js b/src/frontend/app.js
+--- a/src/frontend/app.js
++++ b/src/frontend/app.js
+@@ -1,4 +1,12 @@
+ const state = { step: 1, visitedSteps: new Set([1]), navigationHistory: [1], token: null, userProfile: null, sessionRecovery: null, healthDraftDirty: false, healthConsent: null, healthConsentStatus: "unknown", checkupId: null, healthCheckupResult: null, healthCheckupHistory: [], healthHistoryPage: 1, healthHistoryStartDate: "", healthHistoryEndDate: "", editingHealthCheckupId: null, currentScreeningInputId: null, currentScreeningPredictionId: null, currentScreeningPrediction: null, predictionId: null, prediction: null, modelOutputMetadata: {}, developmentPreviewRiskCategory: null, cycle: null, dailyCompleted: new Set(), waterServingsByChallenge: {}, recordTarget: null, photoAttempt: 0, photoCompletedByFallback: false, returningUser: false, eligibility: null, requiresEligibility: false, returningDestination: null, medicalGuidanceRequired: false, openFollowUpActionIds: [], modelOutOfRange: false, currentHealthOnly: false, capabilities: { challenge: false, currentHealth: false, futurePrediction: false }, walkingLevel: "starter", wearableConnectionId: null, wearableProvider: null, wearablePreviewItems: [], ocrExtractedFields: {}, notificationsEnabled: true, foodAnalysisId: null, foodCategory: null, ocrDraftId: null, challengeRecommendations: [], challengeCatalog: [], challengeRecommendationsPersonalized: false, selectedChallengeIds: new Set(), activeChallengeCategory: null, customChallenge: null, customChallengeSelected: false, educationContents: [], activeEducationId: null, educationQuizIndex: 0, educationQuizCorrectCount: 0, ragChallengeDraft: null, ragChallengeCandidates: [], selectedRagChallengeId: null, ragChallengeStatus: "idle", lastKnownLocation: null, challengeV2Expanded: false, activeWorkspace: "home" };
++const returningToForest = new URLSearchParams(window.location.search).get("returnTo") === "forest-challenges";
++function returnToForestSettings(eligibility) {
++  if (!returningToForest || eligibility?.service_eligible !== true || !Array.isArray(eligibility.reason_codes)) return false;
++  const blocked = new Set(["DIAGNOSED_DIABETES", "URGENT_MEDICAL_ATTENTION", "CONSENT_REQUIRED", "UNDER_MINIMUM_SERVICE_AGE"]);
++  if (eligibility.reason_codes.some(code => typeof code !== "string" || blocked.has(code))) return false;
++  window.location.assign("/forest?challenge=settings-v139#daily-settings");
++  return true;
++}
+ const $ = (selector) => document.querySelector(selector);
+ Object.assign(state, { lifestyleReportStatus: "idle", reportPeriods: {}, reportPeriodStatus: {} });
+ const $$ = (selector) => [...document.querySelectorAll(selector)];
+@@ -3036,8 +3044,8 @@
+ 
+ function factorDirectionLabel(item = {}) {
+   const raw = String(item.direction || item.effect_direction || item.impact_direction || "").toLowerCase();
+-  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "주의 요인 · 당뇨 위험을 높인 방향";
+-  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "긍정 요인 · 당뇨 위험을 낮춘 방향";
++  if (["increase", "increased", "risk_up", "higher", "positive"].includes(raw)) return "점수를 높인 요인";
++  if (["decrease", "decreased", "risk_down", "lower", "negative"].includes(raw)) return "점수를 낮춘 요인";
+   return "";
+ }
+ 
+@@ -3057,14 +3065,14 @@
+ function renderFactorItems(items = []) {
+   return items.map((item) => {
+     const factorName = item.display_name || item.factor_name || item.name || "확인된 신호";
+-    const factorDescription = item.message || item.description || item.guidance || "검증된 설명만 표시합니다.";
++    const inputValue = item.input_value_label || "저장된 입력값 확인 불가";
+     const direction = factorDirectionLabel(item);
+-    const caution = direction.startsWith("주의 요인");
++    const caution = direction === "점수를 높인 요인";
+     const icon = caution ? "xai-arrow-up.svg" : "xai-arrow-down.svg";
+     const meta = direction
+       ? `<small class="xai-factor-meta"><span class="xai-factor-direction ${caution ? "is-caution" : "is-positive"}">${escapeHtml(direction)}</span></small>`
+       : "";
+-    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong>${meta}<p>${escapeHtml(factorDescription)}</p></div></li>`;
++    return `<li><img class="xai-direction-icon" src="/static/assets/${icon}" alt="" aria-hidden="true"><div><strong>${escapeHtml(factorName)}</strong><p class="xai-input-value">입력: ${escapeHtml(inputValue)}</p>${meta}</div></li>`;
+   }).join("");
+ }
+ 
+@@ -3074,16 +3082,64 @@
+     || (typeof item.contribution === "number" && Number.isFinite(item.contribution)
+       && Math.abs(item.contribution) > 1e-10))
+     .sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0));
+-  const positive = sorted.filter(item => factorDirectionLabel(item).startsWith("긍정 요인"));
+-  const caution = sorted.filter(item => factorDirectionLabel(item).startsWith("주의 요인"));
++  const positive = sorted.filter(item => factorDirectionLabel(item) === "점수를 낮춘 요인");
++  const caution = sorted.filter(item => factorDirectionLabel(item) === "점수를 높인 요인");
+   return elevated ? [...caution.slice(0, 2), ...positive.slice(0, 1)]
+     : [...positive.slice(0, 2), ...caution.slice(0, 1)];
++}
++
++function formatModelNumber(value, signed = false) {
++  if (typeof value !== "number" || !Number.isFinite(value)) return "제공되지 않음";
++  return `${signed && value > 0 ? "+" : ""}${value.toFixed(6)}`;
++}
++
++function renderModelAnalysisDetails(prefix, prediction = {}) {
++  const details = $(`#${prefix}-model-details`), numbers = $(`#${prefix}-model-numbers`);
++  if (!details || !numbers) return;
++  const analysis = prediction?.model_analysis;
++  const ready = isPublicRiskDisplayAllowed(prediction || {}) && analysis?.status === "available"
++    && [analysis.model_score, analysis.decision_threshold, analysis.score_minus_threshold].every(value => typeof value === "number" && Number.isFinite(value));
++  details.hidden = !ready;
++  details.open = false;
++  numbers.innerHTML = ready ? `<dl class="model-number-grid">${[
++    ["모델 점수 (0~1)", formatModelNumber(analysis.model_score)],
++    ["선별 기준점", formatModelNumber(analysis.decision_threshold)],
++    ["기준점과의 차이", formatModelNumber(analysis.score_minus_threshold, true)],
++    ["분석 기준일", prediction.input_as_of_date || "제공되지 않음"],
++  ].map(([label,value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl><p>저장된 건강정보를 분석한 모델 점수입니다. 선별 기준점과 비교하며 확정 발병 확률이나 진단 결과가 아닙니다.</p>` : "";
++}
++
++function renderShapGraph(prefix, factors, approved) {
++  const element = $(`#${prefix}-shap-graph`);
++  if (!element) return;
++  const graph = factors?.shap_graph;
++  const items = Array.isArray(graph?.items) ? graph.items : [];
++  const valid = approved && factors?.display_allowed === true && graph?.complete === true && items.length > 0
++    && items.every(item => typeof item.contribution === "number" && Number.isFinite(item.contribution))
++    && [graph.reference_value, graph.explained_score, graph.contribution_sum].every(value => typeof value === "number" && Number.isFinite(value))
++    && Math.abs(items.reduce((sum,item) => sum + item.contribution, 0) - graph.contribution_sum) <= 1e-8
++    && Math.abs(graph.reference_value + graph.contribution_sum - graph.explained_score) <= 1e-8;
++  element.hidden = !valid;
++  if (!valid) { element.innerHTML = ""; return; }
++  const sorted = [...items].sort((a,b) => Math.abs(b.contribution) - Math.abs(a.contribution));
++  const maximum = Math.max(...sorted.map(item => Math.abs(item.contribution)));
++  const rows = sorted.map(item => {
++    const width = maximum > 0 ? Math.abs(item.contribution) / maximum * 50 : 0;
++    const positive = item.contribution > 0;
++    const direction = positive ? "점수를 높임" : item.contribution < 0 ? "점수를 낮춤" : "기여 없음";
++    return `<li class="shap-row"><div class="shap-row-heading"><span>${escapeHtml(item.display_name || item.feature)}</span><strong>${formatModelNumber(item.contribution, true)}</strong></div><div class="shap-bar-track" role="img" aria-label="${escapeHtml(`${item.display_name || item.feature}: ${direction}, ${formatModelNumber(item.contribution, true)}`)}"><span class="shap-bar ${positive ? "is-increase" : "is-decrease"}" style="left:${positive ? 50 : 50-width}%;width:${width}%"></span></div></li>`;
++  }).join("");
++  element.innerHTML = `<details class="shap-details"><summary>SHAP 분석 결과 자세히 보기</summary><div class="shap-details-body"><p>전체 ${items.length}개 요인의 기여도입니다. 왼쪽은 점수를 낮춘 요인, 오른쪽은 높인 요인입니다.</p><div class="shap-axis" aria-hidden="true"><span>−${formatModelNumber(maximum)}</span><span>0</span><span>+${formatModelNumber(maximum)}</span></div><ol class="shap-rows">${rows}</ol><dl class="shap-total"><div><dt>비교 기준 점수</dt><dd>${formatModelNumber(graph.reference_value)}</dd></div><div><dt>전체 SHAP 기여도 합</dt><dd>${formatModelNumber(graph.contribution_sum, true)}</dd></div><div><dt>설명된 모델 점수</dt><dd>${formatModelNumber(graph.explained_score)}</dd></div></dl><p>비교 기준 점수 + 전체 기여도 합 = 설명된 모델 점수입니다. 생활습관 변경의 효과나 발병 확률 변화가 아닙니다.</p></div></details>`;
+ }
+ 
+ function renderXaiExplanationLists(
+   factors,
+   { approved = false, currentFactors = null, currentApproved = false } = {},
+ ) {
++  renderModelAnalysisDetails("current", state.currentScreeningPrediction);
++  renderModelAnalysisDetails("future", state.prediction);
++  renderShapGraph("current", currentFactors, currentApproved);
++  renderShapGraph("future", factors, approved);
+   const currentList = $("#current-factor-list");
+   const currentSignal = state.currentScreeningPrediction?.screening_signal_detected;
+   const currentItems = selectXaiFactors(
+@@ -3091,7 +3147,17 @@
+   );
+   const futureList = $("#factor-list");
+   const currentReady = Boolean(currentApproved && currentFactors?.display_allowed === true && currentItems.length);
++  const currentNote = $("#current-factor-note");
++  if (currentNote) {
++    currentNote.hidden = !currentReady || currentItems.length >= 3;
++    currentNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
++  }
+   const currentTitle = $("#current-factor-title");
++  const currentBaseline = $("#current-factor-baseline");
++  if (currentBaseline) {
++    currentBaseline.hidden = !currentReady;
++    currentBaseline.textContent = `비교 기준: ${currentFactors?.baseline_label || "모델의 저장된 비교 기준"}. 건강습관 변경의 효과를 뜻하지 않습니다.`;
++  }
+   if (currentTitle) currentTitle.textContent = currentReady ? "현재 위험 신호 설명" : "현재 건강 신호 XAI 연결 대기";
+   if (currentList) {
+     currentList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", currentReady);
+@@ -3100,16 +3166,23 @@
+       : `<li><strong>현재 건강 신호 XAI 연결 대기</strong><p>${escapeHtml(currentFactors?.message || "검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.")}</p></li>`;
+   }
+   const futureCategory = normalizeRiskKey({ risk_category: state.prediction?.risk_category });
+-  const currentDirections = new Map(currentItems.map(item => [factorIdentity(item), factorDirectionLabel(item)]));
+-  const futureCandidates = (Array.isArray(factors?.items) ? factors.items : []).filter((item) => {
+-    const currentDirection = currentDirections.get(factorIdentity(item));
+-    return !currentDirection || currentDirection === factorDirectionLabel(item);
+-  });
++  // Each model has its own outcome and reference; opposite attributions are valid.
++  const futureCandidates = Array.isArray(factors?.items) ? factors.items : [];
+   const factorItems = selectXaiFactors(futureCandidates,
+     ["low", "moderate", "high"].includes(futureCategory) ? futureCategory !== "low" : null);
+   if (!futureList) return;
+   const futureReady = Boolean(approved && factors?.display_allowed === true && factorItems.length);
++  const futureNote = $("#future-factor-note");
++  if (futureNote) {
++    futureNote.hidden = !futureReady || factorItems.length >= 3;
++    futureNote.textContent = "확인된 영향 요인만 표시합니다. 반대 방향의 요인이 없으면 3개보다 적게 표시될 수 있습니다.";
++  }
+   const futureTitle = $("#future-factor-title");
++  const futureBaseline = $("#future-factor-baseline");
++  if (futureBaseline) {
++    futureBaseline.hidden = !futureReady;
++    futureBaseline.textContent = `비교 기준: ${factors?.baseline_label || "모델의 저장된 비교 기준"}. 오늘이와 별도로 계산한 모델 설명입니다.`;
++  }
+   if (futureTitle) futureTitle.textContent = futureReady ? "미래 당뇨 위험 설명" : "미래 위험 XAI 연결 대기";
+   futureList.closest?.(".result-xai-card")?.classList.toggle("xai-ready", futureReady);
+   futureList.innerHTML = approved && factors?.display_allowed === true && factorItems.length
+@@ -3860,6 +3933,9 @@
+ }
+ 
+ function renderTodayTaskStatus() {
++  const rewardAction = $("#claim-daily-reward");
++  if (rewardAction) rewardAction.hidden = !hasCurrentChallengeCycle()
++    || ["loading", "error"].includes(state.dailyRecordsStatus) || !allDailyChallengesCompleted();
+   const title = $("#today-task-title");
+   const description = $("#today-task-description");
+   const action = $("#today-record-action");
+@@ -4115,7 +4191,7 @@
+ 
+ function allDailyChallengesCompleted() {
+   const required = dailyChallengeTargetCount();
+-  return required > 0 && state.dailyCompleted.size >= required;
++  return required > 0 && state.cycle.user_challenges.every(item => state.dailyCompleted.has(String(item.user_challenge_id)));
+ }
+ 
+ function closeChallengeRewardDialog() {
+@@ -4124,8 +4200,9 @@
+ }
+ 
+ function openChallengeRewardDialog(reward = {}) {
+-  const amount = Number(reward.carrot_amount) || 55;
+-  $("#challenge-reward-amount").textContent = `+${amount} 당근`;
++  const amount = Number(reward.carrot_amount);
++  $("#challenge-reward-amount").textContent = reward.already_claimed
++    ? "오늘 보상 지급 완료" : Number.isFinite(amount) ? `+${amount} 당근` : "오늘 보상 지급 완료";
+   $("#challenge-reward-copy").textContent = reward.already_claimed
+     ? "오늘 보상은 이미 받았어요. 숲에서 보유 당근을 확인할 수 있습니다."
+     : "오늘의 실천 보상이 지급됐어요. 당근의 숲에서 확인해 보세요.";
+@@ -4142,15 +4219,26 @@
+ async function maybeOpenDailyReward() {
+   if (!allDailyChallengesCompleted()) return;
+   const today = challengeDay();
++  if (state.dailyRewardRequest?.token === state.token
++    && state.dailyRewardRequest?.cycle === state.cycle && state.dailyRewardRequest?.day === today) return;
+   if (isLocalPreview()) {
+     openChallengeRewardDialog({ carrot_amount: 55 });
+     return;
+   }
++  const token = state.token;
++  const cycle = state.cycle;
++  const request = {token, cycle, day: today};
++  state.dailyRewardRequest = request;
++  const isCurrent = () => state.token === token && state.cycle === cycle && challengeDay() === today;
+   try {
+-    openChallengeRewardDialog(await api(`/challenge-rewards/daily/${today}`, { method: "POST" }));
++    const reward = await api(`/challenge-rewards/daily/${today}`, { method: "POST" });
++    if (isCurrent()) openChallengeRewardDialog(reward);
+   } catch (error) {
++    if (!isCurrent()) return;
+     if (error.status === 409) return showMessage("오늘 챌린지를 모두 완료하면 보상을 받을 수 있어요.");
+-    showMessage(error.message || "보상 화면을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
++    showMessage("실천 기록은 저장됐지만 보상을 확인하지 못했어요. ‘오늘 보상 확인하기’를 눌러 다시 시도해 주세요.");
++  } finally {
++    if (state.dailyRewardRequest === request) state.dailyRewardRequest = null;
+   }
+ }
+ 
+@@ -4176,8 +4264,8 @@
+   renderDailyRecordList();
+   updateDailyRecordSummary();
+   if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
++  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
+   if (allDailyChallengesCompleted()) await maybeOpenDailyReward();
+-  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
+ }
+ 
+ async function undoDailyRecord(target) {
+@@ -6275,6 +6363,7 @@
+         population_in_scope: true,
+       }) });
+     syncReturningEligibilityState(result);
++    if (returnToForestSettings(result)) return;
+     if (!result.model_eligible) {
+       showEligibilityGuidance(result.reason_codes);
+       return;
+@@ -6956,7 +7045,12 @@
+   showPhotoRecordState("photo-state-success");
+ }));
+ $("#close-photo-success").addEventListener("click", async (event) => {
+-  if (state.recordTarget?.item?.catalog_version === "evidence-v3") { closeRecordModal(); return; }
++  if (state.recordTarget?.item?.catalog_version === "evidence-v3") {
++    const saved = state.recordTarget.saved === true;
++    closeRecordModal();
++    if (saved) await maybeOpenDailyReward();
++    return;
++  }
+   const releaseBusy = setButtonBusy(event.currentTarget, "기록 저장 중…");
+   try {
+     const target = state.recordTarget;
+@@ -6964,6 +7058,11 @@
+     closeRecordModal();
+     await completeDailyRecord(target, source);
+   } catch (error) { showMessage(error.message); }
++  finally { releaseBusy(); }
++});
++$("#claim-daily-reward")?.addEventListener("click", async (event) => {
++  const releaseBusy = setButtonBusy(event.currentTarget, "보상 확인 중…");
++  try { await maybeOpenDailyReward(); }
+   finally { releaseBusy(); }
+ });
+ $("#daily-log-form")?.addEventListener("submit", async (event) => {
+@@ -7210,6 +7309,7 @@
+       if (eligibilityError.status !== 404) throw eligibilityError;
+     }
+     syncReturningEligibilityState(latestEligibility);
++    if (returnToForestSettings(latestEligibility)) return;
+     const healthHistory = await api("/health-checkups");
+     state.healthCheckupHistory = Array.isArray(healthHistory?.items) ? healthHistory.items : [];
+     renderHealthCheckupHistory();
+diff --git a/src/frontend/index.html b/src/frontend/index.html
+--- a/src/frontend/index.html
++++ b/src/frontend/index.html
+@@ -32,14 +32,16 @@
+     })();
+   </script>
+   <link rel="stylesheet" href="/static/styles.css?v=20260921-health-record-delete-v1">
++  <link rel="stylesheet" href="/static/suin/design-tokens.css?v=20260908-1">
+   <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-restore-v1">
+   <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
+   <link rel="stylesheet" href="/static/education-carousel.css?v=20260915-health-quiz-card-art-v1">
+-  <link rel="stylesheet" href="/static/result-xai.css?v=20260919-xai-layout-v3">
++  <link rel="stylesheet" href="/static/result-xai.css?v=20261009-web-xai-mobile-v1">
+   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
+   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
+   <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
+-  <script src="/static/app.js?v=20260921-modern-intro-navigation-v1" defer></script>
++  <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
++  <script src="/static/app.js?v=20261009-web-xai-mobile-v1" defer></script>
+ </head>
+ <body class="intro-mode">
+   <a class="skip-link" href="#main">본문으로 바로가기</a>
+@@ -60,6 +62,7 @@
+         <li><button type="button" data-top-workspace="report">리포트</button></li>
+         <li><button type="button" data-top-workspace="together">함께하기</button></li>
+         <li><button type="button" data-top-workspace="tools">건강도구</button></li>
++        <li><button type="button" data-mobile-download>Download(모바일 버전)</button></li>
+       </ol>
+     </nav>
+     <nav class="workspace-top-nav onboarding-top-nav" id="onboarding-top-nav" aria-label="가입 후 입력 메뉴" hidden>
+@@ -593,10 +596,13 @@
+               </div>
+               <article class="xai-factor-card result-xai-card current-xai-slot" aria-labelledby="current-factor-title">
+                 <div class="result-xai-waiting">
+-                  <h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
++                  <p id="current-factor-baseline" class="xai-baseline" hidden></p><h3 id="current-factor-title">현재 건강 신호 XAI 연결 대기</h3>
+                   <ul class="factor-list" id="current-factor-list">
+                     <li><strong>설명 결과 연결 대기</strong><p>현재 건강 신호 XAI 계약이 오면 주요 영향 신호를 표시합니다.</p></li>
+                   </ul>
++                  <p id="current-factor-note" class="xai-selection-note" hidden></p>
++                  <div id="current-shap-graph" class="shap-graph" hidden></div>
++                  <details id="current-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="current-model-numbers"></div></details>
+                 </div>
+               </article>
+             </div>
+@@ -623,10 +629,13 @@
+               </div>
+               <article class="forecast-score-placeholder xai-factor-card result-xai-card current-xai-slot" id="forecast-score-placeholder" aria-labelledby="future-factor-title">
+                 <div class="result-xai-waiting">
+-                  <h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
++                  <p id="future-factor-baseline" class="xai-baseline" hidden></p><h3 id="future-factor-title">미래 위험 XAI 연결 대기</h3>
+                   <ul class="factor-list" id="factor-list">
+                     <li><strong>설명 결과 연결 대기</strong><p>검증된 설명 결과가 제공되기 전까지 임의 요인을 표시하지 않습니다.</p></li>
+                   </ul>
++                  <p id="future-factor-note" class="xai-selection-note" hidden></p>
++                  <div id="future-shap-graph" class="shap-graph" hidden></div>
++                  <details id="future-model-details" class="model-analysis-details" hidden><summary>모델 분석 수치 자세히 보기</summary><div id="future-model-numbers"></div></details>
+                 </div>
+               </article>
+             </div>
+@@ -817,6 +826,7 @@
+         <section class="workspace-panel" id="workspace-panel-challenge" role="region" tabindex="-1" data-workspace-panel="challenge" aria-label="챌린지" hidden>
+           <section class="daily-record-panel" aria-labelledby="daily-record-title">
+             <h4 id="daily-record-title">오늘 기록할 항목</h4>
++            <button type="button" class="secondary" id="claim-daily-reward" hidden>오늘 보상 확인하기</button>
+             <div id="daily-log-list" class="daily-record-list"><article class="daily-record-empty daily-record-empty-selection"><strong>기록할 챌린지가 없습니다</strong><p>챌린지를 선택하고 오늘의 실천을 시작해 보세요.</p><button type="button" class="primary daily-record-select">생활습관 챌린지 선택하기</button></article></div>
+           </section>
+           <div id="record-modal" class="record-modal" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
+diff --git a/src/frontend/challenge-v2.js b/src/frontend/challenge-v2.js
+--- a/src/frontend/challenge-v2.js
++++ b/src/frontend/challenge-v2.js
+@@ -228,7 +228,7 @@
+       <div class="v2-compact-cards">${items.map(item=>compactQuest(item,openIds)).join("")}</div>
+       ${!items.length?`<p class="v2-notice">설정을 저장했어요.${plan.starts_on?` ${esc(plan.starts_on)}부터 오늘의 퀘스트가 표시돼요.`:" 오늘의 퀘스트를 준비하고 있어요."}</p>`:""}
+       ${cycleComplete?`<button class="v2-repeat-button" data-repeat-quests type="button">오늘의 퀘스트 다시 하기</button>`:""}
+-      <button id="forest-quest-settings" class="v2-settings-button" data-open-settings type="button" aria-label="나에게 맞게 다시 설정하기" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"다시 설정 닫기":"나에게 맞게 다시 설정하기"}</button>
++      <button id="forest-quest-settings" class="v2-settings-button" data-open-settings type="button" aria-label="나에게 맞게 다시 설정하기" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"설정 닫기":"나에게 맞게 다시 설정하기"}</button>
+       ${compactSettings(plan.preferences)}<section data-compact-settings ${settingsOpen?"":"hidden"} aria-label="챌린지 안내와 보상">
+       ${(plan.proof_mix_exception_reason||[]).map(r=>`<p class="v2-notice">${esc(reasonLabel[r]||"몸 상태에 맞는 다른 챌린지를 골랐어요.")}</p>`).join("")}
+       ${(plan.substitutions||[]).map(()=>'<p class="v2-notice">단 음료 줄이기 대신 마신 양을 돌아보는 챌린지를 골랐어요. 더 마실 필요는 없어요.</p>').join("")}
+@@ -241,7 +241,7 @@
+     const section=root.querySelector("[data-settings]");if(section)section.hidden=!open;
+     const management=root.querySelector("[data-compact-settings]");if(management)management.hidden=!open;
+     const toggle=button||root.querySelector("#forest-quest-settings");
+-    if(toggle){toggle.setAttribute("aria-expanded",String(open));toggle.textContent=open?"다시 설정 닫기":"나에게 맞게 다시 설정하기";}
++    if(toggle){toggle.setAttribute("aria-expanded",String(open));toggle.textContent=open?"설정 닫기":"나에게 맞게 다시 설정하기";}
+     if(open)root.querySelector("[data-settings] button")?.focus();
+   }
+   function preferencePayload(overrides={}) {
+@@ -268,7 +268,7 @@
+     const openIds=new Set(Array.from(root.querySelectorAll?.(".v2-quest-details[open]")||[],item=>item.dataset.questDetails));
+     root.setAttribute?.("data-compact",String(Boolean(compact)));
+     root.innerHTML=compact?compactContent(openIds):`<header class="v2-heading"><h3>당뇨 예방 챌린지</h3><button data-refresh type="button">새로고침</button></header><p data-message role="status" aria-live="polite"></p>${forestView?"":'<p class="v2-safety">생활습관을 돌아보는 활동이에요. 진단·처방이나 건강이 좋아졌다는 판정을 대신하지 않아요.</p>'}
+-      ${needsSetup?`<a class="v2-setup-link" href="${setupUrl}">로그인하고 챌린지 시작!</a>`:connectionFailed?'<p>연결을 확인한 뒤 위의 새로고침을 눌러주세요. 연결되지 않은 동안에는 설정과 기록을 저장할 수 없어요.</p>':`<button class="v2-settings-button" data-open-settings type="button" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"다시 설정 닫기":"나에게 맞게 다시 설정하기"}</button>
++      ${needsSetup?`<a class="v2-setup-link" href="${setupUrl}">로그인하고 챌린지 시작!</a>`:connectionFailed?'<p>연결을 확인한 뒤 위의 새로고침을 눌러주세요. 연결되지 않은 동안에는 설정과 기록을 저장할 수 없어요.</p>':`<button class="v2-settings-button" data-open-settings type="button" aria-expanded="${settingsOpen}" aria-controls="daily-settings">${settingsOpen?"설정 닫기":"나에게 맞게 다시 설정하기"}</button>
+       ${(plan?.proof_mix_exception_reason||[]).map(r=>`<p class="v2-notice">${esc(reasonLabel[r]||"몸 상태에 맞는 다른 챌린지를 골랐어요.")}</p>`).join("")}
+       ${(plan?.substitutions||[]).map(()=>'<p class="v2-notice">단 음료 줄이기 대신 마신 양을 돌아보는 챌린지를 골랐어요. 더 마실 필요는 없어요.</p>').join("")}
+       ${settings(plan?.preferences)}<div class="v2-cards">${(plan?.items||[]).map(card).join("")}</div>
+diff --git a/tests/forest-return-safety.test.cjs b/tests/forest-return-safety.test.cjs
+new file mode 100644
 --- /dev/null
-+++ b/src/frontend/auth-session.js
-@@ -0,0 +1,49 @@
-+/* Same-tab authentication across service, intro and forest navigations.
-+ * Storage is only a transport: every restored session is verified by the API. */
-+((root) => {
-+  "use strict";
-+  const KEY = "gandang-auth-session-v1";
-+  function clear() { try { root.sessionStorage.removeItem(KEY); } catch {} }
-+  function save(token) {
-+    if (typeof token !== "string" || !token || token === "local-demo-token") return;
-+    let expiresAt = Date.now() + 30 * 60 * 1000;
-+    try {
-+      const payload = JSON.parse(root.atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-+      if (Number.isFinite(payload.exp)) expiresAt = payload.exp * 1000;
-+    } catch { /* The server remains responsible for token validation. */ }
-+    if (expiresAt <= Date.now()) { clear(); return; }
-+    try { root.sessionStorage.setItem(KEY, JSON.stringify({ token, expiresAt })); } catch {}
-+  }
-+  function read() {
-+    try {
-+      const session = JSON.parse(root.sessionStorage.getItem(KEY));
-+      if (typeof session?.token === "string" && session.token && Number.isFinite(session.expiresAt) && session.expiresAt > Date.now()) return session.token;
-+    } catch {}
-+    clear(); return null;
-+  }
-+  function authError() { return Object.assign(new Error("로그인이 필요합니다."), { status: 401 }); }
-+  async function resolve({ signal, fetchImpl = root.fetch.bind(root), forceRefresh = false } = {}) {
-+    const options = { credentials: "same-origin", cache: "no-store", signal };
-+    async function verify(token) {
-+      const response = await fetchImpl("/api/v1/users/me", { ...options, headers: { Authorization: "Bearer " + token } });
-+      if ([401, 403].includes(response.status)) { clear(); return null; }
-+      if (!response.ok) throw Object.assign(new Error("로그인 상태를 확인하지 못했습니다."), { status: response.status });
-+      const payload = await response.json();
-+      save(token); return { token, profile: payload.data ?? payload };
-+    }
-+    const current = forceRefresh ? null : read();
-+    if (current) {
-+      const verified = await verify(current);
-+      if (verified) return verified;
-+    }
-+    const response = await fetchImpl("/api/v1/auth/token/refresh", options);
-+    if ([400, 401, 403].includes(response.status)) { clear(); throw authError(); }
-+    if (!response.ok) throw Object.assign(new Error("로그인 상태를 확인하지 못했습니다."), { status: response.status });
-+    const payload = await response.json(), token = (payload.data ?? payload).access_token;
-+    if (typeof token !== "string" || !token) { clear(); throw authError(); }
-+    const verified = await verify(token);
-+    if (!verified) throw authError();
-+    return verified;
-+  }
-+  root.GandangAuthSession = Object.freeze({ save, read, clear, resolve });
-+})(typeof window !== "undefined" ? window : globalThis);
---- /dev/null
-+++ b/tests/frontend/web_mobile_session.test.cjs
-@@ -0,0 +1,27 @@
++++ b/tests/forest-return-safety.test.cjs
+@@ -0,0 +1,33 @@
 +const test = require('node:test');
 +const assert = require('node:assert/strict');
-+const vm = require('node:vm');
 +const fs = require('node:fs');
-+const source=fs.readFileSync('src/frontend/auth-session.js','utf8');
-+function setup(fetch){
-+ const values=new Map();
-+ const root={sessionStorage:{setItem:(k,v)=>values.set(k,v),getItem:k=>values.get(k),removeItem:k=>values.delete(k)},fetch,atob:s=>Buffer.from(s,'base64').toString()};
-+ vm.runInNewContext(source,{window:root,Date,JSON,Number,Object,Error});return root.GandangAuthSession;
++const vm = require('node:vm');
++const path = require('node:path');
++const source = fs.readFileSync(path.join(__dirname, '../src/frontend/app.js'), 'utf8');
++const helper = source.slice(source.indexOf('const returningToForest ='), source.indexOf('const $ ='));
++function setup(search) {
++  const destinations = [];
++  const context = { URLSearchParams, window: { location: { search, assign: value => destinations.push(value) } } };
++  vm.createContext(context); vm.runInContext(helper, context);
++  return { context, destinations };
 +}
-+test('restored bearer is verified; rejected account clears stored token',async()=>{
-+ let calls=[]; const auth=setup(async(url,options)=>{calls.push([url,options]);return {status:200,ok:true,json:async()=>({data:{id:7}})}});
-+ auth.save('synthetic-valid');assert.equal((await auth.resolve()).profile.id,7);
-+ assert.equal(calls[0][0],'/api/v1/users/me');assert.equal(calls[0][1].headers.Authorization,'Bearer synthetic-valid');
-+ auth.clear();assert.equal(auth.read(),null);
-+ const bad=setup(async()=>({status:401,ok:false}));bad.save('synthetic-bad');
-+ await assert.rejects(bad.resolve(),{status:401});assert.equal(bad.read(),null);
++test('forest return only accepts its fixed query destination and verified eligibility', () => {
++  for (const search of ['', '?returnTo=https://example.test', '?returnTo=forest-challenges-evil']) {
++    const {context,destinations} = setup(search);
++    assert.equal(context.returnToForestSettings({service_eligible:true,reason_codes:[]}),false);
++    assert.equal(destinations.length,0);
++  }
++  const {context,destinations} = setup('?returnTo=forest-challenges');
++  for (const eligibility of [null, {}, {service_eligible:true}, {service_eligible:true,reason_codes:'DIAGNOSED_DIABETES'}, {service_eligible:true,reason_codes:[null]}, {service_eligible:false,reason_codes:[]}]) {
++    assert.equal(context.returnToForestSettings(eligibility),false);
++  }
++  for (const code of ['DIAGNOSED_DIABETES','URGENT_MEDICAL_ATTENTION','CONSENT_REQUIRED','UNDER_MINIMUM_SERVICE_AGE']) {
++    assert.equal(context.returnToForestSettings({service_eligible:true,reason_codes:[code]}),false);
++  }
++  assert.equal(context.returnToForestSettings({service_eligible:true,reason_codes:[]}),true);
++  assert.deepEqual(destinations,['/forest?challenge=settings-v139#daily-settings']);
 +});
-+test('refresh token is independently validated; missing cookie requires login',async()=>{
-+ const auth=setup(async url=>({ok:true,status:200,json:async()=>url.endsWith('/refresh')?{access_token:'synthetic-refreshed'}:{id:12}}));
-+ assert.equal((await auth.resolve()).profile.id,12);
-+ const noCookie=setup(async()=>({ok:false,status:401}));await assert.rejects(noCookie.resolve(),{status:401});
++test('both restored login and completed eligibility use guarded forest return', () => {
++  assert.match(source,/syncReturningEligibilityState\(latestEligibility\);\s*if \(returnToForestSettings\(latestEligibility\)\) return;/);
++  assert.match(source,/syncReturningEligibilityState\(result\);\s*if \(returnToForestSettings\(result\)\) return;/);
 +});
-+test('transient server failure does not silently switch or erase a valid account',async()=>{
-+ const auth=setup(async()=>({ok:false,status:503}));auth.save('synthetic-valid');
-+ await assert.rejects(auth.resolve(),{status:503});assert.equal(auth.read(),'synthetic-valid');
-+});
---- /dev/null
-+++ b/docs/WEB_MOBILE_ACCOUNT_SYNC.md
-@@ -0,0 +1,9 @@
-+# 웹·모바일 계정 연동
+--- a/src/frontend/intro-retro.html
++++ b/src/frontend/intro-retro.html
+@@ -14,7 +14,7 @@
+   <link rel="stylesheet" href="/static/education-carousel.css?v=20260908-carousel-clear-v2">
+   <script src="/static/education-carousel.js?v=20260908-shared-carousel-v1" defer></script>
+   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
+-  <link rel="stylesheet" href="/static/retro-intro.css?v=20260921-modern-auth-nav-v1">
++  <link rel="stylesheet" href="/static/retro-intro.css?v=20261009-mobile-download-v1">
+   <script src="/static/retro-intro.js?v=20260921-auth-aware-top-nav-v1" defer></script>
+   <script src="/static/intro-retro-app.js?v=20260921-modern-workspace-links-v1" defer></script>
+ </head>
+@@ -50,6 +50,7 @@
+         <li><button type="button" data-onboarding-health>건강정보 입력</button></li>
+       </ol>
+     </nav>
++    <a class="intro-mobile-download" href="/mobile-downloads">Download(모바일 버전)</a>
+     <div class="header-utilities">
+       <details class="header-my-page" id="header-my-page" hidden>
+         <summary id="header-my-page-toggle">마이페이지</summary>
+--- a/src/frontend/retro-intro.css
++++ b/src/frontend/retro-intro.css
+@@ -483,3 +483,21 @@
+  .story-step-flow { z-index: 6; }
+  .orbit-handoff { z-index: 4; }
+ }
 +
-+웹과 Android 체험 앱은 https://www.dang-no.life 의 같은 회원 API와 데이터베이스를 사용한다. 기존 이메일·비밀번호로 각 기기에서 로그인하며 프로필·건강정보·챌린지는 서버에서 조회한다. 기기 간 로그인 토큰을 전달하거나 로컬 저장소를 공유하지 않는다.
-+
-+웹에 Android 앱과 동일한 auth-session 모듈을 적용했다. 같은 탭의 페이지 이동/새로고침에서 만료 전 토큰을 복원하되 users/me API로 검증한다. 토큰이 없거나 만료되면 서버의 refresh 쿠키로 복원을 시도한다. 쿠키가 없는 모바일 새 세션은 다시 로그인해야 한다. 로그아웃·계정 전환·인증 만료 처리에서는 저장 토큰을 제거한다.
-+
-+#16은 다운로드 화면 변경으로 이미 병합됐다. 이 수정은 후속 PR이며 기존 APK 빌드의 네트워크 모듈은 API 경로만 AWS origin으로 연결하고 credentials=include를 적용한다. APK 고정 소스에는 동일 auth-session 모듈이 포함되어 있어 이번 변경은 웹의 복원 방식을 맞춘다.
-+
-+iOS 서명 배포 및 실제 휴대폰 설치·동기화는 이번 코드 검사만으로 완료를 주장하지 않는다. 로그인은 각 기기에서 수행하고 같은 계정 서버 데이터가 표시되는지 실기기에서 확인해야 한다.
++/* Keep app installation visible on the first screen, including guest visits. */
++body.intro-mode:has(.retro-intro) .topbar { flex-wrap: wrap; }
++.topbar .intro-mobile-download {
++ display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
++ min-height: 44px; padding: 12px 18px; margin-left: auto; border: 1px solid #a6421b;
++ border-radius: 999px; background: #c45124; color: #fffdf4; font: inherit;
++ font-size: 14px; font-weight: 800; line-height: 1.2; text-decoration: none;
++ white-space: nowrap; box-shadow: 0 4px 12px #a6421b26;
++}
++.topbar .intro-mobile-download:hover { background: #a9401c; }
++.topbar .intro-mobile-download:focus-visible { outline: 3px solid #203d32; outline-offset: 4px; }
++@media(max-width:760px) {
++ body.intro-mode:has(.retro-intro) .topbar { width: calc(100% - 24px); gap: 10px; }
++ body.intro-mode.intro-authenticated:has(.retro-intro) .topbar { width: 100%; }
++ .topbar .intro-mobile-download { font-size: 12px; padding: 10px 12px; }
++ body.intro-mode .intro-route-nav:not([hidden]) { order: 3; flex-basis: 100%; white-space: normal; flex-wrap: wrap; }
++}
