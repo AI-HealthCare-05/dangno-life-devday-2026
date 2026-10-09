@@ -135,3 +135,35 @@ html body .topbar #onboarding-top-nav ol {
  width:100%; min-width:0; gap:8px; overflow-x:auto;
 }
 html body .topbar #onboarding-top-nav li {flex:0 0 auto}
+
+/* PR #22 guest layout, including the app's brand/forest stack and font control. */
+html body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar:has(.intro-mobile-download:not([hidden])) {
+ grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .header-brand-stack {
+ max-width: 100%;
+}
+html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .header-forest-entry {
+ max-width: 100%;
+}
+html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .intro-mobile-download {
+ grid-column: 2; grid-row: 1; justify-self: center; margin: 0;
+}
+html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) #guest-flow-panel {
+ grid-column: 3; grid-row: 1; justify-self: end;
+}
+html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .header-utilities {
+ grid-column: 3; grid-row: 2;
+}
+@media (max-width: 640px) {
+ html body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar:has(.intro-mobile-download:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) auto;
+ }
+ html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) #guest-flow-panel,
+ html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .header-utilities {
+  grid-column: 2;
+ }
+ html body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .intro-mobile-download {
+  grid-column: 1 / -1; grid-row: 3;
+ }
+}

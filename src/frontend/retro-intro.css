@@ -507,3 +507,16 @@ body.intro-mode:has(.retro-intro) .topbar { flex-wrap: wrap; }
  .topbar .intro-mobile-download { font-size: 12px; padding: 10px 12px; }
  body.intro-mode .intro-route-nav:not([hidden]) { order: 3; flex-basis: 100%; white-space: normal; flex-wrap: wrap; }
 }
+
+/* Guest navigation: centered download, account actions on the right. */
+body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar:has(.intro-mobile-download:not([hidden])) {
+ display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 18px;
+}
+body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .brand { grid-column: 1; grid-row: 1; justify-self: start; }
+body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .intro-mobile-download { grid-column: 2; grid-row: 1; justify-self: center; margin: 0; }
+body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) #guest-flow-panel { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; }
+@media(max-width:640px) {
+ body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar:has(.intro-mobile-download:not([hidden])) { grid-template-columns: minmax(0,1fr) auto; gap: 10px; }
+ body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) #guest-flow-panel { grid-column: 2; }
+ body.intro-mode:not(.intro-authenticated) .topbar:has(.intro-mobile-download:not([hidden])) .intro-mobile-download { grid-column: 1 / -1; grid-row: 2; }
+}

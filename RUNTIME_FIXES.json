@@ -1,5 +1,5 @@
 {
-  "patch_sha256": "037d51a902d8d60458fc54bafbae2b3110af7937905d2c69cc6832b480787183",
+  "patch_sha256": "19895788ac053e7ef933d6f0d408f2d1b8ffa59db08c972d257d01f69b0dd067",
   "files": [
     {
       "path": "src/frontend/app.js",
@@ -344,7 +344,7 @@
     {
       "path": "src/frontend/retro-intro.css",
       "before": "344df2781945fd81cbf84c7a0d4293de7325a6aaadc9e5ed4587b87488f09734",
-      "after": "18d77d6d6acfe07eff05a77c16f1d798eda334f7b7a9723e741affabfcc5ab0c"
+      "after": "1772b6c030351de7807fe66d7adcefbfe44148b781717c137eced2f6edd5a303"
     }
   ]
 }
