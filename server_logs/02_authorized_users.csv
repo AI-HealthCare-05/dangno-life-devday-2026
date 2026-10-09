@@ -1,2 +1,2 @@
 server_id,participant_id,account,access_method,ssh_fingerprint,role
-SERVER_01,MEMBER_01,ACCOUNT_01,EC2 Instance Connect / SSH,KEY_01;KEY_02;KEY_03 (observed temporary keys),팀장·개발·배포 (허용 사용자 자기신고)
+SERVER_01,MEMBER_01,ACCOUNT_01,EC2 Instance Connect / SSH,KEY_01;KEY_02;KEY_03;KEY_04 (observed temporary keys),팀장·개발·배포 (허용 사용자 자기신고)

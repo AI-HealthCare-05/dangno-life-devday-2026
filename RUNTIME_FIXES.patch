@@ -4113,7 +4113,7 @@
          <summary id="header-my-page-toggle">마이페이지</summary>
 --- a/src/frontend/retro-intro.css
 +++ b/src/frontend/retro-intro.css
-@@ -483,3 +483,21 @@
+@@ -483,3 +483,34 @@
   .story-step-flow { z-index: 6; }
   .orbit-handoff { z-index: 4; }
  }
@@ -4134,4 +4134,17 @@
 + body.intro-mode.intro-authenticated:has(.retro-intro) .topbar { width: 100%; }
 + .topbar .intro-mobile-download { font-size: 12px; padding: 10px 12px; }
 + body.intro-mode .intro-route-nav:not([hidden]) { order: 3; flex-basis: 100%; white-space: normal; flex-wrap: wrap; }
++}
++
++/* Guest navigation: centered download, account actions on the right. */
++body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar {
++ display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 18px;
++}
++body.intro-mode:not(.intro-authenticated) .topbar .brand { grid-column: 1; grid-row: 1; justify-self: start; }
++body.intro-mode:not(.intro-authenticated) .topbar .intro-mobile-download { grid-column: 2; grid-row: 1; justify-self: center; margin: 0; }
++body.intro-mode:not(.intro-authenticated) .topbar #guest-flow-panel { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; }
++@media(max-width:640px) {
++ body.intro-mode:not(.intro-authenticated):has(.retro-intro) .topbar { grid-template-columns: minmax(0,1fr) auto; gap: 10px; }
++ body.intro-mode:not(.intro-authenticated) .topbar #guest-flow-panel { grid-column: 2; }
++ body.intro-mode:not(.intro-authenticated) .topbar .intro-mobile-download { grid-column: 1 / -1; grid-row: 2; }
 +}

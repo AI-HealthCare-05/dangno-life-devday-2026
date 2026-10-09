@@ -1,2 +1,3 @@
 server_id,account,source_ip,protocol
 SERVER_01,ACCOUNT_01,IP_01,SSH
+SERVER_01,ACCOUNT_01,IP_02,SSH
