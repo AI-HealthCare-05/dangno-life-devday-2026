@@ -4,12 +4,76 @@ import { App } from '@capacitor/app';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { createApiFetch, API_ORIGIN } from './network.mjs';
 import { handleAppBack } from './back-navigation.mjs';
+import { enableManualBirthDates } from './birth-date.mjs';
+
+function keepIosHeaderClear() {
+  const header = document.querySelector('.topbar');
+  if (!header) return;
+  const update = () => document.documentElement.style.setProperty(
+    '--native-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`
+  );
+  const updateViewport = () => document.documentElement.style.setProperty(
+    '--native-viewport-top', `${Math.max(0, Math.ceil(window.visualViewport?.offsetTop || 0))}px`
+  );
+  update();
+  updateViewport();
+  new ResizeObserver(update).observe(header);
+  window.visualViewport?.addEventListener('scroll', updateViewport, { passive: true });
+  window.visualViewport?.addEventListener('resize', updateViewport, { passive: true });
+}
+
+function keepOverlaysInViewport() {
+  // Illustrated screens can establish containing blocks for fixed descendants.
+  // Move only viewport overlays; their IDs and existing event listeners survive.
+  for (const id of [
+    'eligibility-guidance', 'profile-editor', 'emergency-questionnaire-modal',
+    'diagnosis-help-modal', 'record-modal',
+  ]) {
+    const overlay = document.getElementById(id);
+    if (overlay) document.body.append(overlay);
+  }
+}
+
+function enableCompactHealthPanelPicker() {
+  const picker = document.querySelector('.health-input-carousel');
+  if (!picker) return;
+  picker.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-health-tab]');
+    if (!button) return;
+    if (!picker.classList.contains('is-open')) {
+      picker.classList.add('is-open');
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    picker.classList.remove('is-open');
+  }, true);
+  document.addEventListener('click', (event) => {
+    if (!picker.contains(event.target)) picker.classList.remove('is-open');
+  });
+}
 
 // Loaded synchronously before the existing page scripts, in mobile bundles only.
 window.GandangMobile = Object.freeze({ apiOrigin: API_ORIGIN });
 if (Capacitor.isNativePlatform()) {
   window.fetch = createApiFetch(window.fetch.bind(window), window.location.href);
   document.documentElement.classList.add('gandang-native');
+  if (Capacitor.getPlatform() === 'ios') {
+    document.documentElement.classList.add('gandang-ios');
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        enableManualBirthDates();
+        keepIosHeaderClear();
+        keepOverlaysInViewport();
+        enableCompactHealthPanelPicker();
+      }, { once: true });
+    } else {
+      enableManualBirthDates();
+      keepIosHeaderClear();
+      keepOverlaysInViewport();
+      enableCompactHealthPanelPicker();
+    }
+  }
   let picking = false;
   function notice(message) {
     let node = document.getElementById('mobile-notice');

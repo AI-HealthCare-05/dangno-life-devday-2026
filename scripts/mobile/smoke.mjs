@@ -74,7 +74,7 @@ try {
   const requests = [];
   await native.route('**/*', async route => {
     const url = route.request().url();
-    if (url.startsWith('https://dang-no.life/api/')) {
+    if (url.startsWith('https://www.dang-no.life/api/')) {
       requests.push({ url, method: route.request().method() });
       return route.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"Offline test"}' });
     }
@@ -128,7 +128,7 @@ try {
   await page.waitForFunction(() => window.testMinimized);
   const response = await page.evaluate(async () => (await fetch('/api/v1/predictions/today')).status);
   assert.equal(response, 503, 'model failures must remain failures');
-  assert.ok(requests.some(request => request.url === 'https://dang-no.life/api/v1/predictions/today'));
+  assert.ok(requests.some(request => request.url === 'https://www.dang-no.life/api/v1/predictions/today'));
   assert.deepEqual(errors, []);
   await page.screenshot({ path: path.join(output, 'native-login.png') });
   await native.close();

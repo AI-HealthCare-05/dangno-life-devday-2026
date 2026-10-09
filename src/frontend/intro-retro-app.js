@@ -5486,14 +5486,6 @@ $$('.workspace-tab').forEach((button, index, tabs) => button.addEventListener("k
   nextTab.focus();
 }));
 
-$("#brand-home").addEventListener("click", (event) => {
-  event.preventDefault();
-  if (state.step === 8) {
-    showWorkspace("home");
-    return;
-  }
-  showStep(1);
-});
 $("#font-toggle").addEventListener("click", (event) => {
   const enabled = document.body.classList.toggle("large-text");
   event.currentTarget.setAttribute("aria-pressed", String(enabled));

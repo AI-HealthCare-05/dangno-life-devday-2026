@@ -1,0 +1,567 @@
+
+html.gandang-native {
+  --native-safe-top: env(safe-area-inset-top);
+  scroll-padding-top: var(--native-safe-top);
+}
+html.gandang-native.gandang-ios { --native-safe-top: max(59px, env(safe-area-inset-top)); }
+/* Carry the service header behind the iOS status bar without changing Android. */
+html.gandang-ios::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--native-safe-top);
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(255, 255, 255, .86);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+html.gandang-ios body:not(.intro-mode) .topbar {
+  background: rgba(255, 255, 255, .86) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.gandang-native body {
+  padding-top: var(--native-safe-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  overscroll-behavior-y: none;
+}
+html.gandang-ios body:not(.intro-mode):has(.topbar) {
+  padding-top: calc(var(--native-safe-top) + var(--native-header-height, 110px));
+}
+html.gandang-ios body .topbar {
+  position: fixed !important;
+  top: calc(var(--native-safe-top) + var(--native-viewport-top, 0px)) !important;
+  z-index: 1001;
+}
+.gandang-native dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
+/* Keep iOS viewport geometry stable when the large-text setting is enabled.
+   CSS zoom scales fixed-position overlays as well as text in WebKit. */
+html.gandang-ios body.large-text { zoom: 1 !important; }
+html.gandang-ios body.large-text :is(.content p, .content label, .content input, .content select, .content textarea) {
+  font-size: 1.12em;
+}
+@media (max-width: 620px) {
+  html.gandang-ios #health-review-panel #health-review-title {
+    font-size: clamp(24px, 6.4vw, 29px);
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+  html.gandang-ios #health-review-title span {
+    display: block;
+    white-space: nowrap;
+  }
+  html.gandang-ios .health-room-board #health-review-panel .review-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+  html.gandang-ios .health-room-board #health-review-panel .review-card dl .review-row-wide {
+    grid-column: 1 / -1;
+  }
+  html.gandang-ios .health-room-board #health-review-panel .review-card dl div {
+    padding: 10px;
+  }
+  html.gandang-ios .health-room-board #health-review-panel .review-card dd {
+    font-size: 17px;
+    line-height: 1.35;
+  }
+  @media (max-width: 360px) {
+    html.gandang-ios .health-room-board #health-review-panel .review-card dl {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+  }
+  html.gandang-ios .health-room-board .health-room-heading {
+    box-sizing: border-box;
+    width: min(100%, 350px);
+    padding: 14px 12px;
+    gap: 8px;
+  }
+  html.gandang-ios .health-room-board .health-room-heading img {
+    width: 48px;
+    height: 48px;
+    margin-left: 0;
+  }
+  html.gandang-ios .health-room-board .health-room-heading h2 {
+    font-size: clamp(23px, 6vw, 29px);
+    line-height: 1.22;
+    word-break: keep-all;
+  }
+  html.gandang-ios #health-title span {
+    display: block;
+    white-space: nowrap;
+  }
+  html.gandang-ios #lifestyle-map-detail {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+  }
+  html.gandang-ios #habit-carousel {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 12px;
+  }
+  html.gandang-ios #habit-carousel .education-magnetic-track {
+    box-sizing: border-box;
+    min-height: 0;
+    height: auto;
+    padding: 12px;
+    gap: 10px;
+    scroll-padding-inline: 12px;
+  }
+  html.gandang-ios #habit-carousel .education-overview-card {
+    box-sizing: border-box;
+    width: min(42vw, 160px) !important;
+    height: 220px !important;
+    flex-shrink: 0;
+  }
+  html.gandang-ios #habit-carousel .education-card-art img {
+    top: 22%;
+    width: 145px;
+    height: 145px;
+  }
+  html.gandang-ios #habit-carousel .education-carousel-controls {
+    box-sizing: border-box;
+    gap: 8px;
+    padding: 8px 4px 12px;
+  }
+  html.gandang-ios #habit-carousel .education-carousel-controls [role='status'] {
+    min-width: 0;
+    flex: 1;
+  }
+  html.gandang-ios .health-room-board .health-input-carousel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+  html.gandang-ios .health-room-board .health-input-carousel:not(.is-open) button:not(.active) {
+    display: none;
+  }
+  html.gandang-ios .health-room-board .health-input-carousel button {
+    width: 100%;
+    min-height: 64px;
+    transform: none;
+  }
+  html.gandang-ios .health-room-board .health-input-carousel button.active {
+    transform: none;
+  }
+  html.gandang-ios .health-room-board .health-input-carousel:not(.is-open) button.active::after {
+    content: '⌄';
+    margin-left: auto;
+    font-size: 26px;
+    line-height: 1;
+  }
+  html.gandang-ios :is(.profile-editor, .emergency-questionnaire-modal, .diagnosis-help-modal, .record-modal) {
+    box-sizing: border-box;
+    inset: 0 !important;
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 0;
+    padding: calc(var(--native-safe-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px) !important;
+    align-items: center !important;
+    overflow: auto;
+  }
+  html.gandang-ios :is(.profile-editor-card, .emergency-questionnaire-modal-card, .diagnosis-help-modal-card, .record-modal-card) {
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100% !important;
+    max-height: calc(100dvh - var(--native-safe-top) - env(safe-area-inset-bottom) - 24px) !important;
+    margin: auto;
+    padding: 22px 18px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 20px !important;
+  }
+  html.gandang-ios :is(.profile-editor-card, .emergency-questionnaire-modal-card, .diagnosis-help-modal-card, .record-modal-card) :is(form, section, fieldset, .actions, input, select, textarea, button) {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+  }
+  html.gandang-ios dialog:not([hidden]) {
+    box-sizing: border-box;
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - var(--native-safe-top) - env(safe-area-inset-bottom) - 24px);
+    margin: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+@media (max-width: 600px) {
+  html.gandang-ios body.intro-mode:has(.retro-intro) {
+    padding-top: 0;
+  }
+  .gandang-native input, .gandang-native select, .gandang-native textarea { font-size: 16px; }
+  html.gandang-native body:not(.intro-mode) .topbar {
+    top: calc(var(--native-safe-top) + var(--native-viewport-top, 0px)) !important;
+    grid-template-columns: minmax(0, 132px) minmax(0, 1fr) !important;
+    gap: 6px 8px !important;
+    padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)) !important;
+  }
+  html.gandang-native body .topbar .header-brand-stack {
+    width: 132px;
+    max-width: 100%;
+    gap: 5px;
+  }
+  html.gandang-native body .topbar .header-brand-stack .brand-logo {
+    width: 132px;
+    max-height: 51px;
+  }
+  html.gandang-native body .topbar .header-forest-entry {
+    width: 132px;
+    max-width: 100%;
+    height: 66px;
+    padding: 4px 8px;
+  }
+  html.gandang-native body .topbar #guest-flow-panel ol {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  html.gandang-native body .topbar #guest-flow-panel :is(#sidebar-login, #sidebar-signup) {
+    min-height: 44px;
+    padding: 7px 9px;
+    font-size: 14px;
+  }
+  html.gandang-native body .topbar .header-utilities {
+    min-width: 0;
+    width: 100%;
+  }
+  html.gandang-native body .topbar .font-toggle-button {
+    min-height: 44px;
+    padding: 7px 9px;
+  }
+  .gandang-native .signup-house-heading {
+    width: min(100%, 360px);
+    padding-inline: 12px;
+  }
+  .gandang-native .signup-house-heading > div { min-width: 0; max-width: 100%; }
+  .gandang-native .signup-house-heading h2 {
+    max-width: 100%;
+    font-size: clamp(21px, 6vw, 27px);
+    line-height: 1.22;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .form-row {
+    min-width: 0;
+    padding-inline: 12px;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child {
+    min-width: 0;
+    margin: 6px 0 10px;
+    padding: 14px 16px;
+    border: 2px solid #c9a574;
+    border-radius: 12px;
+    background: #fff7df;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child h3 {
+    margin: 0 0 8px;
+    font-size: 21px;
+    line-height: 1.3;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child p {
+    margin: 6px 0;
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .gandang-native .signup-house-board :is(#signup-form, #account-recovery-form) input:is([type="date"], [data-birth-date-manual]) {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+#mobile-notice { position: fixed; z-index: 100000; bottom: calc(24px + env(safe-area-inset-bottom)); left: 16px; right: 16px; padding: 14px; background: #18251f; color: white; border-radius: 12px; font-size: 15px; }
+
+/* Safety guidance is a viewport dialog, not part of the oversized illustrated board. */
+@media (max-width: 620px) {
+  html.gandang-ios #eligibility-guidance.branch-result {
+    box-sizing: border-box;
+    position: fixed !important;
+    inset: calc(var(--native-safe-top) + 28px) 12px auto 12px !important;
+    width: auto !important;
+    height: min(62dvh, 560px) !important;
+    max-width: none !important;
+    max-height: calc(100dvh - var(--native-safe-top) - env(safe-area-inset-bottom) - 48px) !important;
+    margin: 0 !important;
+    padding: 18px 14px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: none !important;
+    z-index: 2000;
+    border-radius: 18px;
+    background: #fff7e7 !important;
+  }
+  html.gandang-ios #eligibility-guidance h3 {
+    font-size: clamp(24px, 7vw, 30px);
+    line-height: 1.25;
+  }
+  html.gandang-ios #eligibility-guidance .eligibility-guidance-message {
+    margin-bottom: 16px;
+    font-size: 17px;
+  }
+  html.gandang-ios #eligibility-guidance .eligibility-guidance-sections {
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+  html.gandang-ios #eligibility-guidance :is(.eligibility-guidance-label, .eligibility-guidance-copy) {
+    min-height: 0;
+    padding: 12px;
+  }
+  html.gandang-ios #eligibility-guidance .eligibility-guidance-section {
+    gap: 6px;
+  }
+  html.gandang-ios #eligibility-guidance .eligibility-guidance-section p {
+    font-size: 16px;
+  }
+  html.gandang-ios #eligibility-guidance :is(.eligibility-guidance-sections, .eligibility-guidance-section, .eligibility-guidance-copy, .eligibility-guidance-buttons, .emergency-guidance-actions, .actions) {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  html.gandang-ios #eligibility-guidance .eligibility-guidance-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html.gandang-ios #eligibility-guidance :is(a, button, p, strong) {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  html.gandang-ios #eligibility-guidance .emergency-guidance-actions :is(a, button) {
+    width: 100%;
+    padding-inline: 10px;
+  }
+}
+
+/* iPhone eligibility sign: leave a quiet margin around the wood and keep controls inside the paper. */
+@media (max-width: 620px) {
+  html.gandang-ios .eligibility-forest-stage {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-inline: 16px;
+    justify-content: center;
+  }
+  html.gandang-ios .eligibility-forest-board {
+    box-sizing: border-box;
+    width: min(350px, calc(100vw - 32px));
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 10px;
+  }
+  html.gandang-ios .eligibility-forest-heading {
+    padding: 12px 10px;
+  }
+  html.gandang-ios .eligibility-forest-heading h2 {
+    font-size: clamp(22px, 6vw, 26px);
+    line-height: 1.25;
+  }
+  html.gandang-ios .eligibility-forest-board .eligibility-card {
+    min-width: 0;
+    padding: 12px;
+  }
+  html.gandang-ios .eligibility-forest-board .eligibility-profile-fields,
+  html.gandang-ios .eligibility-forest-board .form-row.compact {
+    min-width: 0;
+    width: 100%;
+  }
+  html.gandang-ios .eligibility-forest-board .form-row.compact :is(input, select) {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 50px;
+    font-size: 16px;
+  }
+  html.gandang-ios .eligibility-forest-board .birth-date-hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+}
+
+/* Fixed intro navigation does not participate in the body's safe-area padding. */
+@media (max-width: 760px) {
+  .gandang-native body.intro-mode:has(.retro-intro) .topbar {
+    top: calc(var(--native-safe-top) + var(--native-viewport-top, 0px) + 10px) !important;
+    left: max(14px, env(safe-area-inset-left));
+    width: calc(100% - max(14px, env(safe-area-inset-left)) - max(14px, env(safe-area-inset-right)));
+  }
+}
+
+/* iPhone intro: keep the navigation inside a compact, tappable header. */
+@media (max-width: 600px) {
+  html.gandang-ios body .topbar,
+  html.gandang-ios body .topbar.retro-nav-compact {
+    top: calc(var(--native-safe-top) + var(--native-viewport-top, 0px)) !important;
+    left: 0;
+    transform: none;
+    width: 100% !important;
+    min-height: 0 !important;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2px 6px !important;
+    padding: 5px max(10px, env(safe-area-inset-right)) 7px max(10px, env(safe-area-inset-left)) !important;
+    border: 0;
+    border-bottom: 1px solid #d7ded6;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  html.gandang-ios body .topbar .header-brand-stack {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    gap: 4px;
+  }
+  html.gandang-ios body .topbar .header-brand-stack .brand-logo {
+    width: 84px !important;
+    max-height: 40px;
+  }
+  html.gandang-ios body .topbar .header-brand-stack .header-forest-entry {
+    width: 84px !important;
+    min-width: 84px;
+    height: 48px;
+    padding: 3px;
+  }
+  html.gandang-ios body .topbar #guest-flow-panel {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+  html.gandang-ios body .topbar #guest-flow-panel ol {
+    gap: 2px;
+  }
+  html.gandang-ios body .topbar #guest-flow-panel :is(#sidebar-login, #sidebar-signup) {
+    min-height: 44px;
+    padding: 5px 6px;
+    font-size: 12px;
+  }
+  html.gandang-ios body .topbar .header-utilities {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    width: auto;
+  }
+  html.gandang-ios body .topbar .font-toggle-button {
+    min-height: 44px;
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+  html.gandang-ios body .topbar .workspace-top-nav:not([hidden]) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+  html.gandang-ios body .topbar .workspace-top-nav:not([hidden]) ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    overflow: visible;
+  }
+  html.gandang-ios body .topbar .workspace-top-nav:not([hidden]) li {
+    min-width: 0;
+    text-align: center;
+  }
+  html.gandang-ios body .topbar .workspace-top-nav:not([hidden]) button {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 5px 2px;
+    font-size: clamp(11px, 3vw, 13px);
+    white-space: nowrap;
+  }
+  html.gandang-ios body .topbar #onboarding-top-nav:not([hidden]) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    width: 100%;
+  }
+  html.gandang-ios body .topbar #onboarding-top-nav:not([hidden]) ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 0;
+    overflow: visible;
+  }
+  html.gandang-ios body .topbar #onboarding-top-nav:not([hidden]) button {
+    width: 100%;
+    min-height: 44px;
+    padding-inline: 3px;
+    font-size: 13px;
+  }
+  html.gandang-ios body.large-text .topbar .header-brand-stack {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+  html.gandang-ios body.large-text .topbar .header-brand-stack .brand-logo {
+    width: 74px !important;
+  }
+  html.gandang-ios body.large-text .topbar .header-brand-stack .header-forest-entry {
+    width: 74px !important;
+    min-width: 74px;
+  }
+  html.gandang-ios body.large-text .topbar .header-utilities {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: end;
+    justify-content: flex-end;
+    width: auto;
+    gap: 5px;
+  }
+  html.gandang-ios body.large-text .topbar .header-utilities :is(.font-toggle-button, .header-my-page) {
+    box-sizing: border-box;
+    flex: 0 0 82px !important;
+    width: 82px !important;
+  }
+  html.gandang-ios body.large-text .topbar .header-utilities :is(.font-toggle-button, .header-my-page > summary) {
+    font-size: 13px !important;
+    padding-inline: 3px;
+    white-space: nowrap;
+  }
+  html.gandang-ios body.large-text .topbar #guest-flow-panel:not([hidden]) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  html.gandang-ios body.large-text .topbar:has(#guest-flow-panel:not([hidden])) .header-utilities {
+    grid-row: 2;
+  }
+  html.gandang-ios body.intro-mode:has(.retro-intro) .retro-bottom {
+    bottom: calc(130px + env(safe-area-inset-bottom));
+  }
+  html.gandang-ios body.intro-mode:has(.retro-intro) .retro-computer {
+    --retro-width: min(330px, calc(100vw - 40px));
+    width: var(--retro-width);
+    top: calc(var(--native-safe-top) + 120px);
+    transform: translate(-50%, var(--retro-camera-y, 0px)) scale(clamp(1, var(--retro-scale, 1), 1.08));
+  }
+  html.gandang-ios body.intro-mode:has(.retro-intro) .retro-scroll {
+    display: none;
+  }
+  html.gandang-ios body:has(.retro-intro) .landing-pager { display: none !important; }
+}

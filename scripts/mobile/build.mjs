@@ -11,6 +11,11 @@ const STATIC_DIRECTORIES = new Set(['assets', 'icons', 'suin', 'vendor']);
 // Translate only exact page-route literals. /forest/avatar is an API suffix.
 export function rewriteForMobile(text) {
   return text
+    .replace(/(<meta\s+name=["']viewport["']\s+content=["'])([^"']*)(["'])/i, (_, start, content, end) => {
+      const values = content.split(',').map(value => value.trim()).filter(Boolean);
+      if (!values.some(value => value.startsWith('viewport-fit='))) values.push('viewport-fit=cover');
+      return start + values.join(', ') + end;
+    })
     .replace(/(["'`])\/(forest|service)(?=["'`?#])/g, (_, quote, route) => quote + ROUTES[route])
     .replace(/\["localhost", "127\.0\.0\.1", "::1"\]\.includes\(window\.location\.hostname\)/g, 'false /* native: no prediction demo */')
     .replace(/\["127\.0\.0\.1", "localhost"\]\.includes\(window\.location\.hostname\)/g, 'false /* native: no reset demo */')
@@ -18,7 +23,7 @@ export function rewriteForMobile(text) {
 }
 
 export async function buildMobile(root) {
-  const apiOrigin = validateApiOrigin(process.env.MOBILE_API_ORIGIN || 'https://dang-no.life');
+  const apiOrigin = validateApiOrigin(process.env.MOBILE_API_ORIGIN || 'https://www.dang-no.life');
   const repo = path.resolve(root);
   const source = path.join(repo, 'src/frontend');
   const output = path.join(repo, 'dist/mobile');
@@ -39,9 +44,18 @@ export async function buildMobile(root) {
     if (TEXT_EXTENSIONS.has(path.extname(from))) {
       let data = rewriteForMobile(await readFile(from, 'utf8'));
       if (hasRuntime && path.extname(from) === '.html') {
-        data = data.replace(/<head(?:\s[^>]*)?>/i, head => head + '<script src="/mobile/runtime.js"></script><link rel="stylesheet" href="/mobile/mobile.css">');
-        // Keep viewport-fit=auto: Capacitor reserves system-bar/cutout space natively.
-        // Forcing cover lets fixed headers, pagers and the forest canvas overlap those bars.
+        data = data.replace(/<head(?:\s[^>]*)?>/i, head => head + '<script src="/mobile/runtime.js"></script>');
+        // Runtime marks iOS before this executes; load exactly one native stylesheet
+        // after the page styles so platform overrides keep their precedence.
+        data = data.replace(/<\/head>/i, `<script>
+          { const style = document.createElement('link');
+            style.rel = 'stylesheet';
+            style.href = document.documentElement.classList.contains('gandang-ios')
+              ? '/mobile/ios.css' : '/mobile/mobile.css';
+            document.head.append(style); }
+        </script></head>`);
+        // Native pages opt into viewport-fit=cover so CSS env(safe-area-inset-*) values
+        // are available around the iOS status bar, notch and home indicator.
       }
       await writeFile(to, data);
       bytes += Buffer.byteLength(data);
@@ -77,8 +91,11 @@ export async function buildMobile(root) {
     await build({ entryPoints: [runtime], bundle: true, format: 'iife', target: ['chrome100', 'safari15'],
       define: { __MOBILE_API_ORIGIN__: JSON.stringify(apiOrigin) }, outfile: path.join(output, 'mobile/runtime.js') });
     await cp(path.join(source, 'mobile/mobile.css'), path.join(output, 'mobile/mobile.css'));
-    files += 2;
-    bytes += (await stat(path.join(output, 'mobile/runtime.js'))).size + (await stat(path.join(output, 'mobile/mobile.css'))).size;
+    await cp(path.join(source, 'mobile/ios.css'), path.join(output, 'mobile/ios.css'));
+    files += 3;
+    bytes += (await stat(path.join(output, 'mobile/runtime.js'))).size +
+      (await stat(path.join(output, 'mobile/mobile.css'))).size +
+      (await stat(path.join(output, 'mobile/ios.css'))).size;
   }
   return { files, bytes, output };
 }

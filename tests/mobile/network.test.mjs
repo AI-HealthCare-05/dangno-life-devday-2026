@@ -9,7 +9,7 @@ test('API requests use the configured HTTPS server with refresh cookies', async 
   const expected = new Response('{}');
   const fetch = createApiFetch(async (...args) => { call = args; return expected; }, 'https://localhost');
   assert.equal(await fetch('/api/v1/auth/token/refresh', { method: 'POST', credentials: 'same-origin' }), expected);
-  assert.equal(call[0], 'https://dang-no.life/api/v1/auth/token/refresh');
+  assert.equal(call[0], 'https://www.dang-no.life/api/v1/auth/token/refresh');
   assert.equal(call[1].credentials, 'include');
   assert.equal(call[1].method, 'POST');
 });
@@ -19,7 +19,7 @@ test('multipart body, authorization and abort signals are preserved', async () =
   const signal = new AbortController().signal;
   const headers = { Authorization: 'Bearer test-only' };
   const iosFetch = createApiFetch(async (url, options) => {
-    assert.equal(url, 'https://dang-no.life/api/v1/photo?confirmed=true');
+    assert.equal(url, 'https://www.dang-no.life/api/v1/photo?confirmed=true');
     assert.equal(options.body, body); assert.equal(options.signal, signal);
     assert.equal(options.headers, headers);
   }, 'capacitor://localhost');
@@ -40,7 +40,7 @@ test('assets and unrelated hosts pass through without added cookies or retries',
 test('Request objects preserve method and body on rewriting', async () => {
   const input = new Request('https://localhost/api/v1/login', { method: 'POST', body: 'payload', headers: { 'X-Test': 'yes' } });
   const fetch = createApiFetch(async (request, options) => {
-    assert.equal(request.url, 'https://dang-no.life/api/v1/login');
+    assert.equal(request.url, 'https://www.dang-no.life/api/v1/login');
     assert.equal(request.method, 'POST'); assert.equal(await request.text(), 'payload');
     assert.equal(request.headers.get('X-Test'), 'yes'); assert.equal(options.credentials, 'include');
   }, 'https://localhost');

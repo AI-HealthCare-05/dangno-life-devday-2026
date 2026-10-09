@@ -9,7 +9,7 @@ export function validateApiOrigin(value) {
   return url.origin;
 }
 export const API_ORIGIN = validateApiOrigin(
-  typeof __MOBILE_API_ORIGIN__ === 'undefined' ? 'https://dang-no.life' : __MOBILE_API_ORIGIN__
+  typeof __MOBILE_API_ORIGIN__ === 'undefined' ? 'https://www.dang-no.life' : __MOBILE_API_ORIGIN__
 );
 
 // Rewrite only this app's API paths. Never forward credentials from another host.

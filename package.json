@@ -12,6 +12,8 @@
     "test:mobile": "node --test tests/mobile/*.test.mjs",
     "sync:android": "node scripts/mobile/build.mjs && cap sync android",
     "sync:ios": "node scripts/mobile/build.mjs && cap sync ios",
+    "dev:ios:web": "node scripts/mobile/live-reload.mjs",
+    "dev:ios:connect": "node scripts/mobile/connect-ios-live.mjs",
     "open:android": "cap open android",
     "open:ios": "cap open ios",
     "test:mobile:smoke": "node scripts/mobile/smoke.mjs",

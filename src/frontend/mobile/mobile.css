@@ -1,7 +1,11 @@
 
-html.gandang-native { scroll-padding-top: env(safe-area-inset-top); }
+html.gandang-native {
+  --native-safe-top: env(safe-area-inset-top);
+  scroll-padding-top: var(--native-safe-top);
+}
+html.gandang-native.gandang-ios { --native-safe-top: max(59px, env(safe-area-inset-top)); }
 .gandang-native body {
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--native-safe-top);
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
@@ -10,5 +14,94 @@ html.gandang-native { scroll-padding-top: env(safe-area-inset-top); }
 .gandang-native dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
 @media (max-width: 600px) {
   .gandang-native input, .gandang-native select, .gandang-native textarea { font-size: 16px; }
+  html.gandang-native body:not(.intro-mode) .topbar {
+    top: var(--native-safe-top) !important;
+    grid-template-columns: minmax(0, 132px) minmax(0, 1fr) !important;
+    gap: 6px 8px !important;
+    padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)) !important;
+  }
+  html.gandang-native body .topbar .header-brand-stack {
+    width: 132px;
+    max-width: 100%;
+    gap: 5px;
+  }
+  html.gandang-native body .topbar .header-brand-stack .brand-logo {
+    width: 132px;
+    max-height: 51px;
+  }
+  html.gandang-native body .topbar .header-forest-entry {
+    width: 132px;
+    max-width: 100%;
+    height: 66px;
+    padding: 4px 8px;
+  }
+  html.gandang-native body .topbar #guest-flow-panel ol {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  html.gandang-native body .topbar #guest-flow-panel :is(#sidebar-login, #sidebar-signup) {
+    min-height: 44px;
+    padding: 7px 9px;
+    font-size: 14px;
+  }
+  html.gandang-native body .topbar .header-utilities {
+    min-width: 0;
+    width: 100%;
+  }
+  html.gandang-native body .topbar .font-toggle-button {
+    min-height: 44px;
+    padding: 7px 9px;
+  }
+  .gandang-native .signup-house-heading {
+    width: min(100%, 360px);
+    padding-inline: 12px;
+  }
+  .gandang-native .signup-house-heading > div { min-width: 0; max-width: 100%; }
+  .gandang-native .signup-house-heading h2 {
+    max-width: 100%;
+    font-size: clamp(21px, 6vw, 27px);
+    line-height: 1.22;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .form-row {
+    min-width: 0;
+    padding-inline: 12px;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child {
+    min-width: 0;
+    margin: 6px 0 10px;
+    padding: 14px 16px;
+    border: 2px solid #c9a574;
+    border-radius: 12px;
+    background: #fff7df;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child h3 {
+    margin: 0 0 8px;
+    font-size: 21px;
+    line-height: 1.3;
+  }
+  .gandang-native .signup-house-board #account-recovery-form > .full:first-child p {
+    margin: 6px 0;
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .gandang-native .signup-house-board :is(#signup-form, #account-recovery-form) input[type="date"] {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 #mobile-notice { position: fixed; z-index: 100000; bottom: calc(24px + env(safe-area-inset-bottom)); left: 16px; right: 16px; padding: 14px; background: #18251f; color: white; border-radius: 12px; font-size: 15px; }
+
+/* Fixed intro navigation does not participate in the body's safe-area padding. */
+@media (max-width: 760px) {
+  .gandang-native body.intro-mode:has(.retro-intro) .topbar {
+    top: calc(var(--native-safe-top) + 10px) !important;
+    left: max(14px, env(safe-area-inset-left));
+    width: calc(100% - max(14px, env(safe-area-inset-left)) - max(14px, env(safe-area-inset-right)));
+  }
+}

@@ -2004,13 +2004,17 @@ function getLocalEligibilityResult() {
 }
 
 function dlRows(rows) {
-  return rows.map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value ?? "-")}</dd></div>`).join("");
+  return rows.map(([term, value]) => {
+    const displayValue = String(value ?? "-");
+    const wide = term.length >= 10 || displayValue.length >= 13;
+    return `<div${wide ? ' class="review-row-wide"' : ""}><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(displayValue)}</dd></div>`;
+  }).join("");
 }
 
 function renderHealthReview() {
   const isRegularExercise = selectedRadioValue("regular-exercise") === "true";
   const detailHealth = detailHealthPayload();
-  $("#health-review-title").textContent = "입력한 내용을 확인해 주세요";
+  $("#health-review-title").innerHTML = "<span>입력한 내용을</span> <span>확인해 주세요</span>";
   const healthReviewLead = $("#health-review-panel .lead");
   if (healthReviewLead) healthReviewLead.hidden = true;
   $("#submit-analysis").textContent = healthSubmitLabel();
@@ -6360,14 +6364,6 @@ $$('.workspace-tab').forEach((button, index, tabs) => button.addEventListener("k
   nextTab.focus();
 }));
 
-$("#brand-home").addEventListener("click", (event) => {
-  event.preventDefault();
-  if (state.step === 8) {
-    showWorkspace("home");
-    return;
-  }
-  showStep(1);
-});
 $$('.body-map-point').forEach((button) => button.addEventListener("click", () => updateLifestyleMap(button.dataset.mapTopic)));
 $("#open-lifestyle-map")?.addEventListener("click", () => {
   const panel = $("#lifestyle-map-detail");
