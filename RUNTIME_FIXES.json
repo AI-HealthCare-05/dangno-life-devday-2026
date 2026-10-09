@@ -1,15 +1,15 @@
 {
-  "patch_sha256": "19895788ac053e7ef933d6f0d408f2d1b8ffa59db08c972d257d01f69b0dd067",
+  "patch_sha256": "484f7ec26185b9b3f5ae6c2746bb426a14de549802e0d577f1edbcf3cdc424ff",
   "files": [
     {
       "path": "src/frontend/app.js",
       "before": "0fce7c16af6c55bc54de0351d517cc04120dc896755006029b8d649796331f84",
-      "after": "71ee2ddf28f5c8462353e45f9e1c34e39fa92dbdd77b18ea009a7ae40c0e3ac6"
+      "after": "84c51bb3e488b92ac1e2135f9a93dd2ec95e5212278d1e98d5a34bdd55ded048"
     },
     {
       "path": "src/frontend/index.html",
       "before": "2a62179d639c18efe69f15974ea7b28b40d369fd5811158cff441870b09cad34",
-      "after": "9bdb85d642e468857d3ee896575543172c499b5101a7b6cd671de07d8e1e8f40"
+      "after": "59f55c58fafd73048a77be8fee16e2cf3dd59320e2b7f5f7ac9461dfb12ba576"
     },
     {
       "path": "app/apis/v1/auth_routers.py",
@@ -325,6 +325,21 @@
       "path": "docs/WEB_XAI_MOBILE.md",
       "before": null,
       "after": "671f15ab6c520777b5e611a9a53d01960a246259cc2d9c62ec8dee2ed16a826c"
+    },
+    {
+      "path": "src/frontend/auth-session.js",
+      "before": null,
+      "after": "59c0691a4baf4f6d05bcba0b837bd64fbf7b5a5203867b4f6bb5fa4d1f94ff69"
+    },
+    {
+      "path": "tests/frontend/web_mobile_session.test.cjs",
+      "before": null,
+      "after": "afad32ec2ca06f197d7b0913889466ba8089f378511432fc360c2272a2724caf"
+    },
+    {
+      "path": "docs/WEB_MOBILE_ACCOUNT_SYNC.md",
+      "before": null,
+      "after": "15e7d8903bb4ed69a67a032712fa863c0154b48d5e7cbc23450ca8b5f0cbef69"
     },
     {
       "path": "src/frontend/challenge-v2.js",
