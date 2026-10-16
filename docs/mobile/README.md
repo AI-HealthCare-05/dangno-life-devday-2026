@@ -22,9 +22,8 @@
 ```sh
 git clone https://github.com/AI-HealthCare-05/dangno-life-devday-2026.git
 cd dangno-life-devday-2026
-git remote add app-pr https://github.com/Autobot1236/dangno-life-devday-2026.git
-git fetch app-pr codex/app-deployment-update-20261016
-git switch -c app-deployment-update --track app-pr/codex/app-deployment-update-20261016
+git fetch origin codex/app-deployment-update-20261016
+git switch -c app-deployment-update --track origin/codex/app-deployment-update-20261016
 python restore_workspace.py
 npm install --global pnpm@11.19.0
 pnpm install --frozen-lockfile
