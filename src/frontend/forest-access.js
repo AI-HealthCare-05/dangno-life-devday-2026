@@ -25,7 +25,10 @@
     message("로그인 상태를 확인하고 있어요");
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
     try {
-      await window.GandangAuthSession.resolve({ signal: controller.signal });
+      const { profile } = await window.GandangAuthSession.resolve({ signal: controller.signal });
+      // Share only the verified display name in memory before game boot. The
+      // demo save intentionally contains a guest alias, not the account name.
+      window.ForestAccountDisplayName = typeof profile.name === "string" && profile.name.trim() ? profile.name.trim() : "숲지기";
       clearTimeout(timer);
       if (!loaded) {
         message("숲을 준비하고 있어요");

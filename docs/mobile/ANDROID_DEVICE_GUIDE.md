@@ -46,6 +46,10 @@ API 주소는 **빌드 시 번들에 고정**된다. 환경변수만 바꾸거�
 - BlueStacks에 두 패키지가 함께 설치된 것을 확인했고, 바탕화면의 기존 `간당간당` 바로가기는 그대로 유지하며 `간당간당(배포)` 바로가기를 추가했다. 새 바로가기로 실행한 배포 앱에서 실제 HTTPS 주소와 `/health` HTTP 200을 확인했다. 로컬 앱의 원본 APK 체크섬과 API 주소는 유지됐지만, 같은 점검에서 Windows가 SciPy `_zeros`를 차단해 로컬 서버 시작이 실패했다. 해당 서버의 추가 복구는 별도이며 보안 정책은 변경하지 않았다.
 - 이후 사용자가 Smart App Control을 끈 뒤 상태 값 0, SciPy 최적화 함수 실행 및 로컬 서버 재시작을 확인했다. 로컬 `/health`는 정상이고 `/api/v1/ready`에서 DB·오늘이/내일이 모델 파일·사진 인증 모델 준비 상태가 정상이다. BlueStacks 로컬 앱에서 ADB reverse를 통해 `/health` HTTP 200을 확인했다. 두 앱과 바로가기는 그대로 유지한다.
 
+### 음식 사진 체크 화면 업데이트 (2026-10-09)
+
+`outputs/mobile/vlm-deployment-20261009/gandang-deployment-food-vlm.apk`를 BlueStacks 배포 패키지에 데이터 유지 설치했다. 실제 WebView에서 김치·양념·흰 음식/식기 체크 입력과 HTTPS API 주소, `/health` 200을 확인했다. 음식 사진 관련 웹 파일 7개만 갱신했으며 전체 Gradle 재빌드는 하지 않았다. 체크섬·복원본·서버 반영용 코드 묶음은 같은 폴더에 있다. 서버 CV ready는 여전히 false이고 새 체크 입력을 받는 서버 코드도 아직 반영되지 않았으므로, 실제 사진 인증의 운영 적용은 완료되지 않았다. 상세 결과는 [CV·VLM 적용 문서](../model/FOOD_PHOTO_VLM_SUPPLEMENT_20261009.md)를 따른다.
+
 ## 3. 휴대폰 연결
 
 개발자 옵션에서 USB 디버깅을 켜고 USB 연결 및 PC 허용을 선택한다. 다음 명령의 `adb`는 Android SDK의 `platform-tools/adb`이며 PATH에 없으면 전체 경로를 사용한다.
@@ -78,6 +82,20 @@ adb -s 기기시리얼 shell am start -n life.dangno.app/.MainActivity
 `reverse`는 로컬 빌드에서만 필요하다. 휴대폰의 `127.0.0.1:8000`을 PC 서버에 연결하며, API는 PC loopback에만 바인딩한다. USB 또는 무선 ADB 연결이 끊기면 로컬 서버 기능도 끊긴다. HTTPS 서버 빌드는 해당 서버에 인터넷/Wi-Fi로 직접 연결한다.
 
 APK만 받았다면 빌드 단계는 생략할 수 있다. 포함된 API 주소·SHA-256을 전달자에게 확인한다. **현재 로컬 APK는 PC 서버와 reverse 없이 완전히 동작하지 않는다.**
+
+### 음식 사진 변경을 무선 기기에 적용
+
+2026-10-09 음식 사진 체크 화면용 로컬 APK는 `outputs/mobile/vlm-wireless-20261009/gandang-local-phone-vlm.apk`다. 휴대폰의 기존 네이티브 APK에서 음식 사진 관련 웹 파일 7개만 갱신했다. 같은 폴더의 `MANIFEST.json`에서 체크섬을 확인하고, `phone-local-before.apk`를 기존 설치본의 복원용으로 보관한다. 계정·건강정보·DB는 APK에 포함하지 않는다.
+
+아래 `무선기기시리얼`에는 `adb devices -l`에 나타난 실제 휴대폰의 mDNS 연결 이름을 넣는다. 일반 사용자 프로필 0의 로컬 앱을 데이터 유지 방식으로 설치한다.
+
+```sh
+adb -s 무선기기시리얼 install --user 0 --no-streaming -r outputs/mobile/vlm-wireless-20261009/gandang-local-phone-vlm.apk
+adb -s 무선기기시리얼 reverse tcp:8000 tcp:8000
+adb -s 무선기기시리얼 shell am start --user 0 -n life.dangno.app/.MainActivity
+```
+
+무선 ADB가 끊기면 다시 연결한 뒤 `reverse`를 재설정한다. 사진 검토를 위해 PC 로컬 서버가 실행돼 있어야 한다.
 
 별도 배포 앱을 직접 실행할 때는 `adb -s 기기시리얼 shell am start -n life.dangno.app.deployment/life.dangno.app.MainActivity`를 사용한다. Java 클래스의 네임스페이스는 로컬 앱과 같지만 설치 패키지는 다르다.
 

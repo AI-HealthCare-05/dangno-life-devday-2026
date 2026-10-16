@@ -29,6 +29,10 @@ async def preload_embedded_demo_models() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Own application startup resources and collect them during shutdown."""
+    if config.DEMO_MODE:
+        from app.services.health_diagnosis import backfill_legacy_diagnoses
+
+        await backfill_legacy_diagnoses()
     if not config.DEMO_MODE:
         await redis_client.ping()
     if config.DEMO_MODE and config.DEMO_ARTIFACT_INFERENCE_ENABLED:

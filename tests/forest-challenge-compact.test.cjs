@@ -218,21 +218,23 @@ test('direct-record quests save an honest self-attestation and optional detail w
   assert.equal(Number.isNaN(Date.parse(payload.performed_at)), false);
 });
 
-test('three completed quests can be repeated without increasing their displayed session count', async () => {
-  const { root, storage } = await widget();
-  for (const id of ['1', '2', '3']) await root.listeners.click({ target: root.querySelector(`[data-certify="${id}"]`) });
-  const repeat = root.querySelector('[data-repeat-quests]');
-  assert.ok(repeat);
-  assert.equal(repeat.textContent.trim(), '오늘의 퀘스트 다시 하기');
-  await root.listeners.click({ target: repeat });
-  assert.equal(root.querySelectorAll('[data-certify]').filter(button => button.textContent.trim() === '인증하기').length, 3);
-  await root.listeners.click({ target: root.querySelector('[data-certify="1"]') });
-  const saved = JSON.parse(storage.get('gandang.challenge-v2.mvp-completions.v1'));
-  assert.ok(saved['1:cycle-1:1']);
-  assert.equal(root.querySelector('[data-certify="1"]').textContent.trim(), '인증완료');
+test('server-completed quests cannot be repeated for a second daily reward', async () => {
+  const plan = today({ completed: 3 });
+  for (const item of plan.items) item.status = 'completed';
+  const { root, requests, storage } = await widget({ plan });
+  const before = requests.length;
+  assert.equal(root.querySelector('[data-repeat-quests]'), null);
+  assert.match(visibleText(root), /보상은 하루 한 번 지급됩니다/);
+  for (const id of ['1', '2', '3']) {
+    const button = root.querySelector(`[data-certify="${id}"]`);
+    assert.equal(button.disabled, true);
+    await root.listeners.click({ target: button });
+  }
+  assert.equal(requests.length, before);
+  assert.equal(storage.has('gandang.challenge-v2.daily-cycle.v1'), false);
 });
 
-test('MVP certify immediately completes photo and measurement cards while preserving optional detail locally', async () => {
+test('photo and measurement cards need their evidence and cannot complete from a local note', async () => {
   const photo = assignment(1); photo.goal.proof_type = 'T2'; photo.goal.required_uploads = 1;
   const drink = assignment(2); drink.goal.family_id = 'H02'; drink.goal.goal_unit = 'count';
   const { root, requests, storage } = await widget({ plan: today({ items: [photo, drink, assignment(3)] }) });
@@ -243,10 +245,10 @@ test('MVP certify immediately completes photo and measurement cards while preser
   laterNote.value = '채소가 있는 점심을 먹었어요.';
   root.listeners.input({ target: laterNote });
   assert.equal(requests.length, before);
-  assert.equal(root.querySelector('[data-certify="1"]').textContent.trim(), '인증완료');
-  assert.equal(root.querySelector('[data-certify="2"]').textContent.trim(), '인증완료');
-  const saved = JSON.parse(storage.get('gandang.challenge-v2.mvp-completions.v1'));
-  assert.equal(saved['1:cycle-0:1'].note, '채소가 있는 점심을 먹었어요.');
+  assert.equal(root.querySelector('[data-certify="1"]').textContent.trim(), '인증하기');
+  assert.equal(root.querySelector('[data-certify="2"]').textContent.trim(), '인증하기');
+  assert.equal(storage.has('gandang.challenge-v2.mvp-completions.v1'), false);
+  assert.match(visibleText(root), /필요한 기록을 입력한 뒤 인증해 주세요/);
 });
 
 test('confirmed personal water goal shows 200mL cups, persists taps, then certifies once', async () => {
@@ -261,7 +263,14 @@ test('confirmed personal water goal shows 200mL cups, persists taps, then certif
   water.goal.water_goal_status = 'confirmed';
   water.goal.water_cup_ml = 200;
   water.goal.water_goal_cups = 4;
-  const { root, requests, storage, dispatchedEvents } = await widget({ plan: today({ items: [assignment(1), assignment(2), water] }) });
+  const plan = today({ items: [assignment(1), assignment(2), water] });
+  const { root, requests, storage, dispatchedEvents } = await widget({ plan, requestHook: async url => {
+    if (!url.includes('/assignments/3/sessions/1')) return;
+    return { ok: true, json: async () => ({ data: { ...plan,
+      items: plan.items.map(item => item.id === 3 ? { ...item, status: 'completed', completed_sessions: 1 } : item),
+      rewards: [{ source_key: 'v2-slot:1:3', carrot_amount: 10 }],
+    } }) };
+  } });
   assert.match(visibleText(root), /200mL 컵 4개 · 0\/4/);
   assert.equal(root.querySelector('[data-certify="3"]').disabled, true);
   assert.equal(root.querySelectorAll('.v2-water-icon').length, 4);
@@ -331,8 +340,8 @@ test('compact quests expose one diet, activity and drink label with three distin
   const { root } = await widget({ plan: today({ items: [water, diet, activity] }) });
   assert.deepEqual(root.querySelectorAll('.v2-domain-badge').map(node => node.textContent.trim()), ['식단', '운동', '음료']);
   assert.match(source, /당근 밭에 물을 주었습니다/);
-  assert.match(source, /당근 밭에 거름을 주었습니다/);
-  assert.match(source, /당근 밭에 잡초를 제거했습니다/);
+  assert.match(source, /당근밭에 비료를 주었습니다/);
+  assert.match(source, /당근밭의 잡초를 뽑았습니다/);
   for (const name of ['challenge-water-team-v171.webp', 'challenge-compost-team-v171.webp', 'challenge-weeding-team-v171.webp']) {
     assert.ok(fs.existsSync(path.join(__dirname, `../src/frontend/assets/${name}`)));
   }

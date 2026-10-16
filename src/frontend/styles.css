@@ -1249,6 +1249,9 @@ body.modal-open{overflow:hidden}
 .screen[data-step="8"]:has(#workspace-panel-challenge.active) .daily-record-panel{
   box-shadow:0 7px 0 rgba(117,68,31,.18);
 }
+#barrier-form[aria-disabled="true"]{opacity:.55}
+#barrier-form :disabled{cursor:not-allowed}
+#barrier-status{margin:16px 0 0;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
 .barrier-inline-form{
   display:grid;
   grid-template-columns:minmax(260px,1.2fr) minmax(220px,1fr) minmax(180px,.55fr);
@@ -5690,3 +5693,10 @@ dialog .message.record-notice {
 .v3-photo-context p{margin:0 0 4px;font-size:13px}
 .v3-photo-context label{font-size:14px}
 .v3-photo-context select{width:100%;min-height:44px;padding:8px;border:1px solid var(--line, #dfe7df);border-radius:8px;background:#fff;color:#24352a;font:inherit}
+
+/* Explain the respondent's own wellbeing ratings next to their inputs. */
+#health-form .wellbeing-input-help{
+  grid-column:1/-1;min-width:0;max-width:100%;margin:0 0 12px;
+  color:#573b22;font-size:.9em;line-height:1.6;text-align:left;
+  word-break:keep-all;overflow-wrap:anywhere;
+}

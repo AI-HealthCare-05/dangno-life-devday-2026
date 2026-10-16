@@ -121,7 +121,8 @@ async def upsert_challenge_log(
     request: ChallengeLogUpsertRequest,
     user: Annotated[User, Depends(get_request_user)],
 ) -> dict[str, object]:
-    item = await ChallengeService().upsert_log(user, user_challenge_id, log_date, request)
+    service = ChallengeService()
+    item = await service.upsert_log(user, user_challenge_id, log_date, request)
     return envelope(
         {
             "log_id": item.id,
@@ -132,6 +133,7 @@ async def upsert_challenge_log(
             "source": item.source,
             "note": item.note,
             "updated_at": item.updated_at,
+            "wallet_reward": service.wallet_reward,
         }
     )
 

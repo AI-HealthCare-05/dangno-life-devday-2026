@@ -180,18 +180,23 @@ test('Phaser loads shared assets, displays the shared layer only in the garden a
     };
     created.push(actor); return actor;
   } };
-  scene.createGardenLayer();
+  scene.background = { setTexture() { return this; }, setDisplaySize() { return this; } };
+  scene.updateWorldAtmosphere = () => {};
+  scene.setScene('world');
+  scene.setScene('home');
+  assert.equal(layerCalls.length, 0, 'outer forest and home must not allocate the garden overlay');
+  scene.setScene('garden');
   assert.deepEqual(layerCalls, [[carrotImage, 4]]);
   assert.equal(created.length, 1);
   assert.equal(textures.get(scene.gardenLayer.texture), layerCanvas, 'Phaser texture is the shared Canvas output');
   assert.deepEqual([scene.gardenLayer.x, scene.gardenLayer.y, scene.gardenLayer.width, scene.gardenLayer.height, scene.gardenLayer.depth], [384, 256, 768, 512, 1]);
-  assert.equal(scene.gardenLayer.visible, false);
-  scene.background = { setTexture() { return this; }, setDisplaySize() { return this; } };
-  scene.updateWorldAtmosphere = () => {};
+  assert.equal(scene.gardenLayer.visible, true);
   for (const sceneName of ['garden', 'home', 'world', 'garden']) {
     scene.setScene(sceneName);
     assert.equal(scene.gardenLayer.visible, sceneName === 'garden');
   }
+  assert.equal(layerCalls.length, 1, 'garden re-entry must reuse the same dense overlay');
+  assert.equal(created.length, 1);
   for (const y of [370, 390, 410, 430, 450]) assert.equal(scene.isBlocked(384, y), false, `entrance path at y=${y} stays open`);
   const fallback = vm.createContext({ currentScene: 'garden', WORLD_WIDTH: 768, WORLD_HEIGHT: 512 });
   vm.runInContext(section(gameSource, '  function blocked(', '  function placementCellValid('), fallback);
@@ -222,7 +227,7 @@ test('thirty display carrots neither cap earned rewards nor allow duplicate harv
   const messages = [], events = [], rendered = [];
   const panel = { classList: { add() {}, remove() {} } };
   const env = vm.createContext({
-    state, $: () => panel, setStatus: message => messages.push(message), playSfx() {},
+    state, adapter: { mode: 'demo' }, $: () => panel, setStatus: message => messages.push(message), playSfx() {},
     renderAll: () => rendered.push(state.carrots), persist: async message => messages.push(message),
     window: { dispatchEvent: event => events.push(event), setTimeout: callback => callback() },
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },

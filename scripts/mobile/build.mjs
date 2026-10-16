@@ -22,7 +22,7 @@ export function rewriteForMobile(text) {
     .replace(/(["'])serviceWorker\1\s+in\s+navigator/g, 'false /* assets are bundled in the native app */');
 }
 
-export async function buildMobile(root) {
+export async function buildMobile(root, { excludePrivateArt = false } = {}) {
   const apiOrigin = validateApiOrigin(process.env.MOBILE_API_ORIGIN || 'https://www.dang-no.life');
   const repo = path.resolve(root);
   const source = path.join(repo, 'src/frontend');
@@ -67,6 +67,7 @@ export async function buildMobile(root) {
   }
   async function copyDirectory(from, to) {
     for (const item of await readdir(from, { withFileTypes: true })) {
+      if (excludePrivateArt && item.isDirectory() && item.name === 'licensed-kittens') continue;
       if (item.isSymbolicLink()) throw new Error(`Symlink cannot be packaged: ${item.name}`);
       if (item.name.startsWith('.')) continue;
       const src = path.join(from, item.name), dst = path.join(to, item.name);

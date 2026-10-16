@@ -13,7 +13,7 @@
   const WORLD_WIDTH = 768;
   const WORLD_HEIGHT = 512;
   const RENDER_SCALE = 2;
-  const TODAY = new Date().toISOString().slice(0, 10);
+  const TODAY = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const $ = (selector) => document.querySelector(selector);
   const WISDOM_SPRING = Object.freeze({ x: 108, y: 424 });
   // 원본(gandangi-wisdom-guide.png)은 포인터를 왼쪽으로 들고 있어서, 말풍선 왼쪽에 놓으면
@@ -979,8 +979,51 @@
     }
   }
 
-  const adapter = new DemoForestAdapter();
+  class AccountForestAdapter extends DemoForestAdapter {
+    constructor() { super(); this.mode = "api"; this.storageKey = null; }
+    async load() {
+      const wallet = await window.ForestWallet.connect();
+      this.storageKey = `${STORAGE_KEY}:account:${wallet.user_id}`;
+      let loaded;
+      try {
+        // Preserve existing outfits/map on first account entry, but never import
+        // the editable guest currency or unverified completion claims.
+        loaded = normalizeState(JSON.parse(localStorage.getItem(this.storageKey) || localStorage.getItem(STORAGE_KEY)));
+      } catch { loaded = defaultState(); }
+      this.guestName = loaded.avatar.name;
+      loaded.carrots = wallet.carrot_balance;
+      loaded.challengeCarrotClaims = {};
+      loaded.gardenWatered = Boolean(wallet.daily_actions?.water);
+      loaded.fishCaught = Boolean(wallet.daily_actions?.fish);
+      await this.save(loaded);
+      return loaded;
+    }
+    async save(value) {
+      if (!this.storageKey) return value;
+      const saved = { ...value, avatar: { ...value.avatar, name: this.guestName || value.avatar.name } };
+      delete saved.carrots;
+      delete saved.challengeCarrotClaims;
+      localStorage.setItem(this.storageKey, JSON.stringify(saved));
+      return value;
+    }
+  }
+
+  const adapter = new AccountForestAdapter();
   let state = defaultState();
+  state.carrots = 0;
+  window.addEventListener("forest-wallet-updated", (event) => {
+    const wallet = event.detail;
+    state.carrots = wallet.carrot_balance;
+    if (wallet.daily_actions) {
+      state.gardenWatered = Boolean(wallet.daily_actions.water);
+      state.fishCaught = Boolean(wallet.daily_actions.fish);
+    }
+    $("#carrot-balance").textContent = String(state.carrots);
+    $("#preview-carrot-balance").textContent = String(state.carrots);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && window.ForestWallet.userId != null) window.ForestWallet.refresh().catch(error => setStatus(error.message));
+  });
   let placementCode = null;
   let placementDraft = null;
   let running = false;
@@ -1962,7 +2005,8 @@
     const nickname = $("#avatar-nameplate");
     if (!nickname) return;
     const anchor = window.ForestCamera?.avatarAnchor() || { ...fallbackWorldToScreen(state.avatar.x, state.avatar.y - 74), name: state.avatar.name };
-    nickname.textContent = anchor.name || state.avatar.name;
+    // Camera state supplies position; account-synchronized state supplies name.
+    nickname.textContent = state.avatar.name || anchor.name;
     nickname.hidden = !nickname.textContent || anchor.x < 0 || anchor.x > 1 || anchor.y < 0 || anchor.y > 1;
     nickname.style.left = `${anchor.x * 100}%`;
     nickname.style.top = `${anchor.y * 100}%`;
@@ -2420,6 +2464,12 @@
       $("#heading-personal-progress").textContent = label;
       return;
     }
+    if (adapter.mode === "api") {
+      $("#quest-list").innerHTML = '<p>챌린지 연결을 확인하고 있어요. 서비스의 챌린지 기록 화면에서도 실천을 기록할 수 있습니다.</p>';
+      $("#personal-progress").textContent = "—";
+      $("#heading-personal-progress").textContent = "—";
+      return;
+    }
     syncActiveQuests();
     const ready = Boolean(state.challengePlan?.onboarded);
     $("#quests-panel").classList.remove("has-compact-quests");
@@ -2452,6 +2502,12 @@
       rewardButton.disabled = !ready || opened;
       rewardButton.textContent = opened ? "오늘의 일일 보상 받음" : "일일 보상 받기";
       $("#group-reward-help").textContent = opened ? "오늘의 보상 상자를 열었어요." : ready ? "지금 바로 보상 상자를 열어 보세요." : "오늘의 퀘스트 3개를 완료하면 바로 열 수 있어요.";
+      return;
+    }
+    if (adapter.mode === "api") {
+      rewardButton.disabled = true;
+      rewardButton.textContent = "서버 챌린지 보상 확인";
+      $("#group-reward-help").textContent = "전체 완료 보상은 계정 지갑에 한 번 지급됩니다.";
       return;
     }
     rewardButton.disabled = completed < 15 || state.rewardClaimed;
@@ -2490,11 +2546,22 @@
     panel.hidden = currentScene !== "garden";
     $("#pending-harvest-carrots").textContent = String(pending);
     const button = $("#harvest-challenge-carrots");
+    if (adapter.mode === "api") {
+      button.disabled = true;
+      button.textContent = "챌린지 보상은 계정 지갑에 바로 지급";
+      return;
+    }
     button.disabled = pending === 0;
     button.textContent = pending ? `Q · 당근 ${pending}개 수확` : "수확할 당근을 키우는 중";
   }
 
   async function harvestChallengeCarrots() {
+    if (adapter.mode === "api") {
+      try { await window.ForestWallet.refresh(); }
+      catch (error) { setStatus(error.message); return; }
+      setStatus("챌린지 당근은 완료 시 계정 지갑에 바로 지급됩니다.");
+      return;
+    }
     const pending = pendingChallengeCarrots();
     if (!pending) { setStatus("완료한 챌린지 보상이 생기면 이 밭에서 수확할 수 있어요."); return; }
     Object.values(state.challengeCarrotClaims).forEach((claim) => { if (!claim.harvested) claim.harvested = true; });
@@ -3253,7 +3320,7 @@
   }
 
   $("#quest-list").addEventListener("change", async (event) => {
-    if (window.ForestChallengeV2?.enabled) return;
+    if (adapter.mode === "api" || window.ForestChallengeV2?.enabled) return;
     const checkbox = event.target.closest("[data-quest]");
     if (!checkbox) return;
     const wasChecked = Boolean(state.quests[checkbox.dataset.quest]);
@@ -3596,6 +3663,7 @@
       await persist("일일 보상 상자를 열었습니다!");
       return;
     }
+    if (adapter.mode === "api") { setStatus("서버 챌린지 완료 후 지급되는 일일 보상을 확인해 주세요."); return; }
     if (groupCompleted() < 15 || state.rewardClaimed) return;
     const reward = deterministicReward();
     state.rewardClaimed = true;
@@ -3824,7 +3892,10 @@
     const pet = state.avatar.cosmetics?.pet;
     if (!pet || pet === "none") { setStatus("아바타 꾸미기에서 함께 걸을 펫을 먼저 선택해 주세요."); return; }
     if (state.carrots < 1) { setStatus("펫에게 줄 당근이 없어요. 챌린지를 완료하고 당근밭에서 수확해 보세요."); return; }
-    state.carrots -= 1;
+    if (adapter.mode === "api") {
+      try { await window.ForestWallet.perform("pet_feed"); }
+      catch (error) { setStatus(error.message); return; }
+    } else state.carrots -= 1;
     state.petFedCount = (state.petFedCount || 0) + 1;
     playSfx("pet-feed", { volume: 0.34 });
     window.dispatchEvent(new CustomEvent("forest-pet-fed", { detail: { pet, amount: 1 } }));
@@ -3907,6 +3978,7 @@
   });
   window.addEventListener("forest-rat-appeared", (event) => {
     currentWildEncounter = { eventId: event.detail?.eventId, species: event.detail?.species === "rabbit" ? "rabbit" : "mouse" };
+    if (window.ForestWallet) currentWildEncounter.requestId = window.ForestWallet.newRequestId();
     if (event.detail?.species === "rabbit") {
       const variantLabel = event.detail?.variantLabel ? ` (${event.detail.variantLabel})` : "";
       setStatus(`야생 토끼${variantLabel}가 나타났어요. 숲을 돌아다니는 모습을 찾아보세요!`);
@@ -3930,7 +4002,7 @@
   window.addEventListener("forest-challenge-celebrated", async (event) => {
     const claimId = String(event.detail?.completionKey || `${event.detail?.assignmentId || "quest"}:${Date.now()}`);
     state.challengeCarrotClaims ||= {};
-    if (!state.challengeCarrotClaims[claimId]) state.challengeCarrotClaims[claimId] = { amount: 1, harvested: false };
+    if (!state.challengeCarrotClaims[claimId]) state.challengeCarrotClaims[claimId] = { amount: 10, harvested: adapter.mode === "api" };
     const completed = Math.max(0, Math.min(3, Number(window.ForestChallengeV2?.plan?.completed) || 0));
     const me = state.members.find((member) => member.me);
     if (me) me.completed = completed;
@@ -3941,12 +4013,16 @@
     const eventId = event.detail?.eventId;
     if (eventId == null || caughtWildEncounters.has(eventId)) return;
     const encounter = currentWildEncounter?.eventId === eventId ? currentWildEncounter : null;
+    if (adapter.mode === "api" && !encounter) return;
     const rabbit = (encounter?.species || event.detail?.species) === "rabbit";
     // Resolve the reward here, not from a possibly stale renderer's amount.
     // Claim before saving so a click and a pet cannot reward the same encounter twice.
     caughtWildEncounters.add(eventId);
     if (encounter) currentWildEncounter = null;
-    if (rabbit) state.carrots += 1;
+    if (rabbit && adapter.mode === "api") {
+      try { await window.ForestWallet.perform("rabbit_catch", encounter?.requestId || window.ForestWallet.newRequestId()); }
+      catch (error) { setStatus(error.message); showCatchNotice("토끼를 잡았지만 당근 저장을 확인하지 못했습니다. 연결 후 지갑을 확인해 주세요."); return; }
+    } else if (rabbit) state.carrots += 1;
     playSfx("rat-caught", { volume: 0.42, rate: event.detail?.source === "pet" ? 1.08 : 1 });
     $("#carrot-balance").textContent = String(state.carrots);
     $("#preview-carrot-balance").textContent = String(state.carrots);
@@ -4134,14 +4210,19 @@
       openAvatarStudio();
     }
     if (action === "water" && !state.gardenWatered) {
+      let reward = 10;
+      if (adapter.mode === "api") {
+        try { reward = (await window.ForestWallet.perform("water")).amount; }
+        catch (error) { setStatus(error.message); return; }
+      }
       playSfx("water", { volume: 0.3 });
       window.dispatchEvent(new CustomEvent("forest-avatar-action", { detail: { pose: "harvest", duration: 1400 } }));
       state.gardenWatered = true;
-      state.carrots += 10;
+      if (adapter.mode !== "api") state.carrots += 10;
       $("#carrot-balance").textContent = state.carrots;
       $("#world-dialog").close();
       renderCanvas();
-      await persist("당근 밭에 물을 주고 당근 10개를 받았습니다.");
+      await persist(reward ? "당근 밭에 물을 주고 당근 10개를 받았습니다." : "오늘 물주기 보상은 이미 받았습니다.");
     }
     if (action === "harvest_challenge") {
       $("#world-dialog").close();
@@ -4160,10 +4241,15 @@
       await toggleRide(false);
     }
     if (action === "fish") {
+      let reward = state.fishCaught ? 0 : 5;
+      if (adapter.mode === "api") {
+        try { reward = (await window.ForestWallet.perform("fish")).amount; }
+        catch (error) { setStatus(error.message); return; }
+      }
       playSfx("fishing-cast", { volume: 0.32 });
       window.setTimeout(() => playSfx("fishing-catch", { volume: 0.38 }), 900);
       window.dispatchEvent(new CustomEvent("forest-avatar-action", { detail: { pose: "fishing", duration: 2200 } }));
-      const firstCatch = !state.fishCaught;
+      const firstCatch = reward > 0;
       currentScene = "world";
       state.avatar.x = 305;
       state.avatar.y = 390;
@@ -4172,7 +4258,7 @@
       state.avatar.mounted = false;
       state.fishing = true;
       state.fishCaught = true;
-      if (firstCatch) state.carrots += 5;
+      if (firstCatch && adapter.mode !== "api") state.carrots += 5;
       $("#carrot-balance").textContent = state.carrots;
       $("#world-dialog").close();
       renderCanvas();
@@ -4301,7 +4387,7 @@
     });
   }
 
-  window.CarrotForestAdapters = { DemoForestAdapter, ApiForestAdapter };
+  window.CarrotForestAdapters = { DemoForestAdapter, ApiForestAdapter, AccountForestAdapter };
   adapter.load().then(async (loaded) => {
     // Independent assets load together; still wait for complete furniture before reveal.
     await Promise.all([
@@ -4312,6 +4398,7 @@
     const params = new URLSearchParams(window.location.search);
     const localReset = localDemoOrigin && params.get("resetToday") === "1";
     state = localReset ? resetTodayProgress(loaded) : loaded;
+    state.avatar.name = window.ForestAccountDisplayName || state.avatar.name;
     window.carrotForestHomeRecordPlaying = state.homeRecordPlaying;
     if (localReset) {
       adapter.save(state);

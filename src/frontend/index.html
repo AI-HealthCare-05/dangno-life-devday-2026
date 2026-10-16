@@ -33,7 +33,7 @@
       if (!explicitAppEntry) window.location.replace("/static/intro-retro.html?v=20260910-orbit-card-height-v1");
     })();
   </script>
-  <link rel="stylesheet" href="/static/styles.css?v=20261002-today-card-mascot-top-v1">
+  <link rel="stylesheet" href="/static/styles.css?v=20261016-wellbeing-help-v1">
   <link rel="stylesheet" href="/static/suin/design-tokens.css?v=20260908-1">
   <link rel="stylesheet" href="/static/wood-sign-theme.css?v=20260910-result-signal-grid-v1">
   <link rel="stylesheet" href="/static/lifestyle-map.css?v=20260908-tools-heading-v3">
@@ -43,7 +43,10 @@
   <script src="/static/lifestyle-map.js?v=20260908-body-art-v3" defer></script>
   <script src="/static/health-quiz-preview.js?v=20260913-rag-quiz-preview-v4" defer></script>
   <script src="/static/mobile-download-entry.js?v=20261009-v1" defer></script>
-  <script src="/static/app.js?v=20261009-deployment-integrated-v3" defer></script>
+  <link rel="stylesheet" href="/static/health-input-rewards.css?v=20261016-shared-carrot-v4">
+  <script src="/static/health-input-rewards.js?v=20261016-shared-carrot-v4" defer></script>
+  <link rel="stylesheet" href="/static/health-diagnosis.css?v=20261016-medical-more-v6">
+  <script src="/static/app.js?v=20261016-medical-more-v6" defer></script>
   <link rel="stylesheet" href="/static/navigation.css?v=20261009-pr22-guest-header-v1">
   <link rel="stylesheet" href="/static/health-tools-layout.css?v=20261003-health-input-ocr-v1">
   <link rel="stylesheet" href="/static/dashboard-hero-layout.css?v=20261003-alarm-top-right-v1">
@@ -239,6 +242,11 @@
                 <label><input id="diagnosed-diabetes-yes" name="diabetes-diagnosis" type="radio" value="yes"><span>예</span></label>
                 <label><input id="diagnosed-diabetes-no" name="diabetes-diagnosis" type="radio" value="no"><span>아니요</span></label>
               </div>
+            <div class="form-row" id="diagnosis-record-date-row" hidden>
+                <label for="diagnosis-record-date">다시 기록할 날짜</label>
+                <input type="date" id="diagnosis-record-date">
+                <small>건강정보에 연결된 진단 기록은 원래 건강정보 날짜를 유지합니다.</small>
+              </div>
             </fieldset>
           </div>
           <div class="actions eligibility-actions"><button class="secondary back" type="button">이전</button><button class="primary" type="submit">확인하고 계속하기</button></div>
@@ -351,8 +359,8 @@
               <a class="secondary danger-link" href="tel:119">증상이 심해졌어요 — 119</a>
             </div>
             <div id="diagnosed-guidance-actions" class="emergency-guidance-actions" hidden>
+              <button class="secondary" id="view-diagnosis-history" type="button">진단 기록 내역 보기</button>
               <button class="primary" id="find-diagnosed-medical" type="button">가까운 의료기관 찾기</button>
-              <button class="secondary" id="find-diagnosed-phone" type="button">전화 문의 가능한 기관 보기</button>
             </div>
             <div class="actions eligibility-guidance-primary-actions">
               <button class="secondary" id="eligibility-guidance-secondary" type="button" hidden>건강정보 입력 없이 챌린지 보기</button>
@@ -361,7 +369,7 @@
           </div>
           <p class="branch-safety">간당간당은 당뇨병을 진단하거나 치료·처방하지 않습니다. 의료진의 안내를 우선해 주세요.</p>
           <div class="actions eligibility-guidance-close-actions">
-            <button class="secondary" id="eligibility-edit-answer" type="button">닫기</button>
+            <button class="secondary" id="eligibility-edit-answer" type="button" aria-label="진단 안내 닫기">닫기</button>
           </div>
           <div id="emergency-facility-search" class="medical-facility-list emergency-facility-search" aria-label="가까운 응급의료기관 안내" hidden>
             <div class="medical-facility-status" id="emergency-facility-status" role="status" aria-live="polite" data-state="idle">
@@ -462,12 +470,12 @@
           <section id="health-metrics-panel" class="health-input-panel health-combined-panel" aria-label="건강정보 입력 항목">
             <div class="form-row"><label for="height">키 <small>cm · 필수 · 소수점 첫째 자리까지</small></label><input id="height" type="number" min="120" max="220" step="0.1" inputmode="decimal" value="160" required></div>
             <div class="form-row"><label for="weight">몸무게 <small>kg · 필수</small></label><input id="weight" type="number" min="25" max="250" step="0.1" value="67.5" required></div>
-            <div class="form-row"><label for="waist">허리둘레 <small>cm</small></label><input id="waist" type="number" min="40" max="200" step="0.1" value="91"></div>
+            <div class="form-row"><label for="waist">허리둘레 <small>선택 · cm</small></label><input id="waist" type="number" min="45" max="160" step="0.1" placeholder="모르면 비워두기"></div>
             <div class="actions full"><button class="primary" data-next-health-panel="vitals" type="button">혈압 입력하기</button></div>
           </section>
           <section id="health-vitals-panel" class="health-input-panel health-combined-panel" aria-label="혈압 입력 항목" hidden>
-            <div class="form-row"><label for="systolic">수축기혈압 <small>mmHg</small></label><input id="systolic" type="number" min="50" max="300" value="130"></div>
-            <div class="form-row"><label for="diastolic">이완기혈압 <small>mmHg</small></label><input id="diastolic" type="number" min="30" max="200" value="80"></div>
+            <div class="form-row"><label for="systolic">수축기혈압 <small>선택 · mmHg</small></label><input id="systolic" type="number" min="70" max="250" placeholder="모르면 비워두기"></div>
+            <div class="form-row"><label for="diastolic">이완기혈압 <small>선택 · mmHg</small></label><input id="diastolic" type="number" min="40" max="150" placeholder="모르면 비워두기"></div>
             <div class="actions full"><button class="primary" data-next-health-panel="habits" type="button">생활상태 등 입력하기</button></div>
           </section>
           <section id="lifestyle-input-panel" class="health-input-panel health-combined-panel" aria-label="생활상태 등 입력 항목" hidden>
@@ -489,9 +497,9 @@
                 </div>
               </div>
               <div class="form-row linked-lifestyle-detail" id="alcohol-frequency-row"><label for="alcohol-frequency">최근 1년 음주 빈도 <small>필수</small></label><select id="alcohol-frequency" required><option value="1" selected>최근 1년간 전혀 마시지 않음</option><option value="2">월 1회 미만</option><option value="3">월 1회 정도</option><option value="4">월 2~4회</option><option value="5">주 2~3회</option><option value="6">주 4회 이상</option><option value="8">비해당(평생 음주 경험 없음)</option></select></div>
-              <div class="form-row"><label for="health-satisfaction-score">건강 만족도 <small>0~100점</small></label><input id="health-satisfaction-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기"></div>
-              <div class="form-row"><label for="economic-satisfaction-score">경제 만족도 <small>0~100점</small></label><input id="economic-satisfaction-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기"></div>
-              <div class="form-row"><label for="overall-quality-of-life-score">삶의 질 <small>0~100점</small></label><input id="overall-quality-of-life-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기"></div>
+              <div class="form-row"><label for="health-satisfaction-score">건강 만족도 <small>0~100점</small></label><p id="health-satisfaction-help" class="wellbeing-input-help">본인이 느끼는 건강상태에 대한 주관적 만족도입니다. 동년배와 비교해 기록해 주세요.</p><input id="health-satisfaction-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기" aria-describedby="health-satisfaction-help"></div>
+              <div class="form-row"><label for="economic-satisfaction-score">경제 만족도 <small>0~100점</small></label><p id="economic-satisfaction-help" class="wellbeing-input-help">본인이 느끼는 경제상태에 대한 주관적 만족도입니다. 동년배와 비교해 기록해 주세요.</p><input id="economic-satisfaction-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기" aria-describedby="economic-satisfaction-help"></div>
+              <div class="form-row"><label for="overall-quality-of-life-score">삶의 질 <small>0~100점</small></label><p id="overall-quality-of-life-help" class="wellbeing-input-help">본인이 느끼는 전반적인 삶과 행복감에 대한 주관적 만족도입니다. 동년배와 비교해 기록해 주세요.</p><input id="overall-quality-of-life-score" type="number" min="0" max="100" step="1" placeholder="모르면 비워두기" aria-describedby="overall-quality-of-life-help"></div>
             </div>
             <div class="actions full"><button class="primary" data-next-health-panel="activity" type="button">운동 정보 입력하기</button></div>
           </section>
@@ -1003,7 +1011,7 @@
               <h2 id="challenge-reward-title">오늘 챌린지를 모두 완료했어요</h2>
               <p id="challenge-reward-copy">당근 보상을 받고 숲에서 확인해 보세요.</p>
               <div class="challenge-reward-result" aria-live="polite">
-                <strong id="challenge-reward-amount">+55 당근</strong>
+                <strong id="challenge-reward-amount">+50 당근</strong>
                 <span id="challenge-reward-balance">보상 확인 중</span>
               </div>
               <p class="consent-policy-copy">보상은 생활습관 기록에 대한 응원이며 질병 위험 감소나 치료 효과를 의미하지 않습니다.</p>
@@ -1015,11 +1023,12 @@
           </dialog>
           <section class="dashboard-section" aria-labelledby="barrier-title">
           <div class="section-title-with-mascot"><img src="/static/assets/hyeoldangi-goal-adjust.png" alt="목표 조정을 안내하는 혈당이"><h3 id="barrier-title">실천하지 못한 이유와 목표 조정</h3></div>
-          <form id="barrier-form" class="barrier-inline-form">
+          <form id="barrier-form" class="barrier-inline-form" aria-describedby="barrier-status">
             <div class="form-row"><label for="barrier-challenge">챌린지</label><select id="barrier-challenge"></select></div>
             <div class="form-row"><label for="barrier-reason">이유</label><select id="barrier-reason"><option value="no_time">시간이 없었음</option><option value="forgot">잊어버림</option><option value="physical_discomfort">몸이 불편했음</option><option value="goal_too_hard">목표가 어려웠음</option><option value="environment">환경이 적합하지 않았음</option><option value="other">기타</option></select></div>
             <button class="secondary" type="submit">기록하기</button>
           </form>
+          <p id="barrier-status" role="status" hidden></p>
           <article id="barrier-suggestion" class="barrier-suggestion-card" hidden>
             <span aria-hidden="true">🌿</span>
             <strong>다음 목표 조정안</strong>

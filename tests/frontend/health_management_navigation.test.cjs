@@ -54,7 +54,7 @@ test('missing saved safety answers remain unanswered; old age bands cap at 80',(
 function analysisHarness() {
   const state={token:'account-a',checkupId:4};let mode='ok';const calls=[];
   const context=load(['openAnalysisTab'],{
-    state,analysisInputKey:()=>JSON.stringify([state.token,state.checkupId]),isLocalPreview:()=>false,
+    state,analysisInputKey:()=>JSON.stringify([state.token,state.checkupId]),isLocalPreview:()=>false,healthRecordAnalysisBlocked:()=>false,
     showStep:step=>calls.push(['step',step]),showMessage:message=>calls.push(['message',message]),
     openSavedAnalysisResult:async id=>{calls.push(['saved',id]);if(mode==='fail')throw new Error('unavailable');}
   });

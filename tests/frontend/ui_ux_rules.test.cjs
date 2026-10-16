@@ -88,7 +88,7 @@ test('error navigation follows field DOM instead of outdated field-name lists', 
 test('missing snapshot endpoint is explicit and cannot reuse stale snapshot ID', async () => {
   const state = { checkupId: 3, currentScreeningInputId: 99 };
   const save = load('saveCurrentScreeningInputSnapshot', {
-    state, detailHealthPayload: () => ({}), isLocalPreview: () => false,
+    state, detailHealthPayload: () => ({}), isLocalPreview: () => false, healthRecordDate: () => '2026-10-16',
     api: async () => { throw { status: 404 }; },
   });
   await save();
@@ -98,7 +98,7 @@ test('missing snapshot endpoint is explicit and cannot reuse stale snapshot ID',
 test('snapshot contract mismatch remains non-blocking for reanalysis', async () => {
   const state = { checkupId: 3, currentScreeningInputId: 99 };
   const save = load('saveCurrentScreeningInputSnapshot', {
-    state, detailHealthPayload: () => ({}), isLocalPreview: () => false,
+    state, detailHealthPayload: () => ({}), isLocalPreview: () => false, healthRecordDate: () => '2026-10-16',
     api: async () => { throw { status: 422 }; },
   });
   await save();

@@ -2069,3 +2069,6 @@ dialog .message.record-notice {
 .v3-photo-context p{margin:0 0 4px;font-size:13px}
 .v3-photo-context label{font-size:14px}
 .v3-photo-context select{width:100%;min-height:44px;padding:8px;border:1px solid var(--line, #dfe7df);border-radius:8px;background:#fff;color:#24352a;font:inherit}
+#barrier-form[aria-disabled="true"]{opacity:.55}
+#barrier-form :disabled{cursor:not-allowed}
+#barrier-status{margin:16px 0 0;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}

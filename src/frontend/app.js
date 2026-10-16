@@ -1,4 +1,4 @@
-const state = { step: 1, visitedSteps: new Set([1]), navigationHistory: [1], token: null, userProfile: null, sessionRecovery: null, healthDraftDirty: false, healthConsent: null, healthConsentStatus: "unknown", checkupId: null, healthCheckupResult: null, healthCheckupHistory: [], healthHistoryPage: 1, healthHistoryStartDate: "", healthHistoryEndDate: "", editingHealthCheckupId: null, currentScreeningInputId: null, currentScreeningPredictionId: null, currentScreeningPrediction: null, predictionId: null, prediction: null, modelOutputMetadata: {}, developmentPreviewRiskCategory: null, cycle: null, dailyCompleted: new Set(), waterServingsByChallenge: {}, recordTarget: null, photoAttempt: 0, photoCompletedByFallback: false, returningUser: false, eligibility: null, requiresEligibility: false, returningDestination: null, medicalGuidanceRequired: false, openFollowUpActionIds: [], modelOutOfRange: false, currentHealthOnly: false, capabilities: { challenge: false, currentHealth: false, futurePrediction: false }, walkingLevel: "starter", wearableConnectionId: null, wearableProvider: null, wearablePreviewItems: [], ocrExtractedFields: {}, notificationsEnabled: true, foodAnalysisId: null, foodCategory: null, ocrDraftId: null, challengeRecommendations: [], challengeCatalog: [], challengeRecommendationsPersonalized: false, selectedChallengeIds: new Set(), activeChallengeCategory: null, customChallenge: null, customChallengeSelected: false, educationContents: [], activeEducationId: null, educationQuizIndex: 0, educationQuizCorrectCount: 0, ragChallengeDraft: null, ragChallengeCandidates: [], selectedRagChallengeId: null, ragChallengeStatus: "idle", lastKnownLocation: null, challengeV2Expanded: false, activeWorkspace: "home" };
+const state = { step: 1, visitedSteps: new Set([1]), navigationHistory: [1], token: null, userProfile: null, sessionRecovery: null, healthDraftDirty: false, healthConsent: null, healthConsentStatus: "unknown", checkupId: null, healthCheckupResult: null, healthCheckupHistory: [], diagnosisRecords: [], currentDiagnosisRecord: null, newHealthEligibilityPending: false, healthHistoryPage: 1, healthHistoryStartDate: "", healthHistoryEndDate: "", editingHealthCheckupId: null, currentScreeningInputId: null, currentScreeningPredictionId: null, currentScreeningPrediction: null, predictionId: null, prediction: null, modelOutputMetadata: {}, developmentPreviewRiskCategory: null, cycle: null, dailyCompleted: new Set(), waterServingsByChallenge: {}, recordTarget: null, photoAttempt: 0, photoCompletedByFallback: false, returningUser: false, eligibility: null, requiresEligibility: false, returningDestination: null, medicalGuidanceRequired: false, openFollowUpActionIds: [], modelOutOfRange: false, currentHealthOnly: false, capabilities: { challenge: false, currentHealth: false, futurePrediction: false }, walkingLevel: "starter", wearableConnectionId: null, wearableProvider: null, wearablePreviewItems: [], ocrExtractedFields: {}, notificationsEnabled: true, foodAnalysisId: null, foodCategory: null, ocrDraftId: null, challengeRecommendations: [], challengeCatalog: [], challengeRecommendationsPersonalized: false, selectedChallengeIds: new Set(), activeChallengeCategory: null, customChallenge: null, customChallengeSelected: false, educationContents: [], activeEducationId: null, educationQuizIndex: 0, educationQuizCorrectCount: 0, ragChallengeDraft: null, ragChallengeCandidates: [], selectedRagChallengeId: null, ragChallengeStatus: "idle", lastKnownLocation: null, challengeV2Expanded: false, activeWorkspace: "home" };
 const $ = (selector) => document.querySelector(selector);
 Object.assign(state, { lifestyleReportStatus: "idle", reportPeriods: {}, reportPeriodStatus: {} });
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -410,6 +410,7 @@ function normalizeCurrentSignalRisk(prediction = state.currentScreeningPredictio
 }
 
 function showEligibilityGuidance(reasonCodes) {
+  reasonCodes = reasonCodes.map(code => code === "DIABETES_DIAGNOSIS_RECORDED" ? "DIAGNOSED_DIABETES" : code);
   state.eligibilityReturnFocus = document.activeElement;
   $("#eligibility-guidance").dataset.variant = "";
   const priority = [
@@ -620,7 +621,7 @@ function normalizeRecommendationResult(result = {}, difficulty = "easy") {
 
 function hasCurrentChallengeCycle(cycle = state.cycle) {
   return Boolean(cycle?.user_challenges?.length)
-    && !["completed", "cancelled"].includes(cycle?.status);
+    && !["completed", "cancelled", "terminated"].includes(cycle?.status);
 }
 
 function showChallengeSelectionView() {
@@ -655,9 +656,9 @@ async function openChallengeTab({ selectionCompleted = false } = {}) {
     return;
   }
   showChallengeSelectionView();
+  showStep(7);
   await loadChallenges();
   if (state.token !== token) return;
-  showStep(7);
 }
 
 function recordTypeLabel(type) {
@@ -809,6 +810,15 @@ function syncTopNavigation() {
 }
 
 function showStep(step, { recordHistory = true, instant = false } = {}) {
+  if (state.newHealthEligibilityPending && step >= 4 && step <= 6) {
+    showMessage("새 건강정보는 이용확인부터 완료해 주세요.");
+    return;
+  }
+  if ((step === 4 || step === 5 || step === 6) && (healthRecordAnalysisBlocked()
+      || (state.step === 3 && document.querySelector("input[name='diabetes-diagnosis']:checked")?.value === "yes"))) {
+    showMessage("당뇨병 진단이 기록된 날짜에는 예측·분석을 이용할 수 없습니다.");
+    return;
+  }
   if (step === 1 && state.token) step = 8;
   if (step >= 3 && state.token && state.accountRecovery?.token === state.token) {
     showAccountRecovery(state.accountRecovery, "먼저 계정 설정과 건강정보 동의를 완료해 주세요.");
@@ -819,6 +829,15 @@ function showStep(step, { recordHistory = true, instant = false } = {}) {
   if (targetStep !== 2) document.body.classList.remove("account-mode");
   if (recordHistory && state.navigationHistory.at(-1) !== targetStep) state.navigationHistory.push(targetStep);
   state.step = targetStep;
+  if (typeof window !== "undefined" && window.HealthInputRewards) {
+    if (!state.token) window.HealthInputRewards.setOwner(null);
+    if (state.step === 4 && state.token && !isLocalPreview()) {
+      const rewardSession = state.token;
+      void window.HealthInputRewards.refreshStatus({ api, ownerId: state.userProfile?.id ?? state.userProfile?.user_id,
+        isCurrent: () => state.token === rewardSession });
+    }
+    window.HealthInputRewards.render();
+  }
   document.body.classList.toggle("intro-mode", state.step === 1);
   document.body.classList.toggle("dashboard-mode", state.step === 8);
   state.visitedSteps.add(state.step);
@@ -965,6 +984,7 @@ function goBack() {
 }
 
 function showHealthInputPanel(panel) {
+  if (typeof window !== "undefined") window.HealthInputRewards?.render();
   rememberServiceView();
   const canonicalPanel = {
     lifestyle: "habits",
@@ -996,7 +1016,7 @@ function showHealthInputPanel(panel) {
 
 function eligibilityCapabilities(eligibility) {
   const age = Number(eligibility?.age ?? getAgeFromBirth($("#eligibility-birth-date")?.value));
-  const reasonCodes = eligibility?.reason_codes || [];
+  const reasonCodes = (eligibility?.reason_codes || []).map(code => code === "DIABETES_DIAGNOSIS_RECORDED" ? "DIAGNOSED_DIABETES" : code);
   const hasExplicitCurrentHealth = Object.prototype.hasOwnProperty.call(eligibility || {}, "current_health_check_eligible");
   const hasExplicitFuture = Object.prototype.hasOwnProperty.call(eligibility || {}, "future_prediction_eligible");
   const hasExplicitModelEligible = Object.prototype.hasOwnProperty.call(eligibility || {}, "model_eligible");
@@ -1026,7 +1046,7 @@ function eligibilityCapabilities(eligibility) {
 function inferFuturePredictionCapability(eligibility = state.eligibility) {
   const age = Number(eligibility?.age ?? getAgeFromBirth($("#eligibility-birth-date")?.value));
   if (!Number.isFinite(age)) return false;
-  const reasonCodes = eligibility?.reason_codes || [];
+  const reasonCodes = (eligibility?.reason_codes || []).map(code => code === "DIABETES_DIAGNOSIS_RECORDED" ? "DIAGNOSED_DIABETES" : code);
   if (reasonCodes.some((code) => (
     code === "URGENT_MEDICAL_ATTENTION" || code === "DIAGNOSED_DIABETES" || code === "CONSENT_REQUIRED" || code === "UNDER_MINIMUM_SERVICE_AGE"
   ))) return false;
@@ -1073,7 +1093,7 @@ function hydrateSavedEligibilityForm(eligibility = state.eligibility) {
 }
 
 function syncReturningEligibilityState(eligibility) {
-  const reasonCodes = eligibility?.reason_codes || [];
+  const reasonCodes = (eligibility?.reason_codes || []).map(code => code === "DIABETES_DIAGNOSIS_RECORDED" ? "DIAGNOSED_DIABETES" : code);
   const inferredFuturePrediction = inferFuturePredictionCapability(eligibility);
   state.eligibility = eligibility;
   state.capabilities = eligibilityCapabilities(eligibility);
@@ -1391,6 +1411,7 @@ function healthSubmitLabel() {
 }
 
 function openReturningUserHealthEdit() {
+  if (!state.editingHealthCheckupId) return beginNewHealthRecord();
   state.returningUser = true;
   hydrateSavedHealthForm();
   state.visitedSteps.add(4);
@@ -1400,23 +1421,9 @@ function openReturningUserHealthEdit() {
 }
 
 async function openDashboardHealthEdit() {
-  state.returningUser = true;
-  if (!state.eligibility && !isLocalPreview()) {
-    try {
-      const latestEligibility = await api("/eligibility-checks/latest");
-      syncReturningEligibilityState(latestEligibility);
-    if (await returnToForestSettings(latestEligibility)) return;
-    } catch (error) {
-      if (error.status !== 404) throw error;
-    }
-  }
-  if (!state.capabilities.currentHealth && !state.capabilities.futurePrediction) {
-    const age = Number(state.eligibility?.age ?? getAgeFromBirth($("#eligibility-birth-date")?.value));
-    state.capabilities.currentHealth = Number.isFinite(age) ? age >= 19 : true;
-    state.capabilities.futurePrediction = inferFuturePredictionCapability(state.eligibility);
-    state.currentHealthOnly = state.capabilities.currentHealth && !state.capabilities.futurePrediction;
-  }
-  openReturningUserHealthEdit();
+  if (!state.editingHealthCheckupId) return beginNewHealthRecord();
+  const record = state.healthCheckupHistory.find(item => String(item.checkup_id) === String(state.editingHealthCheckupId));
+  beginHealthRecordEdit(record);
 }
 
 function hydrateSavedHealthForm(selectedCheckup = null) {
@@ -1473,6 +1480,7 @@ function hydrateSavedHealthForm(selectedCheckup = null) {
   syncLifestyleAvatar();
   // Reopening a tab must preserve the in-progress draft for this saved record.
   state.healthFormCheckupId = checkup.checkup_id;
+  if (typeof window !== "undefined") window.HealthInputRewards?.render();
 }
 
 function healthDraftOwnerId(profile = state.userProfile) {
@@ -1606,11 +1614,17 @@ function clearAuthenticatedClientState({ keepEmail = true } = {}) {
   state.token = null;
     window.GandangAuthSession?.clear();
   state.userProfile = null;
+  state.lastKnownLocation = null;
   state.accountRecovery = null;
   state.healthConsent = null;
   state.healthConsentStatus = "unknown";
   state.analysisRun = null;
   state.healthCheckupResult = null;
+  state.diagnosisRecords = [];
+  state.editingDiagnosisRecordId = null;
+  state.healthRecordContextDate = null;
+  state.currentDiagnosisRecord = null;
+  state.newHealthEligibilityPending = false;
   state.healthCheckupHistory = [];
   state.checkupId = null;
   state.currentScreeningInputId = null;
@@ -1812,7 +1826,7 @@ async function saveCurrentScreeningInputSnapshot() {
   const healthCheckupId = state.healthCheckupResult?.checkup_id || state.checkupId;
   const payload = {
     health_checkup_id: healthCheckupId,
-    input_as_of_date: new Date().toISOString().slice(0, 10),
+    input_as_of_date: state.healthRecordContextDate || healthRecordDate(),
     ...detailHealthPayload(),
   };
   if (isLocalPreview()) {
@@ -2012,6 +2026,7 @@ function dlRows(rows) {
 }
 
 function renderHealthReview() {
+  if (typeof window !== "undefined") window.HealthInputRewards?.render();
   const isRegularExercise = selectedRadioValue("regular-exercise") === "true";
   const detailHealth = detailHealthPayload();
   $("#health-review-title").innerHTML = "<span>입력한 내용을</span> <span>확인해 주세요</span>";
@@ -2557,11 +2572,45 @@ function isSampleFacilityPayload(payload = {}) {
   return payload.provider_kind === "development" || payload.data_source === "development_mock";
 }
 
+function openEligibilityMedicalFacilities({ returnToEligibility = true } = {}) {
+  const search = $("#medical-guidance-detail .medical-facility-list");
+  if (!search) { showMessage("의료기관 검색 화면을 준비하지 못했습니다."); return; }
+  const previousFocus = document.activeElement;
+  const reason = state.eligibilityGuidanceReason;
+  const placeholder = document.createComment("medical-facility-search-home");
+  search.before(placeholder);
+  const dialog = document.createElement("dialog");
+  dialog.id = "eligibility-medical-dialog";
+  dialog.className = "eligibility-medical-dialog";
+  dialog.setAttribute("aria-labelledby", "eligibility-medical-title");
+  dialog.setAttribute("aria-describedby", "eligibility-medical-description");
+  dialog.innerHTML = `<h2 id="eligibility-medical-title">가까운 의료기관 찾기</h2>
+    <p id="eligibility-medical-description">현재 위치 또는 주소로 의료기관을 찾고, 검색 결과의 전화번호로 문의할 수 있습니다. 전화 상담 가능 여부는 기관에 직접 확인해 주세요.</p>
+    <div class="eligibility-medical-body"></div><button class="secondary" type="button" data-close>${returnToEligibility ? "진단 안내로 돌아가기" : "닫기"}</button>`;
+  dialog.querySelector(".eligibility-medical-body").append(search);
+  document.body.append(dialog);
+  resetFacilitySearchUi("medical");
+  $("#facility-address-form").hidden = false;
+  setMedicalFacilityStatus("idle", "검색 기준을 선택해 주세요", "내 주변 의료기관 찾기를 누르거나 주소를 입력해 주세요. 위치 권한은 선택입니다.");
+  $("#eligibility-guidance").hidden = true;
+  dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => {
+    placeholder.replaceWith(search);
+    dialog.remove();
+    if (returnToEligibility) {
+      showEligibilityGuidance([reason || "DIAGNOSED_DIABETES"]);
+    }
+    if (previousFocus?.isConnected) previousFocus.focus({preventScroll: true});
+  }, {once: true});
+  dialog.showModal();
+}
+
 function renderMedicalFacilities(payload = {}) {
   const facilities = Array.isArray(payload.facilities) ? payload.facilities : [];
   const results = $("#medical-facility-results");
   const meta = $("#medical-facility-meta");
   if (!results || !meta) return;
+  results.replaceChildren();
   if (isSampleFacilityPayload(payload)) {
     results.replaceChildren();
     results.hidden = true;
@@ -2577,10 +2626,10 @@ function renderMedicalFacilities(payload = {}) {
   const area = String(payload.search_area_label || "").trim();
   meta.innerHTML = `<p><strong>정보 출처</strong> ${escapeHtml(provider)}${Number.isFinite(radius) ? ` · 반경 ${escapeHtml(medicalFacilityDistance(radius))}` : ""}</p><p><strong>정보 확인일</strong> ${escapeHtml(checkedAt)}${area ? ` · ${escapeHtml(area)} 중심` : ""}</p>${payload.disclaimer ? `<p>${escapeHtml(payload.disclaimer)}</p>` : ""}`;
   if (!facilities.length) {
-    setMedicalFacilityStatus("empty", "근처 의료기관을 찾지 못했어요", "검색 반경을 넓혀서 다시 확인해 주세요.");
+    setMedicalFacilityStatus("empty", "근처 의료기관을 찾지 못했어요", "검색 기준 위치를 바꿔 다시 확인해 주세요.");
     return;
   }
-  results.innerHTML = facilities.map((facility) => {
+  const cards = facilities.map((facility) => {
     const address = facility.road_address || facility.address || "주소 정보 없음";
     const phone = String(facility.phone || "").trim();
     const phoneHref = phone.replace(/[^0-9+]/g, "");
@@ -2593,8 +2642,28 @@ function renderMedicalFacilities(payload = {}) {
         ${mapUrl ? `<a class="secondary" href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener">주소·지도 보기</a>` : `<span class="facility-action-unavailable">지도 링크 없음</span>`}
       </div>
     </article>`;
-  }).join("");
-  setMedicalFacilityStatus("done", `가까운 의료기관 ${facilities.length}곳을 찾았어요`, "거리순 안내이며 특정 의료기관을 추천하거나 보증하지 않습니다.");
+  });
+  let shown = 0;
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "secondary medical-facility-more";
+  more.setAttribute("aria-controls", "medical-facility-results");
+  results.append(more);
+  const appendNextBatch = () => {
+    const previous = shown;
+    shown = Math.min(shown + 5, cards.length);
+    more.insertAdjacentHTML("beforebegin", cards.slice(previous, shown).join(""));
+    more.hidden = shown === cards.length;
+    more.textContent = `더보기 (${shown}/${cards.length})`;
+    setMedicalFacilityStatus("done", `가까운 의료기관 ${cards.length}곳 중 ${shown}곳을 표시해요`, "거리순 안내이며 특정 의료기관을 추천하거나 보증하지 않습니다.");
+    if (more.hidden && document.activeElement === more) {
+      const firstNewCard = results.querySelectorAll(".medical-facility-card")[previous];
+      firstNewCard.setAttribute("tabindex", "-1");
+      firstNewCard.focus({ preventScroll: true });
+    }
+  };
+  more.addEventListener("click", appendNextBatch);
+  appendNextBatch();
 }
 
 async function requestMedicalFacilities({ lat, lon, areaLabel = "", referenceLabel = "현재 위치" }, button) {
@@ -2784,6 +2853,7 @@ function showEmergencyAddressForm() {
 async function confirmEmergencyLocation() {
   const button = $("#confirm-current-location");
   if (!navigator.geolocation) {
+    state.lastKnownLocation = null;
     resetFacilitySearchUi("emergency");
     setEmergencyFacilityStatus("unavailable", "이 브라우저에서 위치를 확인할 수 없어요", "주소를 직접 입력하거나 위급하면 119에 연락해 주세요.");
     showEmergencyAddressForm();
@@ -2793,9 +2863,10 @@ async function confirmEmergencyLocation() {
   const releaseBusy = setButtonBusy(button, "위치 확인 중…");
   try {
     const position = await currentBrowserPosition();
-    state.lastKnownLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+    state.lastKnownLocation = { lat: position.coords.latitude, lon: position.coords.longitude, confirmedAt: Date.now() };
     setEmergencyFacilityStatus("permission", "현재 위치를 확인했어요", "주변 응급실 보기를 누르면 이 위치를 기준으로 검색합니다.");
   } catch (error) {
+    state.lastKnownLocation = null;
     resetFacilitySearchUi("emergency");
     const [title] = geolocationFailureCopy(error);
     setEmergencyFacilityStatus(geolocationFailureState(error), title, "주소를 직접 입력하거나 위급하면 119에 연락해 주세요.");
@@ -2808,10 +2879,11 @@ async function confirmEmergencyLocation() {
 async function findNearbyEmergencyFacilities() {
   const button = $('[data-emergency-facility-search]');
   if (!button) return;
-  if (state.lastKnownLocation) {
+  if (state.lastKnownLocation && Date.now() - state.lastKnownLocation.confirmedAt < 60000) {
     await requestEmergencyFacilities(state.lastKnownLocation, button);
     return;
   }
+  state.lastKnownLocation = null;
   if (!navigator.geolocation) {
     resetFacilitySearchUi("emergency");
     setEmergencyFacilityStatus("unavailable", "이 브라우저에서 위치를 확인할 수 없어요", "주소를 직접 입력하거나 위급하면 119에 연락해 주세요.");
@@ -2823,7 +2895,7 @@ async function findNearbyEmergencyFacilities() {
   let position;
   try {
     position = await currentBrowserPosition();
-    state.lastKnownLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+    state.lastKnownLocation = { lat: position.coords.latitude, lon: position.coords.longitude, confirmedAt: Date.now() };
   } catch (error) {
     resetFacilitySearchUi("emergency");
     const [title] = geolocationFailureCopy(error);
@@ -3333,6 +3405,7 @@ async function requestPredictionModel(modelKey) {
 async function openResultStepAfterSuccessfulAnalysis(isCurrent = () => true) {
   await sleep(1200);
   if (isCurrent() && state.step === 5) showStep(6);
+  if (isCurrent() && !isLocalPreview()) void refreshDashboard().catch(() => {});
 }
 
 function analysisInputKey() {
@@ -3424,6 +3497,10 @@ function renderModelComparisonGuidance(currentRun, futureRun) {
 }
 
 async function runPrediction({ retryFailed = false } = {}) {
+  if (state.newHealthEligibilityPending || healthRecordAnalysisBlocked()) {
+    showMessage("당뇨병 진단 기록과 이용확인을 확인해 주세요. 이 날짜의 예측·분석은 비활성화되었습니다.");
+    return;
+  }
   const key = analysisInputKey();
   if (state.analysisRun?.busy && state.analysisRun.key === key) return;
   if (retryFailed && state.step === 6) {
@@ -3454,7 +3531,10 @@ async function runPrediction({ retryFailed = false } = {}) {
   $("#retry-partial-analysis").disabled = true;
   renderPredictionStatus("queued");
   try {
-    await Promise.all(modelKeys.map(async (modelKey) => {
+    const rewardTask = typeof window !== "undefined" ? window.HealthInputRewards?.claim({ api,
+      checkupId: state.checkupId, inputId: state.currentScreeningInputId,
+      ownerId: state.userProfile?.id ?? state.userProfile?.user_id, isCurrent }) : null;
+    await Promise.all([...modelKeys.map(async (modelKey) => {
       if (run.models[modelKey].status === "succeeded") return;
       try {
         const result = await requestPredictionModel(modelKey);
@@ -3465,7 +3545,7 @@ async function runPrediction({ retryFailed = false } = {}) {
         if (!isCurrent()) return;
         run.models[modelKey] = { status: "failed", error };
       }
-    }));
+    }), rewardTask]);
     if (!isCurrent()) return;
     const current = run.models.diabetes_current_screening;
     const future = run.models.diabetes_incidence;
@@ -3587,7 +3667,7 @@ async function loadChallenges() {
   if (result.medical_guidance_required_first) {
     try {
       const followUps = await api("/follow-up-actions");
-      const openActions = (followUps.items || []).filter((item) => !item.acknowledged_at);
+      const openActions = (followUps.items || []).filter((item) => !item.acknowledged_at && item.blocking !== false);
       const openAction = openActions[0];
       state.openFollowUpActionIds = openActions.map((item) => item.action_id);
       $("#challenge-follow-up-message").textContent = openAction?.reason_code === "URGENT_MEDICAL_ATTENTION"
@@ -3677,7 +3757,7 @@ async function loadV3Challenges() {
       $("#challenge-follow-up-message").textContent = "의료기관 안내를 먼저 확인해 주세요.";
       const actions = await api("/follow-up-actions");
       if (state.token !== token || challengeV3.request !== request) return;
-      state.openFollowUpActionIds = (actions.items || []).filter((item) => !item.acknowledged_at).map((item) => item.action_id);
+      state.openFollowUpActionIds = (actions.items || []).filter((item) => !item.acknowledged_at && item.blocking !== false).map((item) => item.action_id);
       $("#acknowledge-challenge-follow-up").hidden = !state.openFollowUpActionIds.length;
     }
     $("#challenge-v3-policy").textContent = challengeV3.photoReviewAvailable
@@ -3997,6 +4077,31 @@ async function loadDailyRecords() {
   renderTodayTaskStatus();
 }
 
+function barrierFormAvailability() {
+  const challenges = hasCurrentChallengeCycle() ? state.cycle.user_challenges : [];
+  const ready = state.dailyRecordsStatus === "ready";
+  const allCompleted = challenges.length > 0 && challenges.every(item => state.dailyCompleted.has(String(item.user_challenge_id)));
+  return {
+    disabled: !challenges.length || !ready || allCompleted,
+    allCompleted: ready && allCompleted,
+    message: !challenges.length ? "진행 중인 챌린지가 없습니다."
+      : !ready ? "오늘의 기록을 확인한 후 이유를 기록할 수 있어요."
+      : allCompleted ? "오늘의 챌린지를 모두 실천했어요. 이유와 목표 조정은 필요하지 않아요." : "",
+  };
+}
+
+function renderBarrierForm() {
+  const form = $("#barrier-form");
+  if (!form) return;
+  const availability = barrierFormAvailability();
+  const disabled = availability.disabled || form.getAttribute("aria-busy") === "true";
+  form.setAttribute("aria-disabled", String(disabled));
+  form.querySelectorAll("select, button").forEach(control => { control.disabled = disabled; });
+  const notice = $("#barrier-status");
+  if (notice) { notice.textContent = availability.message; notice.hidden = !availability.message; }
+  if (availability.allCompleted && $("#barrier-suggestion")) $("#barrier-suggestion").hidden = true;
+}
+
 function renderDailyRecordList() {
   if (typeof window !== "undefined") window.lifestyleMapView?.refresh();
   const list = $("#daily-log-list");
@@ -4004,6 +4109,7 @@ function renderDailyRecordList() {
   const challenges = hasCurrentChallengeCycle() ? state.cycle.user_challenges : [];
   $("#daily-record-title").hidden = !challenges.length;
   $("#barrier-form").closest("section").hidden = !challenges.length;
+  renderBarrierForm();
   if (state.activeWorkspace === "challenge") {
     $("#dashboard-lead").textContent = challenges.length
       ? workspaceHeroCopy.challenge.lead : "실천할 챌린지를 선택하면 오늘의 기록을 남길 수 있어요.";
@@ -4095,6 +4201,202 @@ function renderTodayTaskStatus() {
   action.textContent = "오늘 기록하기";
 }
 
+
+function healthRecordDate(value = new Date()) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(value));
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function healthRecordAnalysisBlocked(record = state.currentDiagnosisRecord || state.healthCheckupResult) {
+  if (!record) return false;
+  if (record.record_type === "diabetes_diagnosis" || record.analysis_allowed === false) return true;
+  const date = healthRecordDate(record.record_date || record.checkup_date || record.created_at);
+  return (state.diagnosisRecords || []).some(item => item.record_date === date);
+}
+
+function healthHistoryTimeline() {
+  const diagnoses = state.diagnosisRecords || [];
+  const linkedCheckups = new Set(diagnoses.filter(item => item.source_checkup_id != null).map(item => String(item.source_checkup_id)));
+  const visibleCheckups = (state.healthCheckupHistory || []).filter(item =>
+    !healthRecordAnalysisBlocked(item) && !linkedCheckups.has(String(item.checkup_id)));
+  return [...visibleCheckups, ...diagnoses]
+    .sort((a, b) => {
+      const dateA = healthRecordDate(a.record_date || a.checkup_date || a.created_at);
+      const dateB = healthRecordDate(b.record_date || b.checkup_date || b.created_at);
+      return dateB.localeCompare(dateA) || Number(b.record_type === "diabetes_diagnosis") - Number(a.record_type === "diabetes_diagnosis");
+    });
+}
+
+
+function diagnosisRecordId(record) {
+  return Number(record?.diagnosis_record_id || String(record?.record_id || "").replace(/^diagnosis-/, "")) || null;
+}
+
+function beginHealthRecordEdit(record) {
+  if (!record) return;
+  $("#eligibility-guidance").hidden = true;
+  const isDiagnosis = record.record_type === "diabetes_diagnosis";
+  const linked = isDiagnosis
+    ? state.healthCheckupHistory.find(item => Number(item.checkup_id) === Number(record.source_checkup_id))
+    : record;
+  const day = healthRecordDate(record.record_date || record.checkup_date || record.created_at);
+  const diagnosis = isDiagnosis ? record : (state.diagnosisRecords || []).find(item => item.record_date === day);
+  state.editingHealthCheckupId = linked?.checkup_id || null;
+  state.editingDiagnosisRecordId = diagnosisRecordId(diagnosis);
+  state.healthRecordContextDate = day;
+  state.healthCheckupResult = linked || null;
+  state.healthFormCheckupId = null;
+  state.newHealthEligibilityPending = true;
+  state.currentDiagnosisRecord = diagnosis || null;
+  state.analysisRun = null;
+  state.prediction = null;
+  state.currentScreeningPrediction = null;
+  state.checkupId = linked?.checkup_id || null;
+  hydrateSavedEligibilityForm();
+  setRadioValue("diabetes-diagnosis", diagnosis ? "yes" : "no");
+  const dateField = $("#diagnosis-record-date");
+  if (dateField) {
+    dateField.value = day;
+    dateField.max = healthRecordDate();
+    dateField.disabled = Boolean(linked);
+    $("#diagnosis-record-date-row").hidden = !isDiagnosis;
+  }
+  state.returningUser = true;
+  state.returningDestination = "health";
+  showStep(3);
+  syncDiagnosisAnalysisControls();
+  showMessage(`${healthHistoryDateLabel(day)} 기록의 이용확인부터 다시 확인해 주세요.`, "success");
+}
+
+async function handleDiagnosisHistoryAction(event) {
+  const edit = event.target.closest("[data-diagnosis-record-edit]");
+  const remove = event.target.closest("[data-diagnosis-record-delete]");
+  if (!edit && !remove) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  const id = Number(edit?.dataset.diagnosisRecordEdit || remove?.dataset.diagnosisRecordDelete);
+  const record = (state.diagnosisRecords || []).find(item => diagnosisRecordId(item) === id);
+  if (!record) return true;
+  if (edit) {
+    beginHealthRecordEdit(record);
+    return true;
+  }
+  if (!window.confirm("이 당뇨병 진단 기록을 삭제할까요? 건강정보와 기존 분석 데이터는 삭제하지 않습니다.")) return true;
+  const token = state.token;
+  const release = setButtonBusy(remove, "삭제 중…");
+  try {
+    if (!isLocalPreview()) await api(`/diagnosis-records/${id}`, {method: "DELETE"});
+    if (state.token !== token) return true;
+    state.diagnosisRecords = state.diagnosisRecords.filter(item => diagnosisRecordId(item) !== id);
+    state.currentDiagnosisRecord = null;
+    state.editingDiagnosisRecordId = null;
+    state.newHealthEligibilityPending = false;
+    await loadHealthCheckupHistory();
+    state.healthCheckupResult = state.healthCheckupHistory.find(item => String(item.checkup_id) === String(state.checkupId)) || null;
+    syncDiagnosisAnalysisControls();
+    showMessage("당뇨병 진단 기록을 삭제했습니다. 새 기록은 이용확인부터 진행해 주세요.", "success");
+  } catch (error) {
+    showMessage(error.message || "진단 기록을 삭제하지 못했습니다.");
+  } finally { release(); }
+  return true;
+}
+
+function diagnosisHistoryCard(item, open = false) {
+  return `<details class="health-history-item health-history-diagnosis" role="listitem" ${open ? "open" : ""}>
+    <summary><strong>${escapeHtml(healthHistoryDateLabel(item.record_date))}</strong>
+      <span class="diagnosis-history-actions"><button type="button" class="health-history-edit" data-diagnosis-record-edit="${diagnosisRecordId(item)}">다시 기록</button><button type="button" class="health-history-delete" data-diagnosis-record-delete="${diagnosisRecordId(item)}">기록 삭제</button></span><em class="health-history-latest">당뇨병 진단</em></summary>
+    <p>이용자가 당뇨병 진단을 받았다고 응답한 기록입니다.</p>
+    <p>이 날짜의 예측·분석 기능은 비활성화되었습니다. 의료진의 안내를 우선해 주세요.</p>
+    <button type="button" disabled>예측·분석 비활성화</button>
+  </details>`;
+}
+
+function beginNewHealthRecord() {
+  state.editingDiagnosisRecordId = null;
+  state.healthRecordContextDate = null;
+  if ($("#diagnosis-record-date-row")) $("#diagnosis-record-date-row").hidden = true;
+  $("#eligibility-guidance").hidden = true;
+  state.returningUser = true;
+  state.editingHealthCheckupId = null;
+  state.healthFormCheckupId = null;
+  state.newHealthEligibilityPending = true;
+  state.currentDiagnosisRecord = null;
+  state.analysisRun = null;
+  state.checkupId = null;
+  state.healthCheckupResult = null;
+  state.currentScreeningInputId = null;
+  state.currentScreeningPrediction = null;
+  state.currentScreeningPredictionId = null;
+  state.prediction = null;
+  state.predictionId = null;
+  state.returningDestination = "health";
+  state.visitedSteps.add(3);
+  hydrateSavedEligibilityForm();
+  const blockedToday = (state.diagnosisRecords || []).some(item => item.record_date === healthRecordDate());
+  if (blockedToday) setRadioValue("diabetes-diagnosis", "yes");
+  showStep(3);
+  syncDiagnosisAnalysisControls();
+  showMessage("새 기록을 시작합니다. 진단 여부 등 이용확인부터 다시 확인해 주세요.", "success");
+}
+
+function syncDiagnosisAnalysisControls() {
+  const diagnosisSelected = state.step === 3 && document.querySelector("input[name='diabetes-diagnosis']:checked")?.value === "yes";
+  const blocked = Boolean(state.newHealthEligibilityPending || diagnosisSelected || healthRecordAnalysisBlocked());
+  const submit = $("#submit-analysis");
+  if (submit) {
+    submit.disabled = blocked;
+    submit.setAttribute("aria-disabled", String(blocked));
+  }
+  $$('[data-onboarding-step="4"], [data-onboarding-step="5"]').forEach(button => {
+    button.disabled = blocked;
+    button.setAttribute("aria-disabled", String(blocked));
+  });
+}
+
+async function recordDiagnosisResponse(result) {
+  if (!result.has_diabetes_diagnosis && !result.analysis_blocked_for_date) return false;
+  const date = result.record_date || healthRecordDate();
+  const record = result.diagnosis_record || (state.diagnosisRecords || []).find(item => item.record_date === date);
+  state.diagnosisRecords ||= [];
+  if (record && !state.diagnosisRecords.some(item => item.record_date === record.record_date)) state.diagnosisRecords.push(record);
+  state.currentDiagnosisRecord = record || {record_type: "diabetes_diagnosis", record_date: date, analysis_allowed: false};
+  state.newHealthEligibilityPending = false;
+  state.analysisRun = null;
+  state.checkupId = null;
+  state.healthCheckupResult = null;
+  state.currentScreeningInputId = null;
+  state.currentScreeningPrediction = null;
+  state.currentScreeningPredictionId = null;
+  state.prediction = null;
+  state.predictionId = null;
+  state.cycle = null;
+  state.dailyCompleted = new Set();
+  clearHealthDraft();
+  await loadHealthCheckupHistory();
+  renderDailyRecordList();
+  renderDashboardRiskSummary("pending", "당뇨병 진단");
+  syncDiagnosisAnalysisControls();
+  const reasons = [...(result.reason_codes || ["DIAGNOSED_DIABETES"])];
+  if (hasSameDaySymptoms() || isSameDayAnswerUncertain()) reasons.push("SAME_DAY_MEDICAL_ATTENTION");
+  showEligibilityGuidance(reasons);
+  showMessage("당뇨병 진단을 기록했습니다. 이 날짜의 예측·분석은 비활성화됩니다.", "success");
+  return true;
+}
+
+function openDiagnosisHistory() {
+  $("#eligibility-guidance").hidden = true;
+  showStep(8);
+  showWorkspace("home", {moveFocus: false});
+  $("#home-health-management").hidden = false;
+  $("#open-health-management").setAttribute("aria-expanded", "true");
+  renderHealthCheckupHistory();
+  $("#health-history-title")?.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
 function healthHistoryDateLabel(value) {
   if (!value) return "날짜 미상";
   const rawDate = String(value).slice(0, 10);
@@ -4119,8 +4421,9 @@ function renderHealthCheckupHistory(items = state.healthCheckupHistory) {
   const pagination = $("#health-history-pagination");
   if (!list || !count) return;
   state.healthCheckupHistory = Array.isArray(items) ? items : [];
-  count.textContent = `${state.healthCheckupHistory.length}건`;
-  if (!state.healthCheckupHistory.length) {
+  const timeline = healthHistoryTimeline();
+  count.textContent = `${timeline.length}건`;
+  if (!timeline.length) {
     list.innerHTML = '<p class="health-history-empty">저장된 건강정보가 없습니다.</p>';
     if (pagination) pagination.hidden = true;
     return;
@@ -4132,8 +4435,8 @@ function renderHealthCheckupHistory(items = state.healthCheckupHistory) {
     poor: "나쁨",
     very_poor: "매우 나쁨",
   };
-  const filteredItems = state.healthCheckupHistory.filter((item) => {
-    const date = String(item.checkup_date || item.created_at || "").slice(0, 10);
+  const filteredItems = timeline.filter((item) => {
+    const date = healthRecordDate(item.record_date || item.checkup_date || item.created_at);
     return (!state.healthHistoryStartDate || date >= state.healthHistoryStartDate)
       && (!state.healthHistoryEndDate || date <= state.healthHistoryEndDate);
   });
@@ -4145,6 +4448,7 @@ function renderHealthCheckupHistory(items = state.healthCheckupHistory) {
   if (!pageItems.length) {
     list.innerHTML = '<p class="health-history-empty">선택한 기간에 저장된 건강정보가 없습니다.</p>';
   } else list.innerHTML = pageItems.map((item, index) => {
+    if (item.record_type === "diabetes_diagnosis") return diagnosisHistoryCard(item, index === 0);
     const typeLabel = item.checkup_type === "reassessment" ? "다시 기록" : "첫 기록";
     const bloodPressure = item.systolic_bp !== null && item.systolic_bp !== undefined
       && item.diastolic_bp !== null && item.diastolic_bp !== undefined
@@ -4164,7 +4468,7 @@ function renderHealthCheckupHistory(items = state.healthCheckupHistory) {
         <div><dt>규칙적 운동</dt><dd>${escapeHtml(healthHistoryBoolean(item.regular_exercise))}</dd></div>
         <div><dt>현재 흡연</dt><dd>${escapeHtml(healthHistoryBoolean(item.current_smoker))}</dd></div>
         <div><dt>현재 음주</dt><dd>${escapeHtml(healthHistoryBoolean(item.current_drinker))}</dd></div>
-        <div class="health-history-result-action"><button type="button" data-health-history-result="${escapeHtml(item.checkup_id)}">분석 결과 다시보기</button></div>
+        <div class="health-history-result-action"><button type="button" data-health-history-result="${escapeHtml(item.checkup_id)}" ${healthRecordAnalysisBlocked(item) ? "disabled" : ""}>${healthRecordAnalysisBlocked(item) ? "당뇨병 진단 · 분석 비활성화" : "분석 결과 다시보기"}</button></div>
       </dl>
     </details>`;
   }).join("");
@@ -4189,7 +4493,9 @@ async function loadHealthCheckupHistory(items = null) {
   const list = $("#health-history-list");
   try {
     const result = await api("/health-checkups");
+    state.diagnosisRecords = result?.diagnosis_records || [];
     renderHealthCheckupHistory(result?.items || []);
+    syncDiagnosisAnalysisControls();
   } catch {
     state.healthCheckupHistory = [];
     $("#health-history-count").textContent = "확인 실패";
@@ -4198,6 +4504,10 @@ async function loadHealthCheckupHistory(items = null) {
 }
 
 async function openAnalysisTab() {
+  if (state.newHealthEligibilityPending || healthRecordAnalysisBlocked()) {
+    showMessage("이 날짜는 예측·분석을 이용할 수 없습니다. 이용확인과 진단 기록을 확인해 주세요.");
+    return;
+  }
   if (state.analysisTabBusy) return;
   const run = state.analysisRun;
   if (run && run.key === analysisInputKey()) {
@@ -4224,10 +4534,15 @@ async function openAnalysisTab() {
 }
 
 async function openSavedAnalysisResult(checkupId) {
+  const record = state.healthCheckupHistory.find(item => String(item.checkup_id) === String(checkupId));
+  if (healthRecordAnalysisBlocked(record)) throw new Error("당뇨병 진단이 기록된 날짜의 분석 결과는 비활성화되었습니다.");
+  state.currentDiagnosisRecord = null;
+  state.newHealthEligibilityPending = false;
   const selectedCheckup = state.healthCheckupHistory.find(
     (checkup) => String(checkup.checkup_id) === String(checkupId),
   );
   if (selectedCheckup) state.healthCheckupResult = selectedCheckup;
+  syncDiagnosisAnalysisControls();
   if (isLocalPreview()) {
     state.checkupId = checkupId;
     renderMvpResultPreview();
@@ -4275,7 +4590,7 @@ function localHealthCheckupSnapshot() {
   return {
     checkup_id: `local-demo-checkup-${Date.now()}`,
     checkup_type: state.returningUser ? "reassessment" : "initial",
-    checkup_date: new Date().toISOString().slice(0, 10),
+    checkup_date: state.healthRecordContextDate || healthRecordDate(),
     height_cm: height,
     weight_kg: weight,
     bmi: height > 0 && weight > 0 ? Number((weight / ((height / 100) ** 2)).toFixed(1)) : null,
@@ -4369,7 +4684,7 @@ async function maybeOpenDailyReward() {
   if (state.dailyRewardRequest?.token === state.token
     && state.dailyRewardRequest?.cycle === state.cycle && state.dailyRewardRequest?.day === today) return;
   if (isLocalPreview()) {
-    openChallengeRewardDialog({ carrot_amount: 55 });
+    openChallengeRewardDialog({ carrot_amount: 50 });
     return;
   }
   const token = state.token;
@@ -4396,11 +4711,13 @@ async function completeDailyRecord(target, source = "self_report", value = 1) {
   if (target.item?.catalog_version === "evidence-v3" && target.item.verification_type !== 3) throw new Error("사진 제출 절차로 완료해 주세요.");
   const today = challengeDay();
   const recordValue = isHydrationRecord(target.item) ? clampWaterServings(value) : 1;
+  let walletReward = null;
   if (!isLocalPreview()) {
-    await api(`/user-challenges/${target.id}/logs/${today}`, {
+    const result = await api(`/user-challenges/${target.id}/logs/${today}`, {
       method: "PUT",
       body: JSON.stringify({ is_completed: true, source, note: null, ...(target.item?.catalog_version === "evidence-v3" ? { value: recordValue } : {}) }),
     });
+    walletReward = result.wallet_reward;
   }
   if (state.token !== token || state.cycle !== cycle) return;
   state.dailyCompleted.add(String(target.id));
@@ -4411,8 +4728,8 @@ async function completeDailyRecord(target, source = "self_report", value = 1) {
   renderDailyRecordList();
   updateDailyRecordSummary();
   if (!isLocalPreview()) void loadWeeklyReport().catch(() => {});
-  showMessage(target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다.", "success");
   if (allDailyChallengesCompleted()) await maybeOpenDailyReward();
+  showMessage(walletReward?.notice || (target.item?.domain === "hydration" ? "음료 선택 실천을 기록했어요. 당근에 물을 주었습니다!" : "챌린지 실천이 기록됐습니다."), "success");
 }
 
 async function undoDailyRecord(target) {
@@ -4689,7 +5006,7 @@ async function submitV3Photo() {
       $("#photo-success-title").textContent = target.item.verification_type === 1 ? "채소 사진 확인 · 기록 저장 완료" : "사진 제출 · 기록 저장 완료";
       showPhotoRecordState("photo-state-success");
     }
-    showMessage(result.notice || "챌린지 실천이 기록됐습니다.", "success");
+    showMessage(result.wallet_reward?.notice || result.notice || "챌린지 실천이 기록됐습니다.", "success");
     void loadWeeklyReport().catch(() => {});
   } catch (error) {
     if (state.recordTarget !== target || state.token !== token || state.cycle?.cycle_id !== cycleId) return;
@@ -5593,6 +5910,7 @@ async function loadNotifications() {
 }
 async function refreshDashboard() {
   await loadDailyRecords();
+  renderTodayTaskStatus();
   const summary = await api("/dashboard/summary");
   const cards = Array.isArray(summary.risk_cards) ? summary.risk_cards : [];
   const approvedCard = cards.find((card) => card.model_key === "diabetes_current_screening"
@@ -6322,7 +6640,13 @@ $("#today-select-challenge").addEventListener("click", async (event) => {
   catch (error) { showMessage(error.message); }
   finally { releaseBusy(); }
 });
-$$('.workspace-tab, .workspace-shortcut').forEach((button) => button.addEventListener("click", () => showWorkspace(button.dataset.workspace)));
+$$('.workspace-tab, .workspace-shortcut').forEach((button) => button.addEventListener("click", async () => {
+  if (button.dataset.workspace === "challenge" && !hasCurrentChallengeCycle()) {
+    try { await openChallengeTab(); } catch (error) { showMessage(error.message); }
+    return;
+  }
+  showWorkspace(button.dataset.workspace);
+}));
 $$("[data-tool-target]").forEach((button) => button.addEventListener("click", () => {
   const targetId = button.dataset.toolTarget;
   if (targetId === "lifestyle-map-detail") {
@@ -6492,29 +6816,35 @@ $("#account-recovery-form").addEventListener("submit", async (event) => {
 $("#eligibility-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#eligibility-guidance").hidden = true;
+  const diagnosisAnswer = document.querySelector("input[name='diabetes-diagnosis']:checked");
   const urgentAnswer = document.querySelector("input[name='urgent-warning']:checked");
   if (!urgentAnswer) {
     showMessage("긴급 증상 여부를 선택해 주세요. 판단하기 어렵다면 ‘증상 자세히 확인하기’를 이용할 수 있습니다.");
     return;
   }
-  if (urgentAnswer.value === "yes" || hasUrgentSymptoms() || isUrgentAnswerUncertain()) {
+  if ((urgentAnswer.value === "yes" || hasUrgentSymptoms() || isUrgentAnswerUncertain()) && diagnosisAnswer?.value !== "yes") {
     showEligibilityGuidance(["URGENT_MEDICAL_ATTENTION"]);
     $("#eligibility-guidance-reason").textContent = isUrgentAnswerUncertain()
       ? "증상 여부를 확실히 판단하기 어렵다고 답했습니다."
       : "긴급한 증상이 있다고 답했습니다.";
     return;
   }
-  if (hasSameDaySymptoms() || isSameDayAnswerUncertain()) {
+  if ((hasSameDaySymptoms() || isSameDayAnswerUncertain()) && diagnosisAnswer?.value !== "yes") {
     showEligibilityGuidance(["SAME_DAY_MEDICAL_ATTENTION"]);
     $("#eligibility-guidance-reason").textContent = isSameDayAnswerUncertain()
       ? "당일 확인이 필요한 증상인지 판단하기 어렵다고 답했습니다."
       : "당일 확인이 필요한 증상이 있다고 답했습니다.";
     return;
   }
-  const diagnosisAnswer = document.querySelector("input[name='diabetes-diagnosis']:checked");
+
   if (!diagnosisAnswer) {
     showMessage("당뇨병 진단 여부를 선택해 주세요.");
     return;
+  }
+  // Show urgent guidance immediately, even if persisting the diagnosis fails.
+  if (diagnosisAnswer.value === "yes") {
+    if (urgentAnswer.value === "yes" || hasUrgentSymptoms() || isUrgentAnswerUncertain()) showEligibilityGuidance(["URGENT_MEDICAL_ATTENTION"]);
+    else if (hasSameDaySymptoms() || isSameDayAnswerUncertain()) showEligibilityGuidance(["SAME_DAY_MEDICAL_ATTENTION"]);
   }
   const releaseBusy = setFormBusy(event.currentTarget, event.submitter, "이용 가능 확인 중…");
   try {
@@ -6530,10 +6860,23 @@ $("#eligibility-form").addEventListener("submit", async (event) => {
       : await api("/eligibility-checks", { method: "POST", body: JSON.stringify({
         birth_date: $("#eligibility-birth-date").value,
         has_diabetes_diagnosis: diagnosisAnswer.value === "yes",
-        has_urgent_warning_sign: false,
+        has_urgent_warning_sign: urgentAnswer.value === "yes" || hasUrgentSymptoms() || isUrgentAnswerUncertain(),
         population_in_scope: true,
+        health_checkup_id: state.editingHealthCheckupId || undefined,
+        diagnosis_record_id: state.editingDiagnosisRecordId || undefined,
+        record_date: state.editingDiagnosisRecordId && !state.editingHealthCheckupId
+          ? $("#diagnosis-record-date")?.value || state.healthRecordContextDate
+          : state.healthRecordContextDate || undefined,
       }) });
     syncReturningEligibilityState(result);
+    state.newHealthEligibilityPending = false;
+    if (await recordDiagnosisResponse(result)) return;
+    state.currentDiagnosisRecord = null;
+    if (state.editingDiagnosisRecordId) {
+      await loadHealthCheckupHistory();
+      state.healthCheckupResult = state.healthCheckupHistory.find(item => String(item.checkup_id) === String(state.editingHealthCheckupId)) || null;
+    }
+    syncDiagnosisAnalysisControls();
     if (await returnToForestSettings(result)) return;
     if (!result.model_eligible) {
       showEligibilityGuidance(result.reason_codes);
@@ -6541,6 +6884,7 @@ $("#eligibility-form").addEventListener("submit", async (event) => {
     }
     state.modelOutOfRange = false;
     $("#submit-analysis").textContent = "이 내용으로 분석하기";
+    if (state.editingHealthCheckupId) hydrateSavedHealthForm(state.healthCheckupResult);
     showHealthInputPanel("metrics");
     if (state.returningDestination === "challenges") {
       state.returningDestination = null;
@@ -6556,6 +6900,7 @@ $("#eligibility-form").addEventListener("submit", async (event) => {
 });
 $("#eligibility-form").addEventListener("change", () => {
   $("#eligibility-guidance").hidden = true;
+  syncDiagnosisAnalysisControls();
 });
 $$('#eligibility-form input[type="radio"], #eligibility-form input[type="date"], #eligibility-form select').forEach((input) => {
   input.addEventListener("click", () => {
@@ -6675,7 +7020,6 @@ $("#find-phone-consultation")?.addEventListener("click", () => {
   showMessage("전화 상담 가능 기관 정보 연결을 준비하고 있습니다.", "success");
 });
 $("#find-diagnosed-medical")?.addEventListener("click", () => openEligibilityMedicalFacilities({ returnToEligibility: true }));
-$("#find-diagnosed-phone")?.addEventListener("click", () => openEligibilityMedicalFacilities({ returnToEligibility: true }));
 $("#eligibility-guidance-secondary")?.addEventListener("click", async () => {
   $("#eligibility-guidance").hidden = true;
   state.returningDestination = null;
@@ -6731,7 +7075,7 @@ function healthCheckupPayload() {
       : state.returningUser ? "reassessment" : "initial",
     checkup_date: state.editingHealthCheckupId
       ? String((state.healthCheckupHistory.find((item) => String(item.checkup_id) === String(state.editingHealthCheckupId)) || {}).checkup_date || new Date().toISOString()).slice(0, 10)
-      : new Date().toISOString().slice(0, 10),
+      : state.healthRecordContextDate || healthRecordDate(),
     height_cm: Number($("#height").value), weight_kg: Number($("#weight").value),
     waist_cm: $("#waist").value ? Number($("#waist").value) : null,
     systolic_bp: $("#systolic").value ? Number($("#systolic").value) : null,
@@ -6762,6 +7106,10 @@ function healthCheckupPayload() {
 }
 $("#health-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (state.newHealthEligibilityPending || healthRecordAnalysisBlocked()) {
+    showMessage("이용확인을 먼저 완료해 주세요. 당뇨병 진단 날짜에는 예측·분석을 이용할 수 없습니다.");
+    return;
+  }
   const submit = event.submitter;
   const invalidFields = collectInvalidHealthFields();
   if (invalidFields.length) {
@@ -6816,7 +7164,7 @@ $("#health-form").addEventListener("submit", async (event) => {
           body: JSON.stringify({
             ...payload,
             checkup_type: "reassessment",
-            checkup_date: new Date().toISOString().slice(0, 10),
+            checkup_date: state.healthRecordContextDate || healthRecordDate(),
           }),
         });
       }
@@ -6858,7 +7206,7 @@ $("#health-form").addEventListener("submit", async (event) => {
     if (!shouldRequestPrediction) showStep(5);
     await runPrediction();
   } catch (error) { showMessage(error.message); }
-  finally { submit.disabled = false; submit.textContent = healthSubmitLabel(); }
+  finally { submit.disabled = false; submit.textContent = healthSubmitLabel(); syncDiagnosisAnalysisControls(); }
 });
 $("#retry-analysis").addEventListener("click", () => runPrediction({ retryFailed: true }));
 $("#retry-partial-analysis").addEventListener("click", () => runPrediction({ retryFailed: true }));
@@ -6875,15 +7223,7 @@ $("#risk-factor-focus")?.addEventListener("click", () => {
 });
 $("#find-nearby-medical-facilities")?.addEventListener("click", findNearbyMedicalFacilities);
 $("#dashboard-find-nearby-medical-facilities")?.addEventListener("click", () => {
-  closeHealthManagement();
-  showStep(6);
-  const guidance = $("#medical-guidance-detail");
-  if (guidance) {
-    $("#medical-challenge-next").hidden = !canContinueAfterMedicalGuidance();
-    guidance.hidden = false;
-    guidance.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-  $("#find-nearby-medical-facilities")?.click();
+  openEligibilityMedicalFacilities({returnToEligibility: false});
 });
 $("#facility-address-form")?.addEventListener("submit", findMedicalFacilitiesByAddress);
 $("#close-medical-guidance")?.addEventListener("click", () => {
@@ -7255,6 +7595,8 @@ $("#daily-log-form")?.addEventListener("submit", async (event) => {
   finally { releaseBusy(); }
 });
 async function saveBarrierRecord() {
+  const availability = barrierFormAvailability();
+  if (availability.disabled) throw new Error(availability.message);
   const challengeId = $("#barrier-challenge").value;
   if (!challengeId) throw new Error("기록할 챌린지를 선택해 주세요.");
   const token = state.token;
@@ -7264,7 +7606,7 @@ async function saveBarrierRecord() {
     : await api(`/user-challenges/${challengeId}/barriers`, { method: "POST", body: JSON.stringify({
       log_date: challengeDay(), reason_code: $("#barrier-reason").value,
     }) });
-  if (state.token !== token || state.cycle !== cycle) return false;
+  if (state.token !== token || state.cycle !== cycle || barrierFormAvailability().disabled) return false;
   $("#barrier-suggestion-text").textContent = result?.suggestion || "내일 실천하기 쉬운 작은 목표로 다시 시작해 보세요.";
   $("#barrier-suggestion").hidden = false;
   showMessage(preview ? "실천하지 못한 이유를 화면 확인용으로 기록했어요." : "실천하지 못한 이유를 기록했어요. 아래 목표 조정안을 확인해 주세요.", "success");
@@ -7280,7 +7622,7 @@ $("#barrier-form").addEventListener("submit", async (event) => {
   try {
     await saveBarrierRecord();
   } catch (error) { showMessage(error.message); }
-  finally { releaseBusy(); }
+  finally { releaseBusy(); renderBarrierForm(); }
 });
 $("#education-list")?.addEventListener("click", (event) => {
   const button = event.target.closest(".education-open");
@@ -7497,6 +7839,7 @@ async function resumeAuthenticatedAccount() {
     syncReturningEligibilityState(latestEligibility);
     if (await returnToForestSettings(latestEligibility)) return;
     const healthHistory = await api("/health-checkups");
+    state.diagnosisRecords = healthHistory?.diagnosis_records || [];
     state.healthCheckupHistory = Array.isArray(healthHistory?.items) ? healthHistory.items : [];
     renderHealthCheckupHistory();
     const latestHealthCheckup = Array.isArray(healthHistory?.items) ? healthHistory.items[0] : null;
@@ -7511,10 +7854,12 @@ async function resumeAuthenticatedAccount() {
     try {
       const cycle = await api("/challenge-cycles/current");
       renderCycle(cycle);
-      await refreshDashboard();
     } catch (cycleError) {
       if (cycleError.status !== 404 && !cycleError.message.includes("진행 중인 챌린지가 없습니다")) throw cycleError;
+      clearCurrentChallengeCycle();
+      $("#dashboard-cycle").textContent = "-";
     }
+    await refreshDashboard();
     if (!latestHealthCheckup) {
       if (state.requiresEligibility) beginReturningEligibility("health");
       else if (state.capabilities.currentHealth) openReturningUserHealthEdit();
@@ -7654,6 +7999,7 @@ $("#dashboard-edit-health").addEventListener("click", async () => {
   }
 });
 $("#health-history-list").addEventListener("click", async (event) => {
+  if (await handleDiagnosisHistoryAction(event)) return;
   const deleteButton = event.target.closest("[data-health-history-delete]");
   if (deleteButton) {
     event.preventDefault();
@@ -7855,7 +8201,7 @@ $("#wearable-form")?.addEventListener("submit", async (event) => {
   const releaseBusy = setFormBusy(event.currentTarget, event.submitter, "워치 기록 저장 중…");
   try {
     showWearablePreview($("#wearable-provider").value, [{
-      summary_date: new Date().toISOString().slice(0, 10),
+      summary_date: healthRecordDate(),
       steps: Number($("#wearable-steps").value), active_minutes: Number($("#wearable-active").value),
     }], "직접 입력한 기록");
   } catch (error) { showMessage(error.message); }
@@ -8339,3 +8685,5 @@ resumeHealthInputPreview();
 resumeOnboardingFlowPreview();
 resumeReportForestPreview();
 if ((!hasExplicitAuthEntry || window.GandangAuthSession?.read()) && !new URLSearchParams(window.location.search).has("preview")) void resumeCookieSession();
+
+$("#view-diagnosis-history")?.addEventListener("click", openDiagnosisHistory);

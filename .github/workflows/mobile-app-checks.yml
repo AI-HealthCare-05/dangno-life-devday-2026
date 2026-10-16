@@ -30,6 +30,7 @@ jobs:
       - run: pnpm test:mobile
       - run: node --test tests/frontend/web_mobile_session.test.cjs tests/forest-return-safety.test.cjs
       - run: node --test tests/forest-feed-performance.test.cjs tests/forest-preview-performance.test.cjs
+      - run: node --test tests/forest-wallet.test.cjs tests/forest-boot-display.test.cjs tests/forest-profile.test.cjs tests/frontend/diagnosis_records.test.cjs tests/frontend/health_input_rewards.test.cjs tests/frontend/challenge_wallet.test.cjs tests/frontend/barrier_availability.test.cjs tests/frontend/challenge_selection_entry.test.cjs tests/frontend/location_service.test.cjs
       - run: node --test --test-name-pattern='photo|meal|walking|amount|activity submission' tests/frontend/challenge_v3.test.cjs
       - run: pnpm build:mobile:deployment
         env:

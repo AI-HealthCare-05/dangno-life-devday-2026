@@ -737,3 +737,22 @@ async def test_vlm_failure_on_flagged_valid_cv_never_completes(api, monkeypatch)
     assert response.json()["data"]["challenge_completed"] is False
     assert await ChallengeLog.all().count() == 0
     assert "시간이 초과" in response.json()["data"]["notice"]
+
+
+@pytest.mark.asyncio
+async def test_challenge_verification_uses_area_provider_without_classification(api, monkeypatch):
+    monkeypatch.setattr(config, "FOOD_VISION_PROVIDER", "local_kfood")
+    monkeypatch.setattr(config, "OPENAI_VLM_FALLBACK_ENABLED", False)
+    monkeypatch.setattr(challenges, "food_vision_is_configured", lambda: True)
+    provider = SimpleNamespace(
+        provider_kind="local_kfood_cv",
+        analyze=AsyncMock(side_effect=AssertionError("Must use area-only analysis")),
+        analyze_areas=AsyncMock(return_value=local_result("valid")),
+    )
+    monkeypatch.setattr(challenge_proofs, "get_food_vision_provider", lambda: provider)
+    item = find_item(await start_cycle(api, rotation=1), "fiber_diet")
+    response = await submit_photo(api, item, photo_context={"contains_kimchi": "no", "strong_seasoning": "no", "white_food_on_white": "no"})
+    assert response.json()["data"]["review_status"] == "needs_confirmation"
+    assert not response.json()["data"]["challenge_completed"]
+    provider.analyze.assert_not_called()
+    provider.analyze_areas.assert_awaited_once()

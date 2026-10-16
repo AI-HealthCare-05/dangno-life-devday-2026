@@ -1,12 +1,15 @@
 import asyncio
 import hashlib
 import json
+import io
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import httpx
+import numpy as np
+from PIL import Image
 
 from app.core import config
 from app.vision.food_vision import (
@@ -107,6 +110,27 @@ def test_local_provider_is_reused_between_requests(monkeypatch: pytest.MonkeyPat
     assert get_food_vision_provider() is get_food_vision_provider()
 
 
+def test_area_verification_never_runs_classifier_or_uses_dish_name(monkeypatch, tmp_path):
+    _configure_runtime(monkeypatch, tmp_path)
+    provider = get_food_vision_provider()
+    mask = np.array([1] * 35 + [5] * 35 + [0] * 30).reshape(10, 10)
+    monkeypatch.setattr(provider, "_segment", lambda _image: mask)
+
+    def classify(_image):
+        raise AssertionError("Area verification must not classify food names")
+
+    monkeypatch.setattr(provider, "_classify", classify)
+    provider._unreliable = {"dish"}
+    photo = io.BytesIO()
+    Image.new("RGB", (20, 20), "white").save(photo, "PNG")
+    result = asyncio.run(provider.analyze_areas(photo.getvalue(), "image/png", "irrelevant-name.png"))
+    assert result.food_coverage_percent == 70
+    assert result.vegetable_ratio_percent == 50
+    assert result.decision_status == "valid"
+    assert result.detected_items == []
+    assert provider._classifier is None
+
+
 def _result(food: float, vegetable: float, reliable: bool = True) -> FoodVisionResult:
     return FoodVisionResult(
         provider_kind="local_kfood_cv",
@@ -170,6 +194,7 @@ async def test_vlm_requires_reliable_cv_area_even_with_user_flags(monkeypatch, f
      ({"vegetables_clearly_visible": False}, "uncertain"),
      ({"uncertainty_reasons": ["food overlap"]}, "uncertain"),
      ({"vegetable_presence": "absent", "vegetables_clearly_visible": False}, "invalid_vegetable_content"),
+     ({"is_meal_photo": False, "challenge_relevant": False, "vegetable_presence": "absent", "vegetables_clearly_visible": False}, "invalid_vegetable_content"),
      ({"multiple_images_or_screen_capture": True}, "invalid_photo_content"),
      ({"is_meal_photo": False}, "invalid_photo_content")],
 )

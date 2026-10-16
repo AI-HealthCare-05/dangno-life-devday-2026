@@ -17,6 +17,7 @@ from tortoise.transactions import in_transaction
 from app.core import config
 from app.models.health import Challenge, ChallengeCycle, ChallengeLog, ChallengeVerification, UserChallenge
 from app.services.challenge_catalog import metadata_for
+from app.services.challenge_wallet import award_v3_completion
 from app.vision.food_vision import (
     FoodVisionError,
     FoodVisionRuntimeError,
@@ -108,7 +109,8 @@ async def _review(
         provider = get_food_vision_provider()
         if provider.provider_kind != "local_kfood_cv":
             raise FoodVisionError("The local Korean-food CV provider is required")
-        result = await provider.analyze(photo, "image/jpeg", "challenge.jpg")
+        analyze_areas = getattr(provider, "analyze_areas", provider.analyze)
+        result = await analyze_areas(photo, "image/jpeg", "challenge.jpg")
         result = await _supplement_review(result, photo, photo_context)
         if result.provider_kind not in {"local_kfood_cv", "local_kfood_openai_vlm"}:
             raise FoodVisionError("The image-review result is not from the local provider")
@@ -138,10 +140,12 @@ async def _review(
     messages = {
         "valid": ("needs_confirmation", "사진이 인증 기준을 충족했어요. 최종 확인 후 기록됩니다."),
         "invalid_photo_content": (
-            "rejected", "식사 사진인지 확인하지 못했어요. 조리된 음식이 잘 보이는 사진을 제출해 주세요."
+            "rejected",
+            "식사 사진인지 확인하지 못했어요. 조리된 음식이 잘 보이는 사진을 제출해 주세요.",
         ),
         "invalid_vegetable_content": (
-            "rejected", "사진에서 채소를 확인하지 못했어요. 채소가 포함된 식사 전체를 촬영해 주세요."
+            "rejected",
+            "사진에서 채소를 확인하지 못했어요. 채소가 포함된 식사 전체를 촬영해 주세요.",
         ),
         "invalid_food_ratio": (
             "rejected",
@@ -217,7 +221,15 @@ async def _accepted_submission(user_id, selected_id, proof_date):
 
 
 async def verify_photo(
-    service, user, selected_id, proof_date, file, actual_value, confirmed=False, *, photo_context: FoodPhotoContext | None = None
+    service,
+    user,
+    selected_id,
+    proof_date,
+    file,
+    actual_value,
+    confirmed=False,
+    *,
+    photo_context: FoodPhotoContext | None = None,
 ):
     metadata = await _context(service, user, selected_id, proof_date)
     target = metadata["goal"]["target_minutes"] or metadata["goal"]["target_count"]
@@ -249,6 +261,7 @@ async def verify_photo(
         review_status = "accepted"
         notice = "최종 확인이 완료되어 채소 식사 인증을 기록했어요."
     completed = review_status == "accepted"
+    wallet_reward = None
     async with in_transaction():
         # The external review can take time. Honor eligibility or
         # cycle changes before recording its result, then preserve a concurrent
@@ -285,10 +298,13 @@ async def verify_photo(
                     "note": f"evidence-v3 type{metadata['verification_type']}; quantity self-reported",
                 },
             )
+            selected = await service.repo.get_user_challenge(selected_id, user.id)
+            wallet_reward = await award_v3_completion(user, selected, proof_date, service.repo)
     return {
         "verification_id": verification.id,
         "challenge_completed": completed,
         "review_status": review_status,
         "already_recorded": False,
         "notice": notice,
+        "wallet_reward": wallet_reward,
     }
