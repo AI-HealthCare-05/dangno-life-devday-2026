@@ -107,6 +107,7 @@ test('initialization button reloads exactly once and leaves coordinates, outfits
 test('nickname uses the camera head projection as plain text and follows each camera view event', () => {
   const app = setup();
   let anchor = { x: .3, y: .4, name: '<img src=x onerror=alert(1)>' };
+  app.state.avatar.name = '<img src=x onerror=alert(1)>';
   const calls = [];
   app.window.ForestCamera = {
     avatarAnchor: () => anchor,
@@ -118,7 +119,7 @@ test('nickname uses the camera head projection as plain text and follows each ca
   assert.equal(nickname.style.left, '30%'); assert.equal(nickname.style.top, '40%');
   assert.equal(nickname.hidden, false);
   assert.deepEqual(calls, [[205, 62], [610, 62]]);
-  anchor = { x: .75, y: .5, name: '바뀐 닉네임' }; app.project();
+  anchor = { x: .75, y: .5, name: '오래된 렌더러 이름' }; app.state.avatar.name = '바뀐 닉네임'; app.project();
   assert.equal(nickname.textContent, '바뀐 닉네임');
   assert.equal(nickname.style.left, '75%'); assert.equal(nickname.style.top, '50%');
   for (const scene of ['home', 'garden']) {

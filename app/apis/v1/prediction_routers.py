@@ -17,6 +17,7 @@ from app.prediction.contracts import ACTIVE_MODEL, CURRENT_SCREENING_MODEL, CURR
 from app.prediction.errors import ModelNotReadyError, classify_ml_input_error
 from app.repositories.health_repository import HealthRepository
 from app.services.ai_jobs import create_prediction_job, get_prediction_job
+from app.services.health_diagnosis import ensure_prediction_read_allowed, visible_predictions
 from app.services.xai_presentation import input_label, model_analysis_payload, shap_graph_payload
 
 prediction_router = APIRouter(tags=["Prediction"])
@@ -226,18 +227,21 @@ async def latest_prediction(user: Annotated[User, Depends(get_request_user)]) ->
     item = await HealthRepository().latest_prediction(user.id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예측 결과를 찾을 수 없습니다.")
+    await ensure_prediction_read_allowed(item, user.id)
     return envelope(prediction_payload(item))
 
 
 @prediction_router.get("/predictions")
 async def list_predictions(user: Annotated[User, Depends(get_request_user)]) -> dict[str, object]:
     items = await HealthRepository().list_predictions(user.id)
+    items = await visible_predictions(items, user.id)
     return envelope({"items": [prediction_payload(item) for item in items]})
 
 
 @prediction_router.get("/predictions/changes")
 async def prediction_changes(user: Annotated[User, Depends(get_request_user)]) -> dict[str, object]:
     items = await HealthRepository().list_predictions(user.id)
+    items = await visible_predictions(items, user.id)
     if len(items) < 2:
         return envelope({"available": False, "first": None, "latest": None, "change": None})
     latest = items[0]
@@ -270,6 +274,7 @@ async def read_prediction(
     item = await HealthRepository().get_prediction(prediction_id, user.id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예측 결과를 찾을 수 없습니다.")
+    await ensure_prediction_read_allowed(item, user.id)
     return envelope(prediction_payload(item))
 
 
@@ -313,6 +318,7 @@ async def read_risk_curve(
     item = await repo.get_prediction(prediction_id, user.id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예측 결과를 찾을 수 없습니다.")
+    await ensure_prediction_read_allowed(item, user.id)
     if item.risk_curve_status != "available":
         return envelope(
             {
@@ -347,6 +353,7 @@ async def read_risk_factors(
     item = await HealthRepository().get_prediction(prediction_id, user.id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예측 결과를 찾을 수 없습니다.")
+    await ensure_prediction_read_allowed(item, user.id)
     approved = (
         item.display_allowed is True
         and item.operational_model_activated is True

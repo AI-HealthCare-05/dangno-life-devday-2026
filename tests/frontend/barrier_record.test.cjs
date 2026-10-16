@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../../src/frontend/app.js'),'utf8');
 function harness(){
- const state={token:'test',cycle:{cycle_id:1}},nodes={
+ const state={token:'test',cycle:{cycle_id:1,user_challenges:[{user_challenge_id:7},{user_challenge_id:8}]},dailyCompleted:new Set(),dailyRecordsStatus:'ready'},nodes={
   '#barrier-challenge':{value:'7'},'#barrier-reason':{value:'goal_too_hard'},
   '#barrier-suggestion-text':{textContent:''},'#barrier-suggestion':{hidden:true}
  };const calls=[],messages=[];
@@ -11,7 +11,8 @@ function harness(){
   api:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return {suggestion:'작은 목표로 나누세요.'};},
   showMessage:(text,kind)=>messages.push({text,kind}),loadWeeklyReport:async()=>{throw new Error('report unavailable');}
  });
- vm.runInContext(source.match(/^async function saveBarrierRecord\([^]*?^}/m)[0],ctx);
+ for(const name of ['hasCurrentChallengeCycle','barrierFormAvailability','saveBarrierRecord'])
+  vm.runInContext(source.match(new RegExp(`^(?:async )?function ${name}\\([^]*?^}`, 'm'))[0],ctx);
  return {ctx,state,nodes,calls,messages,save:ctx.saveBarrierRecord};
 }
 test('reason save shows completion and the adjustment even when report refresh fails',async()=>{
@@ -40,4 +41,16 @@ test('late response cannot announce a save for another account or cycle',async()
 test('preview displays completion without writing to the server',async()=>{
  const h=harness();h.ctx.isLocalPreview=()=>true;assert.equal(await h.save(),true);
  assert.equal(h.calls.length,0);assert.equal(h.messages[0].kind,'success');
+});
+
+test('all completed challenges reject reason submission without a request',async()=>{
+ const h=harness();h.state.dailyCompleted=new Set(['7','8']);
+ await assert.rejects(h.save(),/모두 실천/);assert.equal(h.calls.length,0);
+ assert.equal(h.messages.length,0);assert.equal(h.nodes['#barrier-suggestion'].hidden,true);
+});
+
+test('completion while a reason request is pending cannot reopen an adjustment',async()=>{
+ const h=harness();let resolve;h.ctx.api=()=>new Promise(r=>resolve=r);
+ const pending=h.save();h.state.dailyCompleted=new Set(['7','8']);resolve({suggestion:'old adjustment'});
+ assert.equal(await pending,false);assert.equal(h.messages.length,0);assert.equal(h.nodes['#barrier-suggestion'].hidden,true);
 });

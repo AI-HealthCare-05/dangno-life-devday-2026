@@ -1,5 +1,7 @@
 # 간당간당 모바일 앱 — 팀원 실행 안내
 
+최신 통합: [2026-10-16 배포 변경·서버 반영 순서](DEPLOYMENT_UPDATE_20261016.md).
+
 `AI-HealthCare-05/dangno-life-devday-2026`의 `main`을 병합 대상으로 앱 작업을 통합한 버전이다. 원래 앱 작업은 이전 저장소의 `develop` (`8364a21`)에서 시작했으며, 이 PR에서는 대상 `main`의 웹 다운로드·RAG·서버 변경을 유지한다. 앱 ID는 로컬 `life.dangno.app`, 배포 `life.dangno.app.deployment`이다.
 
 ## 실행 문서
@@ -20,9 +22,8 @@
 ```sh
 git clone https://github.com/AI-HealthCare-05/dangno-life-devday-2026.git
 cd dangno-life-devday-2026
-git remote add app-pr https://github.com/Autobot1236/dangno-life-devday-2026.git
-git fetch app-pr codex/app-current-changes-20261009
-git switch -c app-current-changes --track app-pr/codex/app-current-changes-20261009
+git fetch origin codex/app-deployment-update-20261016
+git switch -c app-deployment-update --track origin/codex/app-deployment-update-20261016
 python restore_workspace.py
 npm install --global pnpm@11.19.0
 pnpm install --frozen-lockfile

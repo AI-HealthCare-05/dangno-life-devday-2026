@@ -34,7 +34,7 @@ test('reads canonical name from bare users/me response with an in-memory token o
   assert.deepEqual(app.writes, []);
 });
 test('no session, malformed token, or unavailable account never invents a profile name', async () => {
-  for (const status of [400, 401, 403, 503]) {
+  for (const status of [400, 401, 403]) {
     let calls = 0;
     const app = harness(async () => { calls++; return reply({}, status); });
     assert.equal(await app.api.loadName(), null); assert.equal(calls, 1);
@@ -44,6 +44,50 @@ test('no session, malformed token, or unavailable account never invents a profil
     const app = harness(async url => reply(url.endsWith('/refresh') ? { access_token: 'test-token' } : { name }));
     assert.equal(await app.api.loadName(), name === 123 ? null : '숲지기');
   }
+});
+
+test('temporary account failures retain the last name; confirmed logout clears it', async () => {
+  for (const bridge of [false, true]) {
+    let failure = null;
+    const seen = [], app = harness(async url => {
+      if (failure === 'network') throw new TypeError('offline');
+      if (failure === 'timeout') throw Object.assign(new Error('timeout'), { name: 'AbortError' });
+      return reply(url.endsWith('/refresh') ? { access_token: 'test-token' } : { name: '확인된 이름' }, failure || 200);
+    });
+    if (bridge) app.window.GandangAuthSession = { async resolve() {
+      if (failure) throw Object.assign(new Error('account unavailable'), { status: failure });
+      return { profile: { name: '확인된 이름' } };
+    } };
+    const sync = app.api.watch(name => seen.push(name));
+    await sync.refresh();
+    const count = seen.length;
+    for (failure of [503, 'network', 'timeout']) {
+      await sync.refresh();
+      assert.equal(seen.length, count, `bridge=${bridge}: ${failure} must not replace name`);
+      assert.equal(seen.at(-1), '확인된 이름');
+    }
+    failure = 401; await sync.refresh(); assert.equal(seen.at(-1), null);
+    failure = null; await sync.refresh(); assert.equal(seen.at(-1), '확인된 이름');
+    sync.dispose();
+  }
+});
+
+test('legacy account lookup distinguishes a server outage from a missing session', async () => {
+  for (const endpoint of ['refresh', 'me']) {
+    const app = harness(async url => reply({ access_token: 'test-token' }, url.endsWith('/' + endpoint) ? 503 : 200));
+    await assert.rejects(app.api.loadName(), { status: 503 });
+  }
+});
+
+test('nameplate keeps the account name when the renderer still holds an older name', () => {
+  const start = game.indexOf('  function projectMapLabels() {');
+  const end = game.indexOf('  window.addEventListener("forest-camera-view"', start);
+  const plate = { style: {} }, state = { avatar: { name: '현재 계정', x: 100, y: 100 } };
+  const context = { state, currentScene: 'world', $: selector => selector === '#avatar-nameplate' ? plate : null,
+    window: { ForestCamera: { avatarAnchor: () => ({ x: .4, y: .6, name: '오래된 캐시 이름' }) } } };
+  vm.runInNewContext(game.slice(start, end) + '\nprojectMapLabels();', context);
+  assert.equal(plate.textContent, '현재 계정');
+  assert.equal(plate.style.left, '40%'); assert.equal(plate.style.top, '60%'); assert.equal(plate.hidden, false);
 });
 test('focus and profile revision re-read the account; logout restores guest display', async () => {
   let name = '첫 이름', authenticated = true;

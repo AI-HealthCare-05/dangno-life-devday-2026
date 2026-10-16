@@ -22,6 +22,17 @@ test('closing an open modal takes priority over leaving the screen', () => {
     ? [{ querySelector: () => ({ click: () => c.events.push('close') }) }] : [];
   handleAppBack(c); assert.deepEqual(c.events, ['close']);
 });
+
+test('diagnosis guidance closes before leaving the eligibility screen', () => {
+  const c = context();
+  c.document.querySelectorAll = selector => selector === 'dialog[open]' ? [] : [{
+    hidden:false,getClientRects:()=>[{}],querySelector:selector=>{
+      assert.match(selector,/aria-label/);return {click:()=>c.events.push('close-diagnosis-guidance')};
+    },
+  }];
+  c.window.GandangPageBack=()=>{c.events.push('unexpected-navigation');return true};
+  handleAppBack(c);assert.deepEqual(c.events,['close-diagnosis-guidance']);
+});
 test('only minimizes when there is no previous view or page', () => {
   const c = context(); c.canGoBack = false; handleAppBack(c);
   assert.deepEqual(c.events, ['minimize']);

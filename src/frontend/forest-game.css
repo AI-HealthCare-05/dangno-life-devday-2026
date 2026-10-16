@@ -635,3 +635,10 @@ html.forest-ingame, .forest-ingame body { height: 100%; overflow: hidden; }
 .forest-ingame body.forest-ui-hidden .forest-game-tabs { display: none; }
 
 .forest-ingame .studio-topbar #topbar-nickname { display: inline; }
+
+/* Placement actions remain reachable when the legacy storage rail is hidden. */
+.forest-ingame .canvas-frame > #placement-controls { bottom: calc(68px + env(safe-area-inset-bottom,0px)); z-index: 40; width: max-content; max-width: calc(100% - 20px); gap: 5px; padding: 6px; }
+.forest-ingame .canvas-frame > #placement-controls[hidden] { display: none !important; }
+.forest-ingame #placement-controls button { min-width: 0; min-height: 44px; padding: 6px 9px; font-size: 12px; white-space: nowrap; }
+.forest-ingame #placement-controls #cancel-placement[hidden] { display: none; }
+.forest-ingame .canvas-frame:has(> #placement-controls:not([hidden])) #controls-content { visibility: hidden; pointer-events: none; }

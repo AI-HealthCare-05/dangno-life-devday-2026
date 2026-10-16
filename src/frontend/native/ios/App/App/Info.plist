@@ -26,6 +26,8 @@
 	<string>같은 Wi-Fi의 개발용 서버에 연결하여 앱 기능을 테스트합니다.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>챌린지 인증 사진을 촬영할 때 카메라를 사용합니다.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>현재 위치를 기준으로 가까운 의료기관과 응급의료기관을 찾을 때 사용합니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>챌린지에 첨부할 사진을 선택할 때 사진 보관함을 사용합니다.</string>
 	<key>LSRequiresIPhoneOS</key>

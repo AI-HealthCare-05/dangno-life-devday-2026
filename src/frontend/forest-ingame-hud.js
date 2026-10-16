@@ -4,6 +4,14 @@
   const header = document.querySelector('.studio-topbar');
   if (!frame || !header) return;
   document.documentElement.classList.add('forest-ingame');
+  // The legacy rail is hidden in-game. Keep its existing controls and listeners
+  // reachable inside the map rather than duplicating the placement actions.
+  const placement = document.getElementById('placement-controls');
+  if (placement) {
+    const cancel = document.getElementById('cancel-placement');
+    if (cancel) placement.append(cancel);
+    frame.append(placement);
+  }
   const settings = document.createElement('details');
   settings.className = 'forest-game-settings';
   settings.innerHTML = '<summary aria-label="게임 설정">설정</summary><div class="forest-settings-content"></div>';

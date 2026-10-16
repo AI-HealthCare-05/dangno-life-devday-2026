@@ -4,10 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../src/frontend/app.js'), 'utf8');
-function load(names, data) {
+function load(names, data, file) {
   const context = vm.createContext(data);
+  const runtimeSource = file ? fs.readFileSync(path.join(__dirname, '../../src/frontend', file), 'utf8') : source;
   for (const name of names) {
-    const fn = source.match(new RegExp(`^(?:async )?function ${name}\\([^]*?^}`, 'm'));
+    const fn = runtimeSource.match(new RegExp(`^(?:async )?function ${name}\\([^]*?^}`, 'm'));
     assert.ok(fn, name);
     vm.runInContext(fn[0], context);
   }
@@ -109,6 +110,7 @@ test('daily log lookup uses Korean date around UTC previous day', async () => {
 test('V3 photo card states proof scope, not simple-check fallback', () => {
   const list = { innerHTML: '', closest() { return this; } };
   const context = load(['renderDailyRecordList'], {
+    renderBarrierForm() {},
     hasCurrentChallengeCycle: () => true, $: () => list, state: { dailyCompleted: new Set(), cycle: { user_challenges: [{
       user_challenge_id: 1, title: '걷기', catalog_version: 'evidence-v3', verification_type: 2,
       daily_goal: '누적 20분', verification_scope: '사진 제출만 확인',
@@ -124,13 +126,14 @@ test('V3 photo card states proof scope, not simple-check fallback', () => {
   assert.doesNotMatch(list.innerHTML, /간편 체크/);
 });
 
-function photoHarness(response) {
+function photoHarness(response, file) {
   const target = { id: '9', item: { catalog_version: 'evidence-v3', verification_type: 2, goal: { target_minutes: 20 } } };
   const state = { token: 'session-A', cycle: { cycle_id: 1 }, recordTarget: target, dailyCompleted: new Set() };
   const nodes = { '#v3-photo-file': { files: [{ size: 1200 }] }, '#v3-photo-minutes': { value: '20' } };
   const $ = key => nodes[key] ||= { classList: { toggle() {}, add() {}, remove() {} }, scrollIntoView() {} };
   let calls = 0;
   let photoState;
+  const messages = [];
   const formFields = {};
   const context = load(['submitV3Photo'], {
     $, state, isLocalPreview: () => false, challengeDay: () => '2026-09-09',
@@ -138,9 +141,29 @@ function photoHarness(response) {
     window: { confirm: () => true },
     setButtonBusy: () => () => {}, showPhotoRecordState(value) { photoState = value; },
     api: async (url, options) => { calls++; assert.match(url, /\/9\/photo-verifications$/); assert.equal(options.method, 'POST'); return await response(); },
-    renderDailyRecordList() {}, updateDailyRecordSummary() {}, showMessage() {}, loadWeeklyReport: async () => {},
-  });
-  return { ...context, $, state, target, fields: formFields, calls: () => calls, photoState: () => photoState };
+    renderDailyRecordList() {}, updateDailyRecordSummary() {}, showMessage: message => messages.push(message), loadWeeklyReport: async () => {},
+  }, file);
+  return { ...context, $, state, target, fields: formFields, messages, calls: () => calls, photoState: () => photoState };
+}
+
+for (const file of ['app.js', 'intro-retro-app.js']) {
+test(`${file} accepted photo displays the account wallet reward notice including the all-challenge bonus`, async () => {
+  const notice = '당근밭에 비료를 주었습니다. 당근 10개를 획득했습니다! 모든 챌린지를 완료해 당근 50개를 추가로 획득했습니다!';
+  const h = photoHarness(async () => ({ challenge_completed: true, review_status: 'accepted',
+    notice: '사진 검토 완료', wallet_reward: { notice, earned_carrots: 10, daily_bonus: 50 } }), file);
+  await h.submitV3Photo();
+  await h.submitV3Photo();
+  assert.deepEqual(h.messages, [notice]);
+  assert.equal(h.calls(), 1);
+});
+
+test(`${file} pending photo cannot announce a wallet reward even if a malformed response contains one`, async () => {
+  const h = photoHarness(async () => ({ challenge_completed: false, review_status: 'needs_review',
+    wallet_reward: { notice: 'must not announce', earned_carrots: 10 } }), file);
+  await h.submitV3Photo();
+  assert.equal(h.messages.length, 0);
+  assert.equal(h.state.dailyCompleted.size, 0);
+});
 }
 test('photo review pending never marks a challenge done and shows pending guidance', async () => {
   for (const response of [

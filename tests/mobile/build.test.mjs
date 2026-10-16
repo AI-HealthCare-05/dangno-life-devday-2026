@@ -38,6 +38,8 @@ test('packages static assets and route aliases; excludes native projects and pri
     await writeFile(path.join(source, 'favicon.ico'), 'icon');
     await writeFile(path.join(source, 'forest.webmanifest'), '{"start_url":"/forest"}');
     await writeFile(path.join(source, 'assets/image.png'), Buffer.from([0, 1, 2]));
+    await mkdir(path.join(source, 'assets/animals/licensed-kittens'), { recursive: true });
+    await writeFile(path.join(source, 'assets/animals/licensed-kittens/private.png'), 'synthetic private artwork');
     await writeFile(path.join(source, 'forest-sw.js'), 'old cache');
     await writeFile(path.join(source, 'forest-art-review-v1.html'), html);
     await writeFile(path.join(source, 'native/android/private.txt'), 'not a web asset');
@@ -54,6 +56,9 @@ test('packages static assets and route aliases; excludes native projects and pri
     await writeFile(path.join(output, 'stale.txt'), 'stale');
     await buildMobile(root);
     await assert.rejects(access(path.join(output, 'stale.txt')));
+    await buildMobile(root, { excludePrivateArt: true });
+    await assert.rejects(access(path.join(output, 'static/assets/animals/licensed-kittens')));
+    assert.equal(await readFile(path.join(source, 'assets/animals/licensed-kittens/private.png'), 'utf8'), 'synthetic private artwork');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

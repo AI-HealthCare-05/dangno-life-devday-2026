@@ -117,6 +117,10 @@ async def create_prediction_job(user: User, request: PredictionJobCreateRequest)
     if await repo.active_consent(user.id) is None:
         raise PermissionError("CONSENT_REQUIRED")
     eligibility = await repo.latest_eligibility(user.id)
+    from app.services.health_diagnosis import DIAGNOSIS_BLOCK_CODE, diagnosed_on
+
+    if await diagnosed_on(user.id, checkup.checkup_date):
+        raise PermissionError(DIAGNOSIS_BLOCK_CODE)
     _ensure_prediction_eligibility(eligibility, model_key=request.model_key, age=checkup.age)
     assert eligibility is not None
 

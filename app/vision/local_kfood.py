@@ -14,6 +14,8 @@ from PIL import Image
 from app.core import config
 from app.vision.food_vision import FoodVisionError, FoodVisionResult, FoodVisionRuntimeError
 
+FOOD_AREA_POLICY_VERSION = "food-area-v1"
+
 
 def runtime_load_error(exc: Exception) -> FoodVisionRuntimeError:
     if isinstance(exc, OSError) and getattr(exc, "winerror", None) in {4551, 577}:
@@ -91,18 +93,27 @@ class LocalKFoodVisionProvider:
         try:
             import timm
             import torch
-            from ai_edge_litert.interpreter import Interpreter
-
             classifier = timm.create_model(self._meta["backbone"], pretrained=False, num_classes=len(self._classes))
             state = torch.load(self._classifier_path, map_location="cpu", weights_only=True)
             classifier.load_state_dict(state)
             classifier.eval()
-            interpreter = Interpreter(model_path=str(self._segmenter_path))
-            interpreter.allocate_tensors()
+            interpreter = self._load_segmenter()
         except (ImportError, OSError, RuntimeError, KeyError, ValueError) as exc:
             raise runtime_load_error(exc) from exc
         self._classifier, self._interpreter = classifier, interpreter
         return classifier, interpreter
+
+    def _load_segmenter(self):
+        if self._interpreter is None:
+            try:
+                from ai_edge_litert.interpreter import Interpreter
+
+                interpreter = Interpreter(model_path=str(self._segmenter_path))
+                interpreter.allocate_tensors()
+            except (ImportError, OSError, RuntimeError, ValueError) as exc:
+                raise runtime_load_error(exc) from exc
+            self._interpreter = interpreter
+        return self._interpreter
 
     def _classify(self, image: Image.Image) -> list[tuple[str, float]]:
         import torch
@@ -124,7 +135,7 @@ class LocalKFoodVisionProvider:
         return [(self._classes[index], float(value)) for value, index in zip(confidence, indices, strict=True)]
 
     def _segment(self, image: Image.Image) -> np.ndarray:
-        _, interpreter = self._load()
+        interpreter = self._load_segmenter()
         input_detail = interpreter.get_input_details()[0]
         output_details = interpreter.get_output_details()
         size = tuple(int(value) for value in input_detail["shape"][1:3])
@@ -139,14 +150,14 @@ class LocalKFoodVisionProvider:
                 return tensor.astype(np.int64)
         raise FoodVisionError("세그멘터 출력에서 픽셀 마스크를 찾지 못했습니다.")
 
-    def _analyze_sync(self, image_bytes: bytes) -> FoodVisionResult:
+    def _analyze_sync(self, image_bytes: bytes, *, classify_food: bool = True) -> FoodVisionResult:
         try:
             image = Image.open(BytesIO(image_bytes)).convert("RGB")
         except OSError as exc:
             raise FoodVisionError("분석할 사진을 읽지 못했습니다.") from exc
         with self._lock:
             mask = self._segment(image)
-            predictions = self._classify(image)
+            predictions = self._classify(image) if classify_food else []
         food = ~np.isin(mask, self._bg_indices)
         food_pixels = int(food.sum())
         food_coverage = food_pixels / mask.size
@@ -171,10 +182,18 @@ class LocalKFoodVisionProvider:
             food_coverage_percent=food_coverage * 100,
             reliable=reliable,
             uncertainty_reasons=reasons,
-            model_version=f"kfood-efficientnet-b0-{self._meta.get('test_top1', 'unknown')}",
+            model_version=(
+                f"kfood-efficientnet-b0-{self._meta.get('test_top1', 'unknown')}"
+                if classify_food else f"local-food-segmenter:{FOOD_AREA_POLICY_VERSION}"
+            ),
             decision_status=decision,
         )
 
     async def analyze(self, image_bytes: bytes, mime_type: str, filename: str) -> FoodVisionResult:
         del mime_type, filename
         return await asyncio.to_thread(self._analyze_sync, image_bytes)
+
+    async def analyze_areas(self, image_bytes: bytes, mime_type: str, filename: str) -> FoodVisionResult:
+        """Challenge verification uses pixel areas without food-name classification."""
+        del mime_type, filename
+        return await asyncio.to_thread(self._analyze_sync, image_bytes, classify_food=False)

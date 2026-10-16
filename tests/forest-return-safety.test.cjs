@@ -50,5 +50,7 @@ test('forest return waits for read-only current server consent gate and handles 
 });
 test('restored login and completed eligibility await guarded forest return', () => {
   assert.match(source, /syncReturningEligibilityState\(latestEligibility\);\s*if \(await returnToForestSettings\(latestEligibility\)\) return;/);
-  assert.match(source, /syncReturningEligibilityState\(result\);\s*if \(await returnToForestSettings\(result\)\) return;/);
+  const submission = source.slice(source.indexOf('syncReturningEligibilityState(result);'));
+  assert.ok(submission.indexOf('if (await recordDiagnosisResponse(result)) return;') < submission.indexOf('if (await returnToForestSettings(result)) return;'));
+  assert.match(submission, /if \(await returnToForestSettings\(result\)\) return;/);
 });

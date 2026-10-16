@@ -10,8 +10,8 @@
   // Phaser 3.90 has no game-level resolution option. Render into a denser
   // backing canvas, then compensate in the camera only: saved coordinates,
   // sprite sizes, collision geometry and movement speed remain world units.
-  // The viewport, not the authored world, resizes with the window. Keep a 2x
-  // backing where possible and cap its longest edge for large/fullscreen views.
+  // The viewport, not the authored world, resizes with the window. Web keeps
+  // its 2x backing; native backing need not exceed the physical display density.
   const BASE_CAMERA_ZOOM = 1; // Old 50% is the new 100%; old 200% is new 400%.
   const TEXT_RESOLUTION = 8;
   function viewportSize() {
@@ -20,7 +20,9 @@
     // already laid out, so boot must measure that parent rather than 768×512.
     const cssWidth = host?.clientWidth || host?.parentElement?.clientWidth || WORLD.width;
     const cssHeight = host?.clientHeight || host?.parentElement?.clientHeight || WORLD.height;
-    const density = Math.min(2, 4096 / Math.max(cssWidth, cssHeight));
+    const native = document.documentElement?.classList?.contains("gandang-native");
+    const displayDensity = native ? Math.min(2, Math.max(1, Number(window.devicePixelRatio) || 1)) : 2;
+    const density = Math.min(displayDensity, 4096 / Math.max(cssWidth, cssHeight));
     return { width: Math.round(cssWidth * density), height: Math.round(cssHeight * density), density };
   }
   const AVATAR_RENDER_SCALE = 0.43;
@@ -98,7 +100,8 @@
   class ForestScene extends Phaser.Scene {
     constructor() {
       super("forest-world");
-      this.avatar = normalizedAvatar(storedState().avatar);
+      const savedAvatar = storedState().avatar;
+      this.avatar = normalizedAvatar({ ...savedAvatar, name: window.ForestAccountDisplayName || savedAvatar?.name });
       this.sceneName = "world";
       this.atmosphereEnabled = localStorage.getItem(ATMOSPHERE_KEY) !== "off";
       this.lastPersist = 0;
@@ -200,7 +203,8 @@
       const animatedSource = this.textures.get("animated-objects-source").getSourceImage();
       this.textures.addSpriteSheet("animated-objects", window.ForestObjects.createAnimatedAtlas(animatedSource), { frameWidth: 128, frameHeight: 128 });
       this.background = this.add.image(WORLD.width / 2, WORLD.height / 2, "world-bg").setDisplaySize(WORLD.width, WORLD.height);
-      this.createGardenLayer();
+      // This 3072x2048 overlay is only needed after entering the garden.
+      this.gardenLayer = null;
       this.waterRippleFx = this.add.graphics().setDepth(1).setBlendMode(Phaser.BlendModes.ADD);
       window.ForestFire.install(this, { flameAtlasKey: "campfire-flame-atlas" });
       this.placementGrid = this.add.graphics().setDepth(1).setVisible(false);
@@ -423,6 +427,7 @@
     }
 
     createGardenLayer() {
+      if (this.gardenLayer) return;
       const garden = window.ForestGarden;
       const source = this.textures.exists(garden.assets.carrot.key)
         ? this.textures.get(garden.assets.carrot.key).getSourceImage() : null;
@@ -438,6 +443,9 @@
     }
 
     createHomeRecordPlayer() {
+      this.recordPlayerActor = null;
+      this.recordPlayerNote = null;
+      if (!this.textures.exists("home-record-player")) return;
       const { x, y } = HOME_RECORD_PLAYER;
       const furniture = this.add.image(0, 0, "home-record-player")
         .setOrigin(.5, .5)
@@ -446,7 +454,7 @@
         resolution: TEXT_RESOLUTION,
         fontFamily: "Pretendard, Noto Sans KR, sans-serif", fontSize: "14px", fontStyle: "bold", color: "#f6d795", stroke: "#775332", strokeThickness: 2,
       }).setOrigin(.5).setVisible(false);
-      this.recordPlayerActor = this.add.container(x, y, [furniture, note]).setDepth(y + 2).setVisible(true);
+      this.recordPlayerActor = this.add.container(x, y, [furniture, note]).setDepth(y + 2).setVisible(this.sceneName === "home");
       this.recordPlayerNote = note;
       this.syncHomeRecordPlayer(this.homeRecordPlaying);
     }
@@ -1232,6 +1240,7 @@
       }
       this.sceneName = nextSceneName;
       this.background.setTexture(`${this.sceneName}-bg`).setDisplaySize(WORLD.width, WORLD.height);
+      if (this.sceneName === "garden") this.createGardenLayer();
       this.gardenLayer?.setVisible(this.sceneName === "garden");
       this.recordPlayerActor?.setVisible(this.sceneName === "home");
       this.memoryCameraActor?.setVisible(this.sceneName === "world");

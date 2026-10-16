@@ -46,7 +46,7 @@ class Camera {
   }
 }
 
-function setup({ devicePixelRatio = 1, zoom = 1, clientWidth = 768, clientHeight = 512, parentClientWidth, parentClientHeight } = {}) {
+function setup({ devicePixelRatio = 1, native = false, zoom = 1, clientWidth = 768, clientHeight = 512, parentClientWidth, parentClientHeight } = {}) {
   const events = [], listeners = new Map();
   const host = { clientWidth, clientHeight, left: 17, top: 23,
     parentElement: { clientWidth: parentClientWidth, clientHeight: parentClientHeight },
@@ -63,7 +63,7 @@ function setup({ devicePixelRatio = 1, zoom = 1, clientWidth = 768, clientHeight
   };
   const context = vm.createContext({
     window, Phaser, localStorage: { getItem: () => null }, performance: { now: () => 0 },
-    document: { documentElement: { classList: { contains: () => false } }, getElementById: () => host, activeElement: { tagName: 'DIV' } },
+    document: { documentElement: { classList: { contains: name => native && name === 'gandang-native' } }, getElementById: () => host, activeElement: { tagName: 'DIV' } },
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
   });
   vm.runInContext(source, context);
@@ -341,6 +341,24 @@ test('responsive backing covers the host uniformly with a two-pixel density and 
     // Integer backing dimensions can differ from the ideal aspect by at most
     // one backing pixel; prohibit any meaningful independent-axis stretch.
     assert.ok(Math.abs(xPixels - yPixels) <= Math.max(xPixels, yPixels) / Math.min(camera.width, camera.height) + 1e-9);
+  }
+});
+
+test('native backing matches display density while preserving camera projection and touch coordinates', () => {
+  const clientWidth = 720, clientHeight = 1256;
+  const reference = setup({ clientWidth, clientHeight });
+  const expected = reference.window.ForestCamera.worldToScreen(350, 250);
+  for (const devicePixelRatio of [1, 1.5, 2, 3, NaN]) {
+    const { config, scene, camera, scale, window } = setup({ native:true, devicePixelRatio, clientWidth, clientHeight });
+    const density = Math.min(2, Math.max(1, devicePixelRatio || 1));
+    assert.equal(config.width, Math.round(clientWidth * density));
+    assert.equal(config.height, Math.round(clientHeight * density));
+    near(scale.zoom, 1 / density);
+    const actual = window.ForestCamera.worldToScreen(350, 250);
+    near(actual.x, expected.x); near(actual.y, expected.y);
+    const inverse = camera.getWorldPoint(actual.x * camera.width, actual.y * camera.height);
+    near(inverse.x, 350); near(inverse.y, 250);
+    assert.equal(scene.cameraZoom, 1);
   }
 });
 

@@ -474,7 +474,7 @@ def test_lpc_avatar_expansion_storage_reward_and_sit_toggle_contract() -> None:
     assert (ROOT / "scripts/generate_original_bgm.py").is_file()
     assert "gold_eyes_orange_cat" in phaser_script
     assert "Phaser.Scale.NONE" in phaser_script
-    assert 'const CACHE_NAME = "gandang-carrot-forest-pwa-v183-navigation-session";' in worker
+    assert 'const CACHE_NAME = "gandang-carrot-forest-pwa-v185-boot-placement-memory";' in worker
     assert "town-pro-sensory-cc0.mp3" in worker
     assert "carrot-forest-main-theme.mp3" in worker
     assert "forest-canopy-original.wav" in worker
@@ -607,7 +607,7 @@ def test_face_editor_outfit_expansion_and_polish_contract() -> None:
     assert "CarrotAvatarCompositor" in phaser_script
     assert 'id="avatar-nameplate" class="map-label avatar-nameplate"' in html
     assert "avatarAnchor()" in phaser_script
-    assert "nickname.textContent = anchor.name || state.avatar.name" in game_script
+    assert "nickname.textContent = state.avatar.name || anchor.name" in game_script
     assert 'window.addEventListener("forest-camera-view", projectMapLabels)' in game_script
     assert "const NAMEPLATE_Y" not in phaser_script
     assert "const AVATAR_RENDER_SCALE = 0.43" in phaser_script

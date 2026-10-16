@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from math import log1p
 
 from fastapi import HTTPException, status
+from tortoise.transactions import atomic
 
 from app.core import config
 from app.dtos.health import (
@@ -16,6 +17,16 @@ from app.models.health import Consent, CurrentScreeningInput, EligibilityCheck, 
 from app.models.users import Gender, User
 from app.prediction.contracts import ACTIVE_MODEL, PredictionFeatures, input_schema_document
 from app.repositories.health_repository import HealthRepository
+from app.services.health_diagnosis import (
+    DIAGNOSIS_BLOCK_CODE,
+    SERVICE_TIMEZONE,
+    attach_diagnosis_context,
+    diagnosed_on,
+    diagnosis_context,
+    diagnosis_record_payload,
+    ensure_record_analysis_allowed,
+    save_diagnosis_answer,
+)
 
 
 def age_on(reference_date: date, birth_date: date) -> int:
@@ -31,7 +42,7 @@ def eligibility_payload(item: EligibilityCheck) -> dict[str, object]:
     if 14 <= item.age < 19 and "UNDER_MINIMUM_SERVICE_AGE" in reason_codes:
         reason_codes.remove("UNDER_MINIMUM_SERVICE_AGE")
         reason_codes.add("CHALLENGE_ONLY_AGE")
-    has_safety_blocker = bool({"URGENT_MEDICAL_ATTENTION", "DIAGNOSED_DIABETES"} & reason_codes)
+    has_safety_blocker = bool({"URGENT_MEDICAL_ATTENTION", "DIAGNOSED_DIABETES", DIAGNOSIS_BLOCK_CODE} & reason_codes)
     has_consent = "CONSENT_REQUIRED" not in reason_codes
     challenge_eligible = item.age >= 14 and has_consent and not has_safety_blocker
     current_health_check_eligible = item.age >= 19 and item.service_eligible and not has_safety_blocker
@@ -59,6 +70,9 @@ def eligibility_payload(item: EligibilityCheck) -> dict[str, object]:
         },
         "safety_copy_version": item.safety_copy_version,
         "created_at": item.created_at,
+        "record_date": getattr(item, "context_record_date", item.created_at.astimezone(SERVICE_TIMEZONE).date()).isoformat(),
+        "analysis_blocked_for_date": item.has_diabetes_diagnosis or DIAGNOSIS_BLOCK_CODE in reason_codes,
+        "diagnosis_record": getattr(item, "diagnosis_record_snapshot", diagnosis_record_payload(item) if item.has_diabetes_diagnosis else None),
     }
 
 
@@ -131,8 +145,13 @@ class HealthService:
         checkup = await self.repo.get_checkup(request.health_checkup_id, user.id)
         if checkup is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="건강정보 기록을 찾을 수 없습니다.")
+        await ensure_record_analysis_allowed(user.id, checkup.checkup_date)
+        eligibility = await self.repo.latest_eligibility(user.id)
+        if eligibility is None or eligibility.has_diabetes_diagnosis or eligibility.has_urgent_warning_sign:
+            raise HTTPException(status_code=403, detail="의료기관 안내를 먼저 확인해 주세요.")
         return await self.repo.create_current_screening_input(user_id=user.id, **request.model_dump())
 
+    @atomic()
     async def check_eligibility(self, user: User, request: EligibilityCreateRequest) -> EligibilityCheck:
         if user.birthday is None:
             raise HTTPException(
@@ -145,6 +164,7 @@ class HealthService:
                 detail="회원 프로필의 생년월일과 입력값이 다릅니다. 프로필을 먼저 수정해 주세요.",
             )
         age = age_on(date.today(), user.birthday)
+        record_day, source_checkup, edited_diagnosis = await diagnosis_context(user.id, request)
         active_consent = await self.repo.active_consent(user.id)
         reason_codes = eligibility_reason_codes(
             age=age,
@@ -155,12 +175,18 @@ class HealthService:
         )
 
         has_consent = active_consent is not None
+        diagnosis_recorded_today = await diagnosed_on(user.id, record_day)
+        if edited_diagnosis is not None and not request.has_diabetes_diagnosis:
+            diagnosis_recorded_today = False
+        diagnosis_blocked = request.has_diabetes_diagnosis or diagnosis_recorded_today
+        if diagnosis_recorded_today and not request.has_diabetes_diagnosis:
+            reason_codes.append(DIAGNOSIS_BLOCK_CODE)
         service_eligible = age >= 19 and has_consent
         challenge_eligible = (
-            age >= 14 and has_consent and not (request.has_diabetes_diagnosis or request.has_urgent_warning_sign)
+            age >= 14 and has_consent and not (diagnosis_blocked or request.has_urgent_warning_sign)
         )
         current_health_check_eligible = service_eligible and not (
-            request.has_diabetes_diagnosis or request.has_urgent_warning_sign
+            diagnosis_blocked or request.has_urgent_warning_sign
         )
         target_segment = (
             "full_prediction_45_plus" if age >= 45 else "current_signal_19_44" if age >= 19 else "challenge_only_14_18"
@@ -170,13 +196,14 @@ class HealthService:
             "CHALLENGE_ONLY_AGE",
             "CONSENT_REQUIRED",
             "DIAGNOSED_DIABETES",
+            DIAGNOSIS_BLOCK_CODE,
             "URGENT_MEDICAL_ATTENTION",
             "MODEL_AGE_OUT_OF_RANGE",
             "MODEL_POPULATION_OUT_OF_SCOPE",
         }
         model_eligible = not any(code in model_blockers for code in reason_codes)
         next_action = eligibility_next_action(
-            request,
+            request.model_copy(update={"has_diabetes_diagnosis": diagnosis_blocked}),
             model_eligible=model_eligible,
             current_health_check_eligible=current_health_check_eligible,
             challenge_eligible=challenge_eligible,
@@ -199,6 +226,8 @@ class HealthService:
             threshold_version=ACTIVE_MODEL.threshold_version,
             safety_copy_version=config.SAFETY_COPY_VERSION,
         )
+        await save_diagnosis_answer(user.id, request, item, record_day, source_checkup, edited_diagnosis)
+        item.context_record_date = record_day
         priority_code = next(
             (code for code in ("URGENT_MEDICAL_ATTENTION", "DIAGNOSED_DIABETES") if code in reason_codes), None
         )
@@ -216,6 +245,8 @@ class HealthService:
                     safety_copy_version=config.SAFETY_COPY_VERSION,
                 )
             await self.repo.stop_active_cycles(user.id, priority_code)
+        await attach_diagnosis_context(item)
+        item.context_record_date = record_day
         return item
 
     async def create_checkup(self, user: User, request: HealthCheckupCreateRequest) -> HealthCheckup:
@@ -230,6 +261,7 @@ class HealthService:
             )
         if eligibility.has_diabetes_diagnosis or eligibility.has_urgent_warning_sign:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="의료기관 안내를 먼저 확인해 주세요.")
+        await ensure_record_analysis_allowed(user.id, request.checkup_date)
         if request.feature_schema_version != ACTIVE_MODEL.feature_schema_version:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -284,6 +316,8 @@ class HealthService:
         item = await self.repo.get_checkup(checkup_id, user.id)
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="건강정보 기록을 찾을 수 없습니다.")
+        await ensure_record_analysis_allowed(user.id, item.checkup_date)
+        await ensure_record_analysis_allowed(user.id, request.checkup_date)
         if await self.repo.checkup_has_prediction(checkup_id, user.id):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

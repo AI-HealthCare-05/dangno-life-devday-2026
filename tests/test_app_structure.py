@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from app.core import config
 from app.lifecycle import lifespan
 from app.main import app
-from app.services import challenge_v2_retention
+from app.services import challenge_v2_retention, health_diagnosis
 
 
 def test_health_routes_remain_registered_after_module_split() -> None:
@@ -34,6 +34,10 @@ def test_challenge_v2_routes_are_marked_deprecated_in_openapi() -> None:
 async def test_lifespan_cancels_and_collects_retention_task(monkeypatch: pytest.MonkeyPatch) -> None:
     started = asyncio.Event()
     cancelled = asyncio.Event()
+    backfilled = asyncio.Event()
+
+    async def fake_backfill() -> None:
+        backfilled.set()
 
     async def fake_retention_loop() -> None:
         started.set()
@@ -45,8 +49,10 @@ async def test_lifespan_cancels_and_collects_retention_task(monkeypatch: pytest.
     monkeypatch.setattr(config, "DEMO_MODE", True)
     monkeypatch.setattr(config, "DEMO_ARTIFACT_INFERENCE_ENABLED", False)
     monkeypatch.setattr(challenge_v2_retention, "retention_loop", fake_retention_loop)
+    monkeypatch.setattr(health_diagnosis, "backfill_legacy_diagnoses", fake_backfill)
 
     async with lifespan(FastAPI()):
         await asyncio.wait_for(started.wait(), timeout=1)
 
     assert cancelled.is_set()
+    assert backfilled.is_set()

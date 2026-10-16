@@ -121,7 +121,7 @@ test('initialization starts independent asset loads together but reveals only af
   const pending = [], calls = [];
   const load = name => { calls.push(name); return new Promise(resolve => pending.push(resolve)); };
   const c = vm.createContext({ URLSearchParams, localDemoOrigin: false, state: null,
-    window: { location: { search: '' }, LpcAvatarEngine: { ready: () => load('avatar') },
+    window: { ForestAccountDisplayName: '계정 이름', location: { search: '' }, LpcAvatarEngine: { ready: () => load('avatar') },
       ForestObjects: { loadIndividualAssets: () => load('furniture') },
       ForestRiverDuckArt: { loadImages: () => load('ducks') },
       ForestProfile: { watch: () => calls.push('profile') }, requestAnimationFrame() {} },
@@ -130,10 +130,11 @@ test('initialization starts independent asset loads together but reveals only af
   const from = code.indexOf('async (loaded) => {', code.indexOf('adapter.load().then('));
   const to = code.indexOf(').catch((error)', from);
   vm.runInContext('globalThis.initialize = ' + code.slice(from, to), c);
-  const task = c.initialize({ homeRecordPlaying: false });
+  const task = c.initialize({ homeRecordPlaying: false, avatar: { name: '게스트 이름' } });
   assert.deepEqual(calls, ['avatar', 'furniture', 'ducks']);
   pending[0](); pending[1](); await Promise.resolve();
   assert.equal(calls.includes('render'), false);
   pending[2](); await task;
+  assert.equal(c.state.avatar.name, '계정 이름');
   assert.deepEqual(calls, ['avatar', 'furniture', 'ducks', 'render', 'profile']);
 });

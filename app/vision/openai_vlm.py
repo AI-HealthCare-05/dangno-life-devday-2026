@@ -180,7 +180,7 @@ def apply_vlm_review(result: FoodVisionResult, review: dict[str, object]) -> Foo
     """Apply validated semantic evidence without substituting CV area estimates."""
     reasons = list(result.uncertainty_reasons)
     reasons.extend(str(reason) for reason in review["uncertainty_reasons"])
-    if review["multiple_images_or_screen_capture"] or not review["is_meal_photo"] or not review["challenge_relevant"]:
+    if review["multiple_images_or_screen_capture"]:
         decision = "invalid_photo_content"
         reasons.append("vlm_not_relevant_meal")
     elif not review["image_quality_adequate"]:
@@ -189,6 +189,9 @@ def apply_vlm_review(result: FoodVisionResult, review: dict[str, object]) -> Foo
     elif review["vegetable_presence"] == "absent":
         decision = "invalid_vegetable_content"
         reasons.append("vlm_no_visible_vegetables")
+    elif not review["is_meal_photo"] or not review["challenge_relevant"]:
+        decision = "invalid_photo_content"
+        reasons.append("vlm_not_relevant_meal")
     elif review["vegetable_presence"] == "uncertain" or not all(review[key] for key in ("food_boundaries_clear", "vegetable_boundaries_clear")):
         decision = "uncertain"
         reasons.append("vlm_visual_ambiguity")
