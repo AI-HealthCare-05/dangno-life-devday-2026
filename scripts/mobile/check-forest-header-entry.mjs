@@ -11,12 +11,10 @@ try {
    await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:route.request().url().includes('/token/refresh')?'{"access_token":"synthetic-account"}':route.request().url().endsWith('/users/me')?'{"id":99999,"name":"검증 사용자"}':'{}'}));
    await page.goto('http://127.0.0.1:8000/static/'+entry);
    await page.waitForFunction(()=>typeof state!=='undefined' && Boolean(document.getElementById('header-forest-entry')));
-   const image=page.locator('#header-forest-entry img');
-   await image.evaluate(img=>img.decode());
-   const imgSize=await image.evaluate(img=>[img.naturalWidth,img.naturalHeight]);
-   assert.deepEqual(imgSize,[2055,765]);
-   assert.ok((await image.getAttribute("src")).endsWith("carrot-forest-wordmark-a.png"));
-   assert.equal(await page.locator('#header-forest-entry').innerText(), '');
+   const wordmark=page.locator('#header-forest-entry .header-forest-wordmark');
+   await page.waitForFunction(()=>Boolean(document.querySelector('#header-forest-entry object')?.contentDocument?.documentElement));
+   assert.ok((await wordmark.getAttribute("data")).endsWith("carrot-forest-wordmark.svg"));
+   assert.deepEqual(await wordmark.evaluate(node=>[Number(node.width),Number(node.height)]),[244,76]);
    for(const large of [false,true]) {
     await page.evaluate(large=>document.body.classList.toggle('large-text',large),large);
     for(const step of (entry.startsWith('index')?[2,3,4,5,6,7,8]:[1,2])){
@@ -44,6 +42,18 @@ try {
    assert.equal(await page.locator('dialog[open]').count(),0);
    await page.close();
   }
+ }
+ for(const entry of ['index.html?preview=results','intro-retro.html?intro=replay']) {
+  const page=await browser.newPage({viewport:{width:1280,height:900}});
+  await page.route('**/carrot-forest-wordmark.svg',route=>route.fulfill({status:404,contentType:'text/plain',body:'missing'}));
+  await page.route('**/api/**',route=>route.fulfill({status:401,contentType:'application/json',body:'{}'}));
+  await page.goto('http://127.0.0.1:8000/static/'+entry);
+  const fallback=page.locator('#header-forest-entry .header-forest-fallback');
+  await fallback.waitFor({state:'visible'});
+  assert.equal((await fallback.textContent()).trim(),'당근의 숲');
+  assert.equal(await page.locator('#header-forest-entry').getAttribute('aria-label'),'당근의 숲 바로가기');
+  assert.equal(await page.locator('.topbar').evaluate(node=>node.scrollWidth<=node.clientWidth+1),true);
+  await page.close();
  }
  console.log('PASS shared forest shortcut layouts',count,'states; direct /forest links');
 } finally {await browser.close();}
