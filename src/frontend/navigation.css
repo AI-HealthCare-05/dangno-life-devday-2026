@@ -59,9 +59,14 @@ html body .topbar .header-forest-entry {
   box-shadow: 0 3px 0 #295d2a, 0 5px 12px #24532618;
   text-decoration: none; transition: filter .15s ease, box-shadow .15s ease;
 }
-html body .topbar .header-forest-entry img {
+html body .topbar .header-forest-entry .header-forest-wordmark {
   display: block; width: 100%; height: 100%; min-height: 0; flex: 0 1 auto;
   object-fit: contain; pointer-events: none;
+}
+html body .topbar .header-forest-entry .header-forest-fallback {
+  display: grid; place-items: center; width: 100%; height: 100%;
+  color: #17682d; font-size: 20px; font-weight: 900; letter-spacing: -.04em;
+  text-align: center; white-space: nowrap;
 }
 html body .topbar .header-forest-entry:hover { filter: brightness(1.04); }
 html body .topbar .header-forest-entry:active { box-shadow: 0 1px 0 #295d2a; }
